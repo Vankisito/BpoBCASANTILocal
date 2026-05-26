@@ -27,13 +27,7 @@ jobs:
           GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
         run: |
           MODULE_NAME="${{ github.event.repository.name }}"
-          CLIENTES=$(gh api graphql -f query='
-            query { organization(login:"HabitatDigitalCo") {
-              repositories(first:100, query:"habitat-deploy-") {
-                nodes { name }
-              }
-            }}' --jq '.data.organization.repositories.nodes[].name')
-
+          CLIENTES=$(gh api /orgs/HabitatDigitalCo/repos --paginate --jq '.[].name' | grep "habitat-deploy-")
           MATCHING=()
           for repo in $CLIENTES; do
             MANIFEST=$(gh api repos/HabitatDigitalCo/$repo/contents/manifest.yml --jq '.content' | base64 -d)
