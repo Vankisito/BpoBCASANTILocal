@@ -38,7 +38,7 @@ jobs:
       - name: Deploy a Sandbox para ${{ matrix.cliente }}
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: sandbox.habitatdigital.mx
+          host: sandbox-odoo.habitatdigital.net
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           script: |
