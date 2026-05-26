@@ -17,13 +17,13 @@ jobs:
           script: |
             set -e
             cd /tmp
-            sudo rm -rf GpoBCA_Seguros
+            rm -rf GpoBCA_Seguros
             git clone -b desarrollo git@github.com:HabitatDigitalCo/GpoBCA_Seguros.git
             if [ ! -f "GpoBCA_Seguros/BCA_Seguros/__manifest__.py" ]; then
               echo "ERROR: BCA_Seguros/__manifest__.py no encontrado"
               exit 1
             fi
-            sudo rm -rf /opt/odoo/addons/BCA_Seguros
+            rm -rf /opt/odoo/addons/BCA_Seguros
             mv GpoBCA_Seguros/BCA_Seguros /opt/odoo/addons/BCA_Seguros
             rm -rf /tmp/GpoBCA_Seguros
             docker restart odoo_golden
