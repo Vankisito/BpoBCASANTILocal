@@ -63,7 +63,7 @@ jobs:
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           script: |
-            cd /opt/odoo/addons-custom/${{ github.event.repository.name }}
+            cd /opt/odoo/addons/${{ github.event.repository.name }}
             git fetch origin staging
             git reset --hard origin/staging
             docker exec odoo-staging odoo \
