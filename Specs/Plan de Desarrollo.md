@@ -1,4 +1,4 @@
-# Plan de Desarrollo — Módulo `bca_core`
+# Plan de Desarrollo — Módulo `BCA_Seguros`
 
 **Proyecto:** Grupo BCA — Gestión de Pólizas, Cobranza y PCA  
 **Plataforma:** Odoo Community 19  
@@ -39,8 +39,8 @@ Sigue este protocolo antes de generar cualquier código:
 Consecuencias:
 - Los agentes inician sesión en el **backend** de Odoo como cualquier usuario interno.
 - Tienen acceso a módulos estándar (CRM, calendario, etc.) según los grupos que el Director General les asigne.
-- Dentro de `bca_core`, las **record rules** los restringen a ver solo sus propias pólizas y recibos — no se necesita ninguna ruta portal para esto.
-- **No existe un portal de agente** (`/my/polizas`). El módulo `portal` no es una dependencia de `bca_core`.
+- Dentro de `BCA_Seguros`, las **record rules** los restringen a ver solo sus propias pólizas y recibos — no se necesita ninguna ruta portal para esto.
+- **No existe un portal de agente** (`/my/polizas`). El módulo `portal` no es una dependencia de `BCA_Seguros`.
 - El nombre del grupo es `group_bca_agente` (no `group_bca_agente_portal`).
 
 ---
@@ -77,7 +77,7 @@ Referencia rápida a las 13 correcciones en `Arquitectura_BCA_Seguros.md` §13:
 | C3 | No `Many2many` para agente↔aseguradora; usar `res.partner.agente.aseguradora` |
 | C4 | En wizard cobranza: usar `self.env` conservando contexto (idioma, zona horaria) en `savepoint` |
 | C5 | `depends` en manifest: sin `contacts`; agregar `post_init_hook` |
-| A1 | `post_init_hook_bca_core` en `__init__.py` raíz; carpeta `migrations/1.0.0/` |
+| A1 | `post_init_hook_bca_seguros` en `__init__.py` raíz; carpeta `migrations/1.0.0/` |
 | A2 | `index=True` en `bca_tipo`, `bca_estado_agente`, `bca_codigo_aseguradora` |
 | A3 | Record rules explícitas para todos los grupos — ver §2.4.3 para el por qué real |
 | A4 | `get_parser()` en lugar de dict estático |
@@ -111,7 +111,7 @@ Referencia rápida a las 13 correcciones en `Arquitectura_BCA_Seguros.md` §13:
 
 | Regla | Consecuencia si se ignora |
 |---|---|
-| Todo `ref` propio del módulo **siempre con prefijo** `bca_core.`, incluso dentro del mismo archivo | `ValueError: External ID not found` al cargar datos |
+| Todo `ref` propio del módulo **siempre con prefijo** `BCA_Seguros.`, incluso dentro del mismo archivo | `ValueError: External ID not found` al cargar datos |
 | **Un solo bloque `<data>`** por archivo XML | Dos bloques `<data>` en el mismo archivo no garantizan commit entre ellos; puede fallar la FK del segundo bloque |
 | Todo `<menuitem>` raíz **debe tener atributo `groups`** | En Odoo 19, un menuitem raíz sin `groups` solo es visible en modo debug; invisible en producción |
 | El orden entre **archivos** en la lista `data[]` del manifest **sí es secuencial** | Usar esta garantía (no la del orden intra-archivo) para gestionar dependencias entre registros |
@@ -301,15 +301,15 @@ Declarar siempre en el manifest. Sin esto, Odoo instala el módulo aunque la lib
 
 | Archivo | Contenido clave |
 |---|---|
-| `BCA_seguros/__manifest__.py` | `name`, `version='19.0.1.0.0'`, `depends`, `data`, `post_init_hook='post_init_hook_bca_core'` |
-| `BCA_seguros/__init__.py` | Imports de subpaquetes + función `post_init_hook_bca_core` |
-| `BCA_seguros/models/__init__.py` | Imports de todos los archivos de models/ |
-| `BCA_seguros/wizards/__init__.py` | Imports |
-| `BCA_seguros/parsers/__init__.py` | `get_parser()` (esqueleto inicial) |
-| `BCA_seguros/calculadores_pca/__init__.py` | `CALCULADOR_REGISTRY` |
-| `BCA_seguros/reports/__init__.py` | Imports |
-| `BCA_seguros/tests/__init__.py` | Import |
-| `BCA_seguros/static/description/icon.png` | Ícono (placeholder PNG 16x16) |
+| `BCA_Seguros/__manifest__.py` | `name`, `version='19.0.1.0.0'`, `depends`, `data`, `post_init_hook='post_init_hook_bca_seguros'` |
+| `BCA_Seguros/__init__.py` | Imports de subpaquetes + función `post_init_hook_bca_seguros` |
+| `BCA_Seguros/models/__init__.py` | Imports de todos los archivos de models/ |
+| `BCA_Seguros/wizards/__init__.py` | Imports |
+| `BCA_Seguros/parsers/__init__.py` | `get_parser()` (esqueleto inicial) |
+| `BCA_Seguros/calculadores_pca/__init__.py` | `CALCULADOR_REGISTRY` |
+| `BCA_Seguros/reports/__init__.py` | Imports |
+| `BCA_Seguros/tests/__init__.py` | Import |
+| `BCA_Seguros/static/description/icon.png` | Ícono (placeholder PNG 16x16) |
 
 **Contenido de `__manifest__.py`:**
 ```python
@@ -348,7 +348,7 @@ Declarar siempre en el manifest. Sin esto, Odoo instala el módulo aunque la lib
         'views/wizard_carga_portafolio_views.xml',
         'views/wizard_cobranza_diaria_views.xml',
     ],
-    'post_init_hook': 'post_init_hook_bca_core',
+    'post_init_hook': 'post_init_hook_bca_seguros',
     'installable': True,
     'application': True,
     # Declarar SIEMPRE librerías externas. Sin esto Odoo instala el módulo
@@ -359,9 +359,9 @@ Declarar siempre en el manifest. Sin esto, Odoo instala el módulo aunque la lib
 }
 ```
 
-**`post_init_hook_bca_core`** en `__init__.py` raíz:
+**`post_init_hook_bca_seguros`** en `__init__.py` raíz:
 ```python
-def post_init_hook_bca_core(env):
+def post_init_hook_bca_seguros(env):
     """Inicializar SQL views de reportes al instalar/actualizar."""
     for model_name in [
         'bca.reporte.pca.agente',
@@ -373,7 +373,7 @@ def post_init_hook_bca_core(env):
 ```
 
 **Checklist Etapa 0:**
-- [ ] `odoo-bin -i bca_core` instala sin errores (aunque sin datos todavía)
+- [ ] `odoo-bin -i BCA_Seguros` instala sin errores (aunque sin datos todavía)
 - [ ] No hay imports circulares
 - [ ] `post_init_hook` definido y referenciado en manifest
 
@@ -527,7 +527,7 @@ group_bca_director       implied_ids: director_comercial
 
 **Checklist Etapa 4:**
 - [ ] Módulo instala con security sin errores de XML ID
-- [ ] Agente (usuario interno) solo ve sus propias pólizas en backend de `bca_core`
+- [ ] Agente (usuario interno) solo ve sus propias pólizas en backend de `BCA_Seguros`
 - [ ] Agente puede abrir CRM y ver/crear sus leads sin restricción
 - [ ] Operador no puede cancelar recibos
 - [ ] `ir.model.access.csv` cubre todos los modelos nuevos (verificar con `odoo-bin --test-enable`)
@@ -679,7 +679,7 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 - [ ] SIC 1 (por agente) muestra datos correctos tras pagar un recibo
 - [ ] SIC 2 (por promotoría) agrupa correctamente
 - [ ] Agente en estado prospecto NO aparece en los reportes de PCA
-- [ ] `odoo-bin -u bca_core` recrea las SQL views sin error
+- [ ] `odoo-bin -u BCA_Seguros` recrea las SQL views sin error
 
 ---
 
@@ -688,12 +688,12 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 **Reglas:**
 - Sintaxis Odoo 19: usar `invisible="not bca_es_producto_seguro"` (no `attrs=`)
-- Grupos en campos con `groups="bca_core.group_bca_director"` para ocultar por rol
+- Grupos en campos con `groups="BCA_Seguros.group_bca_director"` para ocultar por rol
 - `statusbar_visible` en campos `estado` de póliza y recibo
 - Botones de acción con `confirm="..."` donde sea destructivo
 - Smart buttons (contadores en form): siempre `type="object"` con método Python que retorna el action dict — **nunca** `type="action"` con `active_id` en contexto (§2.4.1)
 - Vistas search: `<group>` sin atributos — no `expand`, no `string` (§2.4.1)
-- Todo `ref` propio: siempre con prefijo `bca_core.` aunque sea en el mismo archivo (§2.4.2)
+- Todo `ref` propio: siempre con prefijo `BCA_Seguros.` aunque sea en el mismo archivo (§2.4.2)
 - Todo `<menuitem>` raíz: **atributo `groups` obligatorio** o no será visible en producción (§2.4.2)
 - Herencia de kanban de `crm.lead`: `<xpath expr="//t[@t-name='kanban-box']">` (§2.4.1)
 
@@ -718,7 +718,7 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 | `tests/test_inmutabilidad.py` | Bitácora no editable, `pagado_hasta` solo vía método dedicado |
 | `tests/test_record_rules.py` | Agente (usuario interno) solo ve sus pólizas; director comercial; visibilidad cross-promotoría |
 
-**Ejecutar:** `odoo-bin --test-enable --test-tags bca_core -i bca_core`
+**Ejecutar:** `odoo-bin --test-enable --test-tags BCA_Seguros -i BCA_Seguros`
 
 **Checklist Etapa 11:**
 - [ ] Todos los tests pasan en verde
@@ -730,8 +730,8 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 ```
 INFRAESTRUCTURA
-[ ] odoo-bin -i bca_core → instala sin errores
-[ ] odoo-bin -u bca_core → actualiza sin errores, SQL views recreadas
+[ ] odoo-bin -i BCA_Seguros → instala sin errores
+[ ] odoo-bin -u BCA_Seguros → actualiza sin errores, SQL views recreadas
 [ ] Datos iniciales cargados (aseguradoras, conductos, factores MetLife 2026)
 
 REGLAS DE NEGOCIO CRÍTICAS
@@ -742,7 +742,7 @@ REGLAS DE NEGOCIO CRÍTICAS
 [ ] Error en fila CSV → rollback de fila, proceso continúa
 
 SEGURIDAD
-[ ] Agente (usuario interno) solo ve sus pólizas en bca_core — puede usar CRM libremente
+[ ] Agente (usuario interno) solo ve sus pólizas en BCA_Seguros — puede usar CRM libremente
 [ ] Operador no puede cancelar recibos
 [ ] Director Comercial puede editar factores y cancelar recibos
 [ ] Director General tiene acceso completo

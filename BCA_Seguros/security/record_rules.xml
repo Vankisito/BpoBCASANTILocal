@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Record rules BCA — implementar en Etapa 4 -->
+    <!-- Refs correctos usan prefijo BCA_Seguros. (ej: ref="BCA_Seguros.group_bca_agente") -->
+    <!--
+    Regla obligatoria: declarar rule [(1,'=',1)] para cada grupo no-agente
+    en cada modelo con record rules, aunque parezca redundante — ver Plan §2.4.3.
+    -->
+</odoo>

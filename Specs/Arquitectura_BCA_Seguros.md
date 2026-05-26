@@ -1,4 +1,4 @@
-# Manual de Arquitectura — Módulo `bca_core`
+# Manual de Arquitectura — Módulo `BCA_Seguros`
 
 **Cliente:** Grupo BCA (Holding de Promotorías de Seguros)
 **Plataforma:** Odoo Community **versión 19**
@@ -12,7 +12,7 @@
 
 ## 1. Visión general del módulo
 
-`bca_core` es un módulo Odoo Community V19 que gestiona el ciclo de vida operativo de la promotoría de seguros: pólizas, recibos, cobranza, cálculo de Prima Computable (PCA) y reportes de productividad. Se apoya intensivamente en módulos estándar de Odoo y agrega solo los modelos propios del dominio asegurador que no calzan con objetos estándar.
+`BCA_Seguros` es un módulo Odoo Community V19 que gestiona el ciclo de vida operativo de la promotoría de seguros: pólizas, recibos, cobranza, cálculo de Prima Computable (PCA) y reportes de productividad. Se apoya intensivamente en módulos estándar de Odoo y agrega solo los modelos propios del dominio asegurador que no calzan con objetos estándar.
 
 ### 1.1 Principios de diseño
 
@@ -44,10 +44,10 @@ Declaración en `__manifest__.py`:
 ],
 
 # Hooks de inicialización para SQL views de reportes
-'post_init_hook': 'post_init_hook_bca_core',
+'post_init_hook': 'post_init_hook_BCA_Seguros',
 ```
 
-El hook `post_init_hook_bca_core` se define en el `__init__.py` raíz del módulo e invoca `init()` de todos los modelos de reporte (`_auto=False`) al instalar y al actualizar el módulo. Ver sección A1 de correcciones.
+El hook `post_init_hook_BCA_Seguros` se define en el `__init__.py` raíz del módulo e invoca `init()` de todos los modelos de reporte (`_auto=False`) al instalar y al actualizar el módulo. Ver sección A1 de correcciones.
 
 ---
 
@@ -322,7 +322,7 @@ Cada uno con su pipeline (`hr.recruitment.stage` filtrado por `job_ids`).
 
 > **[CORRECCIÓN M2]** Este modelo hereda `mail.thread` y los campos `factor`, `vigencia_desde`, `vigencia_hasta`, `activo` llevan `tracking=True`. Si el Director cambia un factor, el chatter registra quién, cuándo y de qué valor a cuál. Esto permite auditar qué recibos se congelaron con qué valor de factor, sin necesidad de una tabla histórica separada.
 
-**Editable solo por Director General y Director Comercial** (groups `bca_core.group_bca_director` y `bca_core.group_bca_director_comercial`).
+**Editable solo por Director General y Director Comercial** (groups `BCA_Seguros.group_bca_director` y `BCA_Seguros.group_bca_director_comercial`).
 
 Data inicial: `data/factores_metlife_2026.xml` con los 17 registros (14 Vida + 3 GMM).
 
@@ -705,11 +705,11 @@ Filtrable por agente, promotoría, aseguradora.
 
 | Grupo XML ID | Nombre | Equivale a rol |
 |---|---|---|
-| `bca_core.group_bca_agente` | Agente | Agente vendedor (usuario interno de Odoo) |
-| `bca_core.group_bca_operador` | Operador de Datos | Personal administrativo BCA |
-| `bca_core.group_bca_lider` | Líder | Dirección operativa BCA |
-| `bca_core.group_bca_director_comercial` | Director Comercial | **[NUEVO]** Dirección comercial |
-| `bca_core.group_bca_director` | Director General | CEO / Dueño de BCA |
+| `BCA_Seguros.group_bca_agente` | Agente | Agente vendedor (usuario interno de Odoo) |
+| `BCA_Seguros.group_bca_operador` | Operador de Datos | Personal administrativo BCA |
+| `BCA_Seguros.group_bca_lider` | Líder | Dirección operativa BCA |
+| `BCA_Seguros.group_bca_director_comercial` | Director Comercial | **[NUEVO]** Dirección comercial |
+| `BCA_Seguros.group_bca_director` | Director General | CEO / Dueño de BCA |
 
 Herencia: Director ⊃ Director Comercial ⊃ Líder ⊃ Operador. Agente es independiente (no hereda).
 
@@ -762,10 +762,10 @@ Herencia: Director ⊃ Director Comercial ⊃ Líder ⊃ Operador. Agente es ind
 Los agentes son **usuarios internos de Odoo** (`share=False`). No son usuarios portal.
 
 - Los agentes inician sesión en el **backend** de Odoo como cualquier usuario interno.
-- Dentro de `bca_core`, las record rules (§7.3) los restringen a ver únicamente sus propias pólizas y recibos.
+- Dentro de `BCA_Seguros`, las record rules (§7.3) los restringen a ver únicamente sus propias pólizas y recibos.
 - Tienen acceso a otros módulos de Odoo (CRM, calendario, etc.) según los grupos adicionales que el Director General les asigne.
-- **No existe portal de agente** (`/my/polizas`). El módulo `portal` **no es dependencia** de `bca_core`.
-- El grupo es `bca_core.group_bca_agente` (no `group_bca_agente_portal`).
+- **No existe portal de agente** (`/my/polizas`). El módulo `portal` **no es dependencia** de `BCA_Seguros`.
+- El grupo es `BCA_Seguros.group_bca_agente` (no `group_bca_agente_portal`).
 - No se crean `controllers/portal.py` ni `views/portal_templates.xml`.
 
 ---
@@ -773,7 +773,7 @@ Los agentes son **usuarios internos de Odoo** (`share=False`). No son usuarios p
 ## 9. Estructura del módulo (árbol de archivos)
 
 ```
-bca_core/
+BCA_Seguros/
 ├── __init__.py
 ├── __manifest__.py
 ├── models/
@@ -910,7 +910,7 @@ Correcciones incorporadas en revisión pre-desarrollo. Cada una tiene referencia
 | **C3** | CRÍTICO | `res.partner.bca_aseguradoras_ids` | Constraint `UNIQUE(clave, aseguradora)` imposible en Many2many SQL | Nuevo modelo `res.partner.agente.aseguradora` con constraint SQL real |
 | **C4** | CRÍTICO | `wizards/cobranza_diaria.py` | Pérdida de idioma y zona horaria al usar `context={}` | Usar `self.env` normal; Odoo >= 14 limpia la caché en savepoints |
 | **C5** | CRÍTICO | `__manifest__.py` | `contacts` no existe en Odoo Community v19 | Eliminar de `depends`. Agregar `post_init_hook` |
-| **A1** | ALTO | `reports/*.py` | SQL views sin `post_init_hook` — no se recrean en upgrade | Agregar `post_init_hook_bca_core` en manifest + carpeta `migrations/1.0.0/` |
+| **A1** | ALTO | `reports/*.py` | SQL views sin `post_init_hook` — no se recrean en upgrade | Agregar `post_init_hook_BCA_Seguros` en manifest + carpeta `migrations/1.0.0/` |
 | **A2** | ALTO | `models/res_partner.py` | Campos `bca_*` sin `index=True` — full table scan en `res.partner` | Agregar `index=True` en `bca_tipo`, `bca_estado_agente`, `bca_codigo_aseguradora` |
 | **A3** | ALTO | `security/record_rules.xml` | Rules solo para Agente Portal; otros grupos sin declaración explícita | Agregar rule `[(1,'=',1)]` para todos los grupos en `bca.poliza` y `bca.recibo` |
 | **A4** | ALTO | `parsers/__init__.py` | `PARSER_REGISTRY` dict estático — no extensible sin tocar `__init__.py` | Convertir a función `get_parser()` con mensaje de error descriptivo |
@@ -923,4 +923,4 @@ Correcciones incorporadas en revisión pre-desarrollo. Cada una tiene referencia
 
 ---
 
-*Documento elaborado por Hábitat Digital. Base técnica para el desarrollo del módulo `bca_core`. Cualquier desviación del diseño aquí descrito debe documentarse y validarse con el arquitecto de solución antes de implementarse.*
+*Documento elaborado por Hábitat Digital. Base técnica para el desarrollo del módulo `BCA_Seguros`. Cualquier desviación del diseño aquí descrito debe documentarse y validarse con el arquitecto de solución antes de implementarse.*

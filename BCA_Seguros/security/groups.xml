@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Grupos BCA — implementar en Etapa 4 -->
+    <!-- IDs correctos usan prefijo BCA_Seguros. (ej: id="BCA_Seguros.group_bca_agente") -->
+    <!--
+    Jerarquía planeada:
+      group_bca_agente         (independiente — NO en la cadena implied_ids)
+      group_bca_operador
+      group_bca_lider          implied_ids: operador
+      group_bca_director_comercial  implied_ids: lider
+      group_bca_director       implied_ids: director_comercial
+
+    ADVERTENCIA implied_ids: causa membresía acumulativa — ver Plan §2.4.3.
+    Declarar record rule [(1,'=',1)] para todos los grupos no-agente.
+    NO usar category_id en Odoo 19 — usar res.groups.privilege con privilege_id.
+    -->
+</odoo>

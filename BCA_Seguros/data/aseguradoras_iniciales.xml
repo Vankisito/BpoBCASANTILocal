@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Aseguradoras iniciales — implementar en Etapa 5 -->
+    <!-- Registros: MetLife (METLIFE), Qualitas (QUALITAS) como res.partner -->
+</odoo>

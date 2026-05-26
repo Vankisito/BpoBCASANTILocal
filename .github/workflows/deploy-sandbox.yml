@@ -1,0 +1,63 @@
+name: Deploy to Sandbox
+
+on:
+  push:
+    branches: [desarrollo]
+
+jobs:
+  identificar-clientes:
+    runs-on: ubuntu-latest
+    outputs:
+      clientes: ${{ steps.scan.outputs.clientes }}
+    steps:
+      - name: Obtener lista de clientes que usan este módulo
+        id: scan
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+        run: |
+          MODULE_NAME="${{ github.event.repository.name }}"
+          CLIENTES=$(gh api graphql -f query='
+            query { organization(login:"HabitatDigitalCo") {
+              repositories(first:100, query:"habitat-deploy-") {
+                nodes { name }
+              }
+            }}' --jq '.data.organization.repositories.nodes[].name')
+
+          MATCHING=()
+          for repo in $CLIENTES; do
+            MANIFEST=$(gh api repos/HabitatDigitalCo/$repo/contents/manifest.yml --jq '.content' | base64 -d)
+            if echo "$MANIFEST" | grep -q "$MODULE_NAME"; then
+              CLIENTE=$(echo "$repo" | sed 's/habitat-deploy-//')
+              MATCHING+=("$CLIENTE")
+            fi
+          done
+
+          echo "clientes=$(echo ${MATCHING[@]} | jq -R -s -c 'split(" ")')" >> $GITHUB_OUTPUT
+
+  desplegar:
+    needs: identificar-clientes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cliente: ${{ fromJson(needs.identificar-clientes.outputs.clientes) }}
+    steps:
+      - name: Deploy a Sandbox para ${{ matrix.cliente }}
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: sandbox.habitatdigital.mx
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/odoo/addons-custom/${{ github.event.repository.name }}
+            git fetch origin desarrollo
+            git reset --hard origin/desarrollo
+            docker exec odoo-sandbox odoo \
+              -d sandbox_${{ matrix.cliente }} \
+              -u ${{ github.event.repository.name }} \
+              --stop-after-init
+
+      - name: Notificar éxito
+        if: success()
+        run: |
+          curl -X POST ${{ secrets.WEBHOOK_NOTIFICACIONES }} \
+            -d "✅ ${{ github.event.repository.name }} desplegado a Sandbox para ${{ matrix.cliente }}"

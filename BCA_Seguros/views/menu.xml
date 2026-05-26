@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menú principal BCA — implementar en Etapa 10 -->
+    <!-- Estructura: BCA → [Pólizas | Cobranza | Reportes | Configuración] -->
+    <!-- REGLA: todo <menuitem> raíz DEBE tener atributo groups= (ver Plan §2.4.2) -->
+</odoo>

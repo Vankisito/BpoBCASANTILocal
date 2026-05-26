@@ -1,0 +1,89 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  identificar-clientes:
+    runs-on: ubuntu-latest
+    outputs:
+      clientes: ${{ steps.scan.outputs.clientes }}
+    steps:
+      - name: Obtener lista de clientes que usan este módulo
+        id: scan
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+        run: |
+          MODULE_NAME="${{ github.event.repository.name }}"
+          CLIENTES=$(gh api graphql -f query='
+            query { organization(login:"HabitatDigitalCo") {
+              repositories(first:100, query:"habitat-deploy-") {
+                nodes { name }
+              }
+            }}' --jq '.data.organization.repositories.nodes[].name')
+
+          MATCHING=()
+          for repo in $CLIENTES; do
+            MANIFEST=$(gh api repos/HabitatDigitalCo/$repo/contents/manifest.yml --jq '.content' | base64 -d)
+            if echo "$MANIFEST" | grep -q "$MODULE_NAME"; then
+              CLIENTE=$(echo "$repo" | sed 's/habitat-deploy-//')
+              MATCHING+=("$CLIENTE")
+            fi
+          done
+
+          echo "clientes=$(echo ${MATCHING[@]} | jq -R -s -c 'split(" ")')" >> $GITHUB_OUTPUT
+
+  desplegar:
+    needs: identificar-clientes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cliente: ${{ fromJson(needs.identificar-clientes.outputs.clientes) }}
+      fail-fast: false
+    steps:
+      - name: Leer manifiesto del cliente
+        id: manifest
+        run: |
+          curl -H "Authorization: token ${{ secrets.ORG_READ_TOKEN }}" \
+            https://raw.githubusercontent.com/HabitatDigitalCo/habitat-deploy-${{ matrix.cliente }}/main/manifest.yml \
+            -o manifest.yml
+          IP=$(yq '.droplets.staging.ip' manifest.yml)
+          DB=$(yq '.droplets.staging.db_name' manifest.yml)
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+          echo "db=$DB" >> $GITHUB_OUTPUT
+
+      - name: Backup pre-deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ steps.manifest.outputs.ip }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          script: |
+            /opt/scripts/backup.sh ${{ steps.manifest.outputs.db }}
+
+      - name: Deploy del módulo
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ steps.manifest.outputs.ip }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/odoo/addons-custom/${{ github.event.repository.name }}
+            git fetch origin staging
+            git reset --hard origin/staging
+            docker exec odoo-staging odoo \
+              -d ${{ steps.manifest.outputs.db }} \
+              -u ${{ github.event.repository.name }} \
+              --stop-after-init
+
+      - name: Health check
+        run: |
+          sleep 30
+          curl -f https://staging-${{ matrix.cliente }}.habitatdigital.mx/web/health || exit 1
+
+      - name: Notificar
+        if: success()
+        run: |
+          curl -X POST ${{ secrets.WEBHOOK_NOTIFICACIONES }} \
+            -d "🟡 ${{ github.event.repository.name }} desplegado a Staging para ${{ matrix.cliente }}"
