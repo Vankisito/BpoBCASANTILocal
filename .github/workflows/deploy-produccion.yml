@@ -1,96 +1,41 @@
-name: Deploy to Producción
+name: Deploy to Producción BCA
 
 on:
   push:
     branches: [produccion]
 
 jobs:
-  validar-ventana:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Verificar ventana de despliegue
-        run: |
-          DIA=$(date +%A)
-          HORA=$(date +%H)
-          echo "Desplegando en: $DIA $HORA:00"
-          # La validación real se configura por cliente en su manifest.yml
-
-  identificar-clientes:
-    needs: validar-ventana
-    runs-on: ubuntu-latest
-    outputs:
-      clientes: ${{ steps.scan.outputs.clientes }}
-    steps:
-      - name: Obtener lista de clientes que usan este módulo
-        id: scan
-        env:
-          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
-        run: |
-          MODULE_NAME="${{ github.event.repository.name }}"
-          CLIENTES=$(gh api /orgs/HabitatDigitalCo/repos --paginate --jq '.[].name' | grep "habitat-deploy-")
-          MATCHING=()
-          for repo in $CLIENTES; do
-            MANIFEST=$(gh api repos/HabitatDigitalCo/$repo/contents/manifest.yml --jq '.content' | base64 -d)
-            if echo "$MANIFEST" | grep -q "$MODULE_NAME"; then
-              CLIENTE=$(echo "$repo" | sed 's/habitat-deploy-//')
-              MATCHING+=("$CLIENTE")
-            fi
-          done
-
-          echo "clientes=$(echo ${MATCHING[@]} | jq -R -s -c 'split(" ")')" >> $GITHUB_OUTPUT
-
   desplegar:
-    needs: identificar-clientes
-    environment: produccion
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        cliente: ${{ fromJson(needs.identificar-clientes.outputs.clientes) }}
-      max-parallel: 1
-      fail-fast: true
+    environment: produccion
     steps:
-      - name: Leer manifiesto del cliente
-        id: manifest
-        run: |
-          curl -H "Authorization: token ${{ secrets.ORG_READ_TOKEN }}" \
-            https://raw.githubusercontent.com/HabitatDigitalCo/habitat-deploy-${{ matrix.cliente }}/main/manifest.yml \
-            -o manifest.yml
-          IP=$(yq '.droplets.produccion.ip' manifest.yml)
-          DB=$(yq '.droplets.produccion.db_name' manifest.yml)
-          echo "ip=$IP" >> $GITHUB_OUTPUT
-          echo "db=$DB" >> $GITHUB_OUTPUT
-
-      - name: Backup obligatorio pre-deploy
+      - name: Deploy BCA_Seguros a Producción
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ steps.manifest.outputs.ip }}
+          host: 64.23.250.84
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           script: |
-            /opt/scripts/backup.sh ${{ steps.manifest.outputs.db }}
+            set -e
+            cd /tmp
+            rm -rf GpoBCA_Seguros
+            git clone -b produccion git@github.com:HabitatDigitalCo/GpoBCA_Seguros.git
+            if [ ! -f "GpoBCA_Seguros/BCA_Seguros/__manifest__.py" ]; then
+              echo "ERROR: BCA_Seguros/__manifest__.py no encontrado"
+              exit 1
+            fi
+            rm -rf /opt/odoo/addons/BCA_Seguros
+            mv GpoBCA_Seguros/BCA_Seguros /opt/odoo/addons/BCA_Seguros
+            rm -rf /tmp/GpoBCA_Seguros
+            docker restart odoo_bca
+            sleep 45
+            docker exec odoo_bca odoo \
+              -u BCA_Seguros \
+              -d bca_prod \
+              --stop-after-init \
+              --no-http
+            docker exec odoo_bca grep -i "BCA_Seguros" /var/log/odoo/odoo.log | tail -5
 
-      - name: Deploy del módulo
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ steps.manifest.outputs.ip }}
-          username: ${{ secrets.DEPLOY_SSH_USER }}
-          key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-          script: |
-            code .github/workflows/deploy-produccion.yml
-            git fetch origin produccion
-            git reset --hard origin/produccion
-            docker exec odoo-produccion odoo \
-              -d ${{ steps.manifest.outputs.db }} \
-              -u ${{ github.event.repository.name }} \
-              --stop-after-init
-
-      - name: Verificación post-deploy
-        run: |
-          sleep 30
-          curl -f https://${{ matrix.cliente }}.habitatdigital.mx/web/health || exit 1
-
-      - name: Notificar al equipo
+      - name: Notificar éxito
         if: success()
-        run: |
-          curl -X POST ${{ secrets.WEBHOOK_NOTIFICACIONES }} \
-            -d "🟢 ${{ github.event.repository.name }} en Producción para ${{ matrix.cliente }}"
+        run: echo "✅ BCA_Seguros desplegado a Producción correctamente"
