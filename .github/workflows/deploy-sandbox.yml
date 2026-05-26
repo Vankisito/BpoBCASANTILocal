@@ -5,56 +5,36 @@ on:
     branches: [desarrollo]
 
 jobs:
-  identificar-clientes:
-    runs-on: ubuntu-latest
-    outputs:
-      clientes: ${{ steps.scan.outputs.clientes }}
-    steps:
-      - name: Obtener lista de clientes que usan este módulo
-        id: scan
-        env:
-          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
-        run: |
-          MODULE_NAME="${{ github.event.repository.name }}"
-          CLIENTES=$(gh api /orgs/HabitatDigitalCo/repos --paginate --jq '.[].name' | grep "habitat-deploy-")
-          MATCHING=()
-          for repo in $CLIENTES; do
-            MANIFEST=$(gh api repos/HabitatDigitalCo/$repo/contents/manifest.yml --jq '.content' | base64 -d)
-            if echo "$MANIFEST" | grep -q "$MODULE_NAME"; then
-              CLIENTE=$(echo "$repo" | sed 's/habitat-deploy-//')
-              MATCHING+=("$CLIENTE")
-            fi
-          done
-
-          echo "clientes=$(echo ${MATCHING[@]} | jq -R -s -c 'split(" ")')" >> $GITHUB_OUTPUT
-
   desplegar:
-    needs: identificar-clientes
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        cliente: ${{ fromJson(needs.identificar-clientes.outputs.clientes) }}
     steps:
-      - name: Deploy a Sandbox para ${{ matrix.cliente }}
+      - name: Deploy BCA_Seguros a Sandbox
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: sandbox-odoo.habitatdigital.net
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           script: |
+            set -e
             cd /tmp
-            rm -rf GpoBCA_Seguros
-            git clone https://x-access-token:${{ secrets.ORG_READ_TOKEN }}@github.com/HabitatDigitalCo/GpoBCA_Seguros.git
-            rm -rf /opt/odoo/addons/BCA_Seguros
+            sudo rm -rf GpoBCA_Seguros
+            git clone -b desarrollo git@github.com:HabitatDigitalCo/GpoBCA_Seguros.git
+            if [ ! -f "GpoBCA_Seguros/BCA_Seguros/__manifest__.py" ]; then
+              echo "ERROR: BCA_Seguros/__manifest__.py no encontrado"
+              exit 1
+            fi
+            sudo rm -rf /opt/odoo/addons/BCA_Seguros
             mv GpoBCA_Seguros/BCA_Seguros /opt/odoo/addons/BCA_Seguros
             rm -rf /tmp/GpoBCA_Seguros
+            docker restart odoo_golden
+            sleep 45
             docker exec odoo_golden odoo \
-            -d sandbox_bca \
-            -u BCA_Seguros \
-            --stop-after-init
+              -u BCA_Seguros \
+              -d sandbox_bca \
+              --stop-after-init \
+              --no-http
+            docker exec odoo_golden grep -i "BCA_Seguros" /var/log/odoo/odoo.log | tail -5
 
       - name: Notificar éxito
         if: success()
-        run: |
-          curl -X POST ${{ secrets.WEBHOOK_NOTIFICACIONES }} \
-            -d "✅ ${{ github.event.repository.name }} desplegado a Sandbox para ${{ matrix.cliente }}"
+        run: echo "✅ BCA_Seguros desplegado a Sandbox correctamente"
