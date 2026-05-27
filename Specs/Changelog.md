@@ -53,15 +53,15 @@ Etapa 10 cerrada: el módulo es navegable end-to-end por backend. Los 13 archivo
 - [x] Botones smart en póliza (Recibos) abren list filtrada por póliza (`action_view_recibos`)
 - [x] Decoraciones de color en list correctas (`decoration-success/warning/muted` por estado)
 
-### Verificación pendiente en sandbox_bca1
-Commit + push a `desarrollo`. El usuario ejecuta vía SSH en el sandbox:
+### Verificación en sandbox_bca1 (APROBADA — 2026-05-27 20:58)
+Deploy automático tras commits `2ee7821` (feat) + `b672a7a` (fix). Tests:
 ```bash
-docker exec odoo_golden odoo -d sandbox_bca1 \
-  --test-enable --test-tags BCA_Seguros \
-  --stop-after-init --no-http \
-  > /tmp/e10_tests.log 2>&1; tail -n 80 /tmp/e10_tests.log
+docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http
 ```
-Esperar: 49+ tests verdes (37 baseline E5 + 12 nuevos test_views_xml).
+Resultado: **51 tests, 9.85s, 2795 queries, 0 failures, 0 errors** ✅. Los 12 `TestViewsXml` corrieron como `post_install` y todos pasaron.
+
+### Hotfix descubierto durante el deploy
+**Commit `b672a7a`** — `view_partner_list_bca` originalmente usaba `<field name="display_name" position="after">` para insertar columnas `bca_tipo`/`bca_estado_agente`. Falló con ParseError porque otros módulos instalados (probablemente `mail`/`crm`) extienden la vista list de `res.partner` y hacen que el match por nombre de campo sea ambiguo entre las distintas extensiones. Cambiado a `<xpath expr="//list" position="inside">` — robusto contra cualquier orden/cardinalidad de columnas heredadas. Lección para futuras herencias de vistas estándar: preferir `<xpath expr="//list">` sobre selección por nombre de campo cuando la columna objetivo puede aparecer múltiples veces vía herencias en cadena.
 
 ### Pendientes para próxima sesión
 - **Etapa 6** (parsers cobranza): bloqueada por TODOs documentados en E5 — confirmar contra CSV MetLife real `codigo_archivo` de los 4 conductos, `bca_temporalidad_anios`/`bca_es_capitalizable` por producto Vida, `bca_nombre_archivo_aseguradora`.
