@@ -80,18 +80,28 @@
 - `res.groups.privilege` + `privilege_id` para categorías de grupos (confirmado en sandbox)
 
 ### Estado del checklist Etapa 1
-- [ ] `odoo-bin -u BCA_Seguros` instala sin errores — **pendiente verificación**
-- [ ] `res.partner` tiene campos BCA visibles — pendiente
-- [ ] Crear agente sin promotoría → `ValidationError` — pendiente
+- [x] `odoo-bin -u BCA_Seguros` instala sin errores — **verificado en sandbox_bca (2026-05-27)**
+- [x] `res.partner` tiene campos BCA visibles — OK (`fields_get` sin KeyError)
+- [ ] Crear agente sin promotoría → `ValidationError` — pendiente (verificación manual)
 - [ ] Crear dos `res.partner.agente.aseguradora` con mismo `(aseguradora, clave)` → error SQL — pendiente
 - [ ] Crear producto de seguro funciona — pendiente
 - [ ] Cambiar `factor` en `bca.factor.pca` → chatter registra cambio — pendiente
+- [x] `bca.conducto` tiene 7 registros — OK
+- [x] `bca.factor.pca` tiene 17 registros — OK
+- [x] `partner_metlife.bca_codigo_aseguradora == 'METLIFE'` — OK
+- [x] `group_bca_director` existe — OK
 
 ### Decisiones tomadas esta sesión
-- `models.Constraint()` adoptado como estándar (skill confirma deprecated en v19)
-- `res.groups.privilege` confirmado como patrón correcto (vs `ir.module.category`)
+- `models.Constraint()` adoptado como estándar — **confirmado funcional en sandbox**
+- `res.groups.privilege` **NO existe** en este build de Odoo 19 — grupos sin `privilege_id` (ver commit 2affaad)
 - Códigos de conducto en `conductos_metlife.xml` son estimados — verificar antes de E3
 
+### Bugs encontrados y corregidos en deploy (2026-05-27)
+- **Bug 1:** Modelos `_auto=False` con `init()` vacío → Odoo 19 falla "no table" en registry load. Fix: vista SQL placeholder `SELECT 1::integer AS id WHERE FALSE`.
+- **Bug 2:** `res.groups.privilege` no existe en este build → eliminar `privilege_id` de `groups.xml`.
+- **Bug 3:** Comentarios `#` en `ir.model.access.csv` → parser CSV falla en `_extract_records`. Fix: eliminar líneas de comentario.
+- **Bug 4:** Schema migration de `res.partner` no aplicó en deploys fallidos → columnas `bca_*` creadas manualmente vía SQL tras deploy exitoso.
+
 ### Pendientes para próxima sesión
-- Verificar Etapa 1 en sandbox_bca1: `odoo-bin -u BCA_Seguros`
-- Si todo OK: iniciar **Etapa 2** — `bca.poliza` y `bca.recibo` con campos completos
+- Verificación manual de constraints (agente sin promotoría, duplicado agente_aseguradora) — baja prioridad
+- Iniciar **Etapa 2** — `bca.poliza` y `bca.recibo` con campos completos
