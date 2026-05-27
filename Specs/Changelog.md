@@ -29,11 +29,22 @@ Implementación completa de los 4 modelos núcleo de la Etapa 2 (`bca.poliza`, `
 Deploy automático vía `deploy-sandbox.yml` tras push del commit `04e0f7b` a `desarrollo` (2026-05-27).
 - `odoo -u BCA_Seguros -d sandbox_bca1 --stop-after-init --no-http` → terminó sin errores.
 - Workflow GitHub Actions: ✅ verde.
-- Registry load + schema migration sin warnings de los 4 modelos nuevos (`bca.poliza`, `bca.recibo`, `bca.poliza.cambio.agente`, `bca.bitacora.importacion`, `bca.bitacora.linea`).
+- Registry load + schema migration sin warnings de los 5 modelos nuevos.
+
+### Tests automáticos en sandbox_bca1 (APROBADOS)
+```
+docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http
+```
+- Primera corrida (17:07): 15 tests, 3 ERRORs por `AttributeError: 'res.users' object has no attribute 'groups_id'`.
+- **Fix (commit `e5c90b3`):** Odoo 19 renombró `res.users.groups_id` → `group_ids`. Aplicado a los 3 sitios en `tests/test_inmutabilidad.py`.
+- Segunda corrida (17:13): **15 tests, 3.57s, 963 queries, 0 errors** ✅.
+- Reglas validadas: R-POL-01, R-POL-03, R-POL-05, R-COB-09, C1, C2, M4, M5.
+
+### Decisiones / hallazgos confirmados en sandbox
+- **Odoo 19 breaking change**: `res.users.groups_id` se renombró a `group_ids`. Aplica tanto a `create({'group_ids': [...]})` como a la asignación directa `user.group_ids = [...]`. El método `user.has_group('module.group_xxx')` sigue igual.
 
 ### Pendientes para próxima sesión
-- Ejecutar tests E2 en sandbox: `docker exec odoo_golden odoo --test-enable --test-tags BCA_Seguros -d sandbox_bca1 --stop-after-init --no-http` (validación manual del checklist).
-- Verificación manual UI con shell de Odoo (crear póliza → confirmar → 12 recibos; pagar → pagado_hasta avanza; cancelar → retrocede; cambiar_agente → historial).
+- (Opcional) Verificación manual UI con shell de Odoo si querés "tocar" la lógica más allá de los tests automáticos.
 - Iniciar **Etapa 3** (modelos de integración Odoo: `hr_applicant`, `crm_lead`) o **Etapa 4** (seguridad: record rules específicas de poliza/recibo/bitácora).
 
 ---
