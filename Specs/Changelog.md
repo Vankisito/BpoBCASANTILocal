@@ -4,6 +4,40 @@
 
 ---
 
+## Sesión 2026-05-27 — Etapa 4: seguridad (record rules + ACL completa + tests)
+
+### Qué se hizo
+Cierre de la Etapa 4 de seguridad: ACL completa, record rules explícitas por modelo y suite de tests que valida el aislamiento por grupo. El guard M5 (`AccessError` en `bca.recibo.action_cancelar_pago`) ya existía desde E2; aquí se añadió el test que lo respalda.
+
+### Archivos modificados
+- `BCA_Seguros/security/ir.model.access.csv` — 58 filas (era 13 + 5 stubs sin grupo). Cubre los 14 modelos del módulo según matriz §7.2 de Arquitectura.
+- `BCA_Seguros/security/record_rules.xml` — 50 `ir.rule` (eran 13). 37 nuevas para `bca.poliza`, `bca.recibo`, `bca.bitacora.importacion/linea`, `bca.poliza.cambio.agente` y 4 reportes SQL. Agente filtrado por `agente_id.user_ids` en póliza/recibo; resto `[(1,'=',1)]` obligatorio por A3.
+- `BCA_Seguros/tests/test_record_rules.py` — 6 casos `TransactionCase` (agente A solo ve póliza A, director ve ambas, agente A solo sus recibos, líder cross-promotoría, operador no cancela recibo → `AccessError` M5, DC sí cancela).
+
+### Decisiones de implementación
+- **Bitácora — Operador R**: spec §7.2 marca Operador como "—" pero el Operador es quien dispara el wizard de cobranza, sería absurdo que no pueda ver lo que importa. Decisión E4: Operador, Líder, DC y Director con `perm_read=1`.
+- **Reportes SQL hoy son `WHERE FALSE`**: rules para `bca.reporte.pca.agente` y `bca.reporte.estado.cartera` quedan `[(1,'=',1)]` con comentario `TODO E9`. Cuando E9 implemente las queries reales con campo `agente_id`, agregar filtrado por `user.id` al rule del agente. Hoy el aislamiento se sostiene por ACL (CSV).
+- **Wizards (TransientModel)**: solo ACL (Operador+ RWCD); sin record rules — Odoo aísla por sesión.
+- **`recibo.action_cancelar_pago`** ya tenía el guard M5 desde E2 (lanza `AccessError`, no `UserError`). El test 5 lo verifica.
+
+### Verificación en sandbox_bca1 (APROBADA)
+Deploy automático vía `deploy-sandbox.yml` tras push del commit `0470f79` a `desarrollo` (2026-05-27).
+```
+docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http
+```
+- Workflow GitHub Actions: ✅ verde.
+- Tests E4 (run manual 18:22): **37 tests, 10.47s, 2513 queries, 0 failures, 0 errors** ✅.
+- Reglas validadas: A3 (membresía acumulativa neutralizada), M5 (guard de cancelación), aislamiento de agente por `user_ids`.
+
+### Smoke test manual — NO ejecutado en esta sesión
+El plan original contemplaba smoke visual en UI, pero `views/menu.xml` está vacío (`<!-- implementar en Etapa 10 -->`) — sin menú raíz no hay app navegable hoy. Los 6 tests automatizados cubren exactamente los mismos escenarios del smoke (agente filtering en póliza/recibo, director ve todo, operador no cancela, DC sí cancela), así que el riesgo es bajo. Smoke visual queda postergado a cierre de E10.
+
+### Pendientes para próxima sesión
+- **Etapa 5** (datos iniciales adicionales) o **Etapa 6** (parsers de cobranza). E10 (UI) podría adelantarse si bloquea otro smoke.
+- Cuando E9 entregue las queries reales de reportes SQL: agregar al rule del agente filtrado `[('agente_id.user_ids', 'in', [user.id])]` para `bca.reporte.pca.agente` y `bca.reporte.estado.cartera`.
+
+---
+
 ## Sesión 2026-05-27 — Etapa 2: modelos core de negocio
 
 ### Qué se hizo
