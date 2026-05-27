@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Categorías de producto BCA — implementar en Etapa 5 -->
-    <!-- Registros: Seguros/MetLife/Vida, Seguros/MetLife/GMM -->
+    <data noupdate="1">
+
+        <record id="product_cat_seguros" model="product.category">
+            <field name="name">Productos de Seguro BCA</field>
+        </record>
+
+    </data>
 </odoo>

@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Aseguradoras iniciales — implementar en Etapa 5 -->
-    <!-- Registros: MetLife (METLIFE), Qualitas (QUALITAS) como res.partner -->
+    <data noupdate="1">
+
+        <record id="partner_metlife" model="res.partner">
+            <field name="name">MetLife México</field>
+            <field name="is_company" eval="True"/>
+            <field name="bca_tipo">aseguradora</field>
+            <field name="bca_codigo_aseguradora">METLIFE</field>
+        </record>
+
+        <record id="partner_qualitas" model="res.partner">
+            <field name="name">Quálitas Compañía de Seguros</field>
+            <field name="is_company" eval="True"/>
+            <field name="bca_tipo">aseguradora</field>
+            <field name="bca_codigo_aseguradora">QUALITAS</field>
+        </record>
+
+    </data>
 </odoo>

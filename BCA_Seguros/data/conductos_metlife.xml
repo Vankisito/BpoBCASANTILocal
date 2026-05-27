@@ -1,5 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Conductos MetLife — implementar en Etapa 5 -->
-    <!-- 7 conductos: Vida (2) + GMM (5); código_archivo exacto del CSV -->
+    <!-- Conductos de pago MetLife — 7 registros
+         ADVERTENCIA: los valores de codigo_archivo son estimados.
+         Deben verificarse contra los archivos CSV reales de MetLife
+         ANTES de implementar los parsers en Etapa 3.
+         Si difieren, actualizar aquí y re-instalar con: odoo-bin -u BCA_Seguros -->
+    <data noupdate="1">
+
+        <!-- Conductos Vida MetLife -->
+        <record id="conducto_metlife_cte_conduento_1" model="bca.conducto">
+            <field name="name">CTE Conduento 1</field>
+            <field name="codigo_archivo">CTECONDUENTO1</field>
+            <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+        </record>
+
+        <record id="conducto_metlife_deposito_bancario" model="bca.conducto">
+            <field name="name">Depósito Bancario</field>
+            <field name="codigo_archivo">DEPOSITO</field>
+            <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+        </record>
+
+        <!-- Conductos GMM MetLife -->
+        <record id="conducto_metlife_tc_efectivo" model="bca.conducto">
+            <field name="name">TC Efectivo</field>
+            <field name="codigo_archivo">TC_EFECTIVO</field>
+            <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+        </record>
+
+        <record id="conducto_metlife_tc_cheque" model="bca.conducto">
+            <field name="name">TC Cheque</field>
+            <field name="codigo_archivo">TC_CHEQUE</field>
+            <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+        </record>
+
+        <record id="conducto_metlife_tc_credito" model="bca.conducto">
+            <field name="name">TC Crédito</field>
+            <field name="codigo_archivo">TC_CREDITO</field>
+            <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+        </record>
+
+        <record id="conducto_metlife_tc_debito" model="bca.conducto">
+            <field name="name">TC Débito</field>
+            <field name="codigo_archivo">TC_DEBITO</field>
+            <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+        </record>
+
+        <record id="conducto_metlife_tc_transferencia" model="bca.conducto">
+            <field name="name">TC Transferencia</field>
+            <field name="codigo_archivo">TC_TRANSFERENCIA</field>
+            <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+        </record>
+
+    </data>
 </odoo>

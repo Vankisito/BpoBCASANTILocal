@@ -1,17 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Grupos BCA — implementar en Etapa 4 -->
-    <!-- IDs correctos usan prefijo BCA_Seguros. (ej: id="BCA_Seguros.group_bca_agente") -->
-    <!--
-    Jerarquía planeada:
-      group_bca_agente         (independiente — NO en la cadena implied_ids)
-      group_bca_operador
-      group_bca_lider          implied_ids: operador
-      group_bca_director_comercial  implied_ids: lider
-      group_bca_director       implied_ids: director_comercial
+    <!-- ================================================================
+         PRIVILEGE — equivalente a "category" en versiones anteriores a v19.
+         Agrupa los grupos BCA en la interfaz de Configuración > Usuarios.
+         Odoo 19: usar res.groups.privilege + privilege_id (NO category_id).
+         ================================================================ -->
+    <record id="priv_bca_seguros" model="res.groups.privilege">
+        <field name="name">BCA Seguros</field>
+    </record>
 
-    ADVERTENCIA implied_ids: causa membresía acumulativa — ver Plan §2.4.3.
-    Declarar record rule [(1,'=',1)] para todos los grupos no-agente.
-    NO usar category_id en Odoo 19 — usar res.groups.privilege con privilege_id.
-    -->
+    <!-- ================================================================
+         GRUPOS BCA
+
+         JERARQUÍA (implied_ids = membresía acumulativa):
+           group_bca_agente          — independiente, NO en la cadena
+           group_bca_operador        — sin implied_ids
+           group_bca_lider           — implied_ids: operador
+           group_bca_director_comercial — implied_ids: lider (hereda operador+lider)
+           group_bca_director        — implied_ids: director_comercial (hereda todo)
+
+         ADVERTENCIA implied_ids (Plan §2.4.3 / corrección A3):
+         Un Director pertenece SIMULTÁNEAMENTE a todos los grupos de la cadena.
+         Odoo combina record rules del mismo modelo con AND.
+         Por eso TODOS los grupos no-agente DEBEN tener una rule
+         explícita [(1,'=',1)] en cada modelo — ver security/record_rules.xml.
+         ================================================================ -->
+
+    <!-- Agente: acceso mínimo, solo sus propios registros -->
+    <record id="group_bca_agente" model="res.groups">
+        <field name="name">Agente BCA</field>
+        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
+    </record>
+
+    <!-- Operador: acceso operacional de lectura/escritura -->
+    <record id="group_bca_operador" model="res.groups">
+        <field name="name">Operador BCA</field>
+        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
+    </record>
+
+    <!-- Líder: hereda operador -->
+    <record id="group_bca_lider" model="res.groups">
+        <field name="name">Líder BCA</field>
+        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
+        <field name="implied_ids" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+    </record>
+
+    <!-- Director Comercial: hereda lider (y por cadena, operador) -->
+    <record id="group_bca_director_comercial" model="res.groups">
+        <field name="name">Director Comercial BCA</field>
+        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
+        <field name="implied_ids" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+    </record>
+
+    <!-- Director: hereda director_comercial (y por cadena, lider + operador) -->
+    <record id="group_bca_director" model="res.groups">
+        <field name="name">Director BCA</field>
+        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
+        <field name="implied_ids" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+    </record>
 </odoo>

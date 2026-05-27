@@ -372,10 +372,10 @@ def post_init_hook_bca_seguros(env):
         env[model_name].init()
 ```
 
-**Checklist Etapa 0:**
-- [ ] `odoo-bin -i BCA_Seguros` instala sin errores (aunque sin datos todavía)
-- [ ] No hay imports circulares
-- [ ] `post_init_hook` definido y referenciado en manifest
+**Checklist Etapa 0:** ✅ Completado 2026-05-26
+- [x] `odoo-bin -i BCA_Seguros` instala sin errores (verificado en sandbox_bca1)
+- [x] No hay imports circulares
+- [x] `post_init_hook` definido y referenciado en manifest
 
 ---
 
