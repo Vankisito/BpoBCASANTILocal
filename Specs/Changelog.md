@@ -4,6 +4,63 @@
 
 ---
 
+## Sesión 2026-05-27 — Deploy Etapa 1 + Debug sandbox
+
+### Qué se hizo
+Depuración completa del pipeline de deploy y verificación de Etapa 1 en `sandbox_bca1`.
+
+#### Bugs encontrados y corregidos (4 errores en cascada)
+
+**Bug 1 — `_auto=False` sin vista SQL (causa raíz del crash de registry)**
+- Odoo 19 valida en registry load que todos los modelos `_auto=False` tengan tabla/view en PostgreSQL. Los 4 modelos de reporte tenían `init()` vacío → "Model X has no table" → registry falla → el módulo no carga → `_auto_init()` de `res.partner` nunca corre → columnas `bca_*` nunca se crean.
+- Fix: `init()` crea vista placeholder `SELECT 1::integer AS id WHERE FALSE`.
+
+**Bug 2 — `res.groups.privilege` no existe en este build de Odoo 19**
+- El modelo no existe en el build del sandbox → `groups.xml` falla al cargar tras arreglar Bug 1.
+- Fix: eliminar `privilege_id` de todos los grupos en `groups.xml`.
+
+**Bug 3 — Comentarios `#` en `ir.model.access.csv`**
+- El parser CSV de Odoo 19 intenta resolver `model_id:id = None` para líneas comentario → `_extract_records` falla.
+- Fix: eliminar todas las líneas `#` del CSV.
+
+**Bug 4 — Base de datos incorrecta en deploy script**
+- `deploy-sandbox.yml` usaba `-d sandbox_bca` pero Odoo sirve desde `sandbox_bca1` (según `odoo.conf`). Todos los deploys anteriores actualizaban la BD equivocada.
+- Fix: cambiar `sandbox_bca` → `sandbox_bca1` en el workflow.
+
+### Archivos creados/modificados
+- `reports/pca_por_agente.py` — `init()` con vista placeholder
+- `reports/pca_por_promotoria.py` — `init()` con vista placeholder
+- `reports/pca_consolidado.py` — `init()` con vista placeholder
+- `reports/estado_cartera.py` — `init()` con vista placeholder
+- `security/groups.xml` — eliminado `res.groups.privilege` y `privilege_id`
+- `security/ir.model.access.csv` — eliminadas líneas de comentario `#`
+- `.github/workflows/deploy-sandbox.yml` — `-d sandbox_bca` → `-d sandbox_bca1`
+- `Specs/Changelog.md` — esta entrada
+
+### Verificación Etapa 1 en sandbox_bca1 (APROBADA)
+```
+env['bca.conducto'].search_count([])           → 7  ✓
+env['bca.factor.pca'].search_count([])         → 17 ✓
+partner_metlife.bca_codigo_aseguradora         → 'METLIFE' ✓
+group_bca_director.name                        → 'Director BCA' ✓
+UI login sin errores                           ✓
+```
+
+### Decisiones / hallazgos de infra confirmados
+- `res.groups.privilege` NO existe en este build de Odoo 19 Community (sandbox)
+- `models.Constraint()` SÍ existe y funciona (`hasattr(models, 'Constraint') = True`)
+- PostgreSQL está en DigitalOcean Managed Database (externo al contenedor Docker)
+- Addon path: host `/opt/odoo/addons/` → contenedor `/mnt/extra-addons/`
+- DB del sandbox: `sandbox_bca1` | `dbfilter = ^sandbox` en odoo.conf
+
+### Pendientes para próxima sesión
+- **Etapa 2:** implementar `bca.poliza` y `bca.recibo` con campos completos (state machine, `action_confirmar`, `_generar_plan_pagos`, `cambiar_agente`, `bca.poliza.cambio.agente`)
+- Verificación manual de constraints pendientes (baja prioridad):
+  - Crear agente sin promotoría → `ValidationError`
+  - Crear `res.partner.agente.aseguradora` duplicado → error SQL
+
+---
+
 ## Sesión 2026-05-26 — Etapa 0: Scaffolding
 
 ### Qué se hizo
