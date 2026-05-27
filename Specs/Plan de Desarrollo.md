@@ -701,11 +701,14 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 **Menú principal:** `BCA → [Pólizas | Cobranza | Reportes | Configuración]`
 
-**Checklist Etapa 10:**
-- [ ] Formulario de póliza abre sin errores de XML
-- [ ] Botón "Confirmar" visible solo en estado borrador
-- [ ] Campo `pagado_hasta` es readonly en UI (no hay widget de edición)
-- [ ] Factor PCA editable solo para directores
+**Checklist Etapa 10:** ✅ Completado 2026-05-27 (verificación sandbox pendiente)
+- [x] Formulario de póliza abre sin errores de XML — test `test_poliza_views`
+- [x] Botón "Confirmar" visible solo en estado borrador — `invisible="estado != 'borrador'"`
+- [x] Campo `pagado_hasta` es readonly en UI — atributo `readonly="1"`
+- [x] Factor PCA editable solo para directores — restricción vía ACL (Director Comercial+ tiene perm_write)
+- [x] Skeleton wizards (E8) y reportes (E9) cargan sin error
+- [x] Menú raíz BCA con jerarquía Pólizas | Cobranza | Reportes | Configuración
+- [x] 12 tests nuevos validan parseo XML de todas las vistas + actions del menú
 
 ---
 

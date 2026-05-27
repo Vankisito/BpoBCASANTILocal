@@ -6,4 +6,5 @@ from . import (
     test_record_rules,
     test_hr_applicant,
     test_crm_lead,
+    test_views_xml,
 )

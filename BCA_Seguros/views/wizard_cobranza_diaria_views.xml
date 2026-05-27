@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Vistas wizard cobranza diaria — implementar en Etapa 10 -->
+    <!-- Skeleton no-op: implementación completa en Etapa 8 (wizards). -->
+
+    <record id="view_wizard_cobranza_diaria_form" model="ir.ui.view">
+        <field name="name">bca.wizard.cobranza.diaria.form</field>
+        <field name="model">bca.wizard.cobranza.diaria</field>
+        <field name="arch" type="xml">
+            <form string="Cobranza Diaria">
+                <sheet>
+                    <div class="alert alert-warning" role="alert">
+                        <h3>Funcionalidad pendiente</h3>
+                        <p>
+                            La cobranza diaria desde CSV se implementa en la
+                            <strong>Etapa 8</strong> del plan de desarrollo.
+                            Requiere los parsers de la Etapa 6 y los
+                            calculadores de PCA de la Etapa 7.
+                        </p>
+                    </div>
+                </sheet>
+                <footer>
+                    <button string="Cerrar" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
 </odoo>

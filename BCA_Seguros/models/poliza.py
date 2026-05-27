@@ -188,6 +188,15 @@ class BcaPoliza(models.Model):
         string='Historial de Cambios de Agente',
     )
 
+    recibo_count: int = fields.Integer(
+        string='# Recibos',
+        compute='_compute_recibo_count',
+    )
+    cambio_agente_count: int = fields.Integer(
+        string='# Cambios de Agente',
+        compute='_compute_cambio_agente_count',
+    )
+
     # R-POL-01: número de póliza único por aseguradora.
     _unique_name_aseguradora = models.Constraint(
         'UNIQUE(name, aseguradora_id)',
@@ -201,6 +210,16 @@ class BcaPoliza(models.Model):
 
     def _search_promotoria_id(self, operator: str, value: object) -> list:
         return [('agente_id.parent_id', operator, value)]
+
+    @api.depends('recibo_ids')
+    def _compute_recibo_count(self) -> None:
+        for pol in self:
+            pol.recibo_count = len(pol.recibo_ids)
+
+    @api.depends('cambio_agente_ids')
+    def _compute_cambio_agente_count(self) -> None:
+        for pol in self:
+            pol.cambio_agente_count = len(pol.cambio_agente_ids)
 
     @api.depends('recibo_ids.estado', 'recibo_ids.fecha_hasta')
     def _compute_pagado_hasta(self) -> None:
@@ -304,3 +323,25 @@ class BcaPoliza(models.Model):
         })
         self.agente_id = nuevo_agente
         return True
+
+    def action_view_recibos(self) -> dict:
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Recibos de %s') % self.name,
+            'res_model': 'bca.recibo',
+            'view_mode': 'list,form',
+            'domain': [('poliza_id', '=', self.id)],
+            'context': {'default_poliza_id': self.id},
+        }
+
+    def action_view_cambios_agente(self) -> dict:
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Historial de Agentes — %s') % self.name,
+            'res_model': 'bca.poliza.cambio.agente',
+            'view_mode': 'list,form',
+            'domain': [('poliza_id', '=', self.id)],
+            'context': {'default_poliza_id': self.id},
+        }

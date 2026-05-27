@@ -204,6 +204,22 @@ class BcaRecibo(models.Model):
             })
         return True
 
+    def action_registrar_pago_ui(self) -> bool:
+        """Wrapper UI: toma los valores ya editados en el form y registra el pago.
+
+        Diseñado para el botón "Registrar Pago" del form view. El usuario debe
+        haber completado fecha_pago, prima_neta y conducto_id antes de presionar.
+        """
+        self.ensure_one()
+        return self.action_registrar_pago({
+            'fecha_pago': self.fecha_pago,
+            'prima_neta': self.prima_neta,
+            'prima_total': self.prima_total or self.prima_neta,
+            'recargo': self.recargo,
+            'conducto_id': self.conducto_id.id if self.conducto_id else False,
+            'folio_endoso': self.folio_endoso,
+        })
+
     def action_cancelar_pago(self) -> bool:
         """M5: cancela un pago. Solo Director General o Director Comercial.
 

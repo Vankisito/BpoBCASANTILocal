@@ -12,6 +12,7 @@
                         type="object"
                         string="Generar Póliza"
                         class="oe_highlight"
+                        confirm="Vas a crear una nueva póliza con los datos del lead. ¿Continuar?"
                         invisible="not stage_id or bca_poliza_generada_id"/>
             </xpath>
 

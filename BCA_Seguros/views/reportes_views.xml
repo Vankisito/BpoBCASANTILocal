@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Vistas de reportes SQL (pivots + gráficas) — implementar en Etapa 10 -->
+    <!-- Skeleton no-op: las vistas pivot/graph/list de los 4 reportes SQL
+         (bca.reporte.pca.agente, bca.reporte.pca.promotoria,
+          bca.reporte.pca.consolidado, bca.reporte.estado.cartera)
+         se implementan en la Etapa 9, junto con las columnas reales de la
+         vista SQL. Hoy esos modelos son placeholder con solo `id` y vista
+         SQL `WHERE FALSE`, por lo que no tiene sentido crear vistas de
+         análisis hasta que la query produzca datos. El archivo se mantiene
+         en el manifest para no romper el orden de carga. -->
+
 </odoo>

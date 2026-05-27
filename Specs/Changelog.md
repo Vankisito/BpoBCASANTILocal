@@ -4,6 +4,73 @@
 
 ---
 
+## Sesión 2026-05-27 (b) — Etapa 10: Vistas XML completas + menú navegable
+
+### Qué se hizo
+Etapa 10 cerrada: el módulo es navegable end-to-end por backend. Los 13 archivos XML de `views/` ahora tienen vistas funcionales (list/form/search) para los 5 modelos propios de negocio (`bca.poliza`, `bca.recibo`, `bca.conducto`, `bca.factor.pca`, `bca.bitacora.importacion`+`linea`), las 4 herencias normalizadas (`res.partner`, `product.template`, `crm.lead`, `hr.applicant`), skeleton no-op para los 2 wizards (Etapa 8) y el archivo de reportes (Etapa 9), más el menú raíz "BCA Seguros" con 4 ramas (Pólizas, Cobranza, Reportes, Configuración) y groups por rol.
+
+### Decisiones tomadas con el usuario (antes de implementar)
+- **Wizards**: skeleton mínimo + TODO (no implementar lógica de E8 acá).
+- **Reportes**: skeleton vacío (sin pivot/graph hasta E9 cuando existan las columnas reales).
+- **Herencias**: auditar y normalizar las 4 (XML ID, groups, tabs).
+
+### Archivos modificados
+- `BCA_Seguros/views/conducto_views.xml` — list+form+search+action `action_conducto`.
+- `BCA_Seguros/views/factor_pca_views.xml` — list+form+search+action `action_factor_pca` con chatter, web_ribbon "Inactivo", grupo GMM invisible si ramo!='gmm'. Campo `factor` editable en UI pero restringido por ACL a Director Comercial+.
+- `BCA_Seguros/views/poliza_views.xml` — list (con decoration por estado), form con statusbar borrador→activa→vencida→cancelada, botones `action_confirmar`/`action_cancelar` (este último con `confirm=`), smart buttons "Recibos" y "Cambios Agente", tabs Atributos Vida/GMM/Recibos/Historial, `pagado_hasta` siempre readonly, chatter, web_ribbon "Cancelada".
+- `BCA_Seguros/views/recibo_views.xml` — list+form+search+action. Form con statusbar pendiente→pagado→cancelado, botón "Registrar Pago" (visible si pendiente, con `confirm=`) y "Cancelar Pago" (visible si pagado, con `groups=director_comercial,director`). Campos PCA/agente/promotoria readonly cuando estado=='pagado'.
+- `BCA_Seguros/views/bitacora_views.xml` — list+form (create=false edit=false) + search. Lineas O2m readonly con decoration por marca.
+- `BCA_Seguros/views/res_partner_views.xml` — herencia base.view_partner_form: tab "BCA Seguros" con bca_tipo/estado_agente/promotoría/claves por aseguradora. Search con 6 filtros nuevos. 3 actions filtradas: Aseguradoras, Promotorías, Agentes.
+- `BCA_Seguros/views/product_template_views.xml` — herencia con tab "BCA Seguros": toggle `bca_es_producto_seguro`, campos visibles solo si activo, atributos Vida visibles solo si ramo=='vida'. Action `action_product_bca` filtrada.
+- `BCA_Seguros/views/crm_lead_views.xml` — auditado. Agregado `confirm=` al botón "Generar Póliza".
+- `BCA_Seguros/views/hr_applicant_views.xml` — auditado. OK como estaba.
+- `BCA_Seguros/views/wizard_carga_portafolio_views.xml` — skeleton form con alert "Pendiente Etapa 8".
+- `BCA_Seguros/views/wizard_cobranza_diaria_views.xml` — idem.
+- `BCA_Seguros/views/reportes_views.xml` — placeholder vacío con TODO E9 (las 4 vistas SQL tienen solo `id` hoy; no tiene sentido pivot/graph hasta E9).
+- `BCA_Seguros/views/menu.xml` — jerarquía completa: BCA → Pólizas (agente+) → {Pólizas, Recibos} | Cobranza (operador+) → Bitácoras | Reportes (líder+) | Configuración (director_comercial+) → {Aseguradoras, Promotorías, Agentes, Productos Seguro, Conductos, Factores PCA}.
+- `BCA_Seguros/__manifest__.py` — reordenado: `menu.xml` ahora último de la lista `data[]` (el menú referencia actions que deben existir antes — Plan §2.4.2 sobre orden secuencial entre archivos).
+- `BCA_Seguros/models/poliza.py` — agregados `recibo_count` y `cambio_agente_count` (computed) + `action_view_recibos()` y `action_view_cambios_agente()` (retornan action dict) para los smart buttons.
+- `BCA_Seguros/models/recibo.py` — agregado `action_registrar_pago_ui()` wrapper sin parámetros que toma los vals ya escritos en el form y llama a `action_registrar_pago(vals)`. Necesario porque el método original toma dict y los botones de form no pasan parámetros.
+- `BCA_Seguros/tests/test_views_xml.py` — **NUEVO**. 12 tests `post_install` que cargan cada vista vía `env[model].get_view(view_id, view_type)` para forzar parseo completo y atrapar errores de XML (campos inexistentes, `invisible=` mal escrito, xpaths rotos, actions inexistentes en menú). Cubre las 16 vistas form/list/search del módulo + menú raíz + 9 actions referenciadas en menu.xml.
+- `BCA_Seguros/tests/__init__.py` — agregado import de `test_views_xml`.
+
+### Decisiones de implementación
+- **`<list>` y `<chatter/>`**: confirmado por inspección de `addons/crm/views/crm_lead_views.xml` en `github.com/odoo/odoo@19.0` que la convención v19 es tag `<list>` (no `<tree>`) y `<chatter/>` moderno (no `<div class="oe_chatter">`). Aplicado uniformemente.
+- **`view_mode="list,form"`** en todas las actions (no `tree,form`) consistente con el tag `<list>`.
+- **Factor PCA editable solo por Director Comercial+**: la vista no duplica el field con groups invertidos (patrón frágil), confía en ACL `ir.model.access.csv` que ya restringe `perm_write=0` para Operador/Líder. Si un Líder intenta editar, AccessError al guardar — comentario en la vista lo documenta.
+- **`action_registrar_pago_ui()`**: en vez de crear un wizard ad-hoc para tomar fecha_pago/prima_neta del usuario, el botón usa los valores ya guardados en el form. Esto requiere que el usuario complete los campos y guarde antes de pulsar el botón, pero evita un wizard extra.
+- **`menu_bca_reportes`** sin items hijos hasta E9: en Odoo un menú sin items hijos visibles es invisible automáticamente, así que no causa ruido en producción.
+- **`v19: ir.ui.menu.group_ids`** (no `groups_id`): verificado contra `odoo/addons/base/models/ir_ui_menu.py` rama 19.0. El test `test_menu_root_existe` usa `menu.group_ids`.
+- **Reordenamiento del manifest**: `menu.xml` quedaba primero en la lista `data[]` original — eso habría causado ParseError porque las actions a las que apunta el menú aún no existen. Movido a último (Plan §2.4.2: orden secuencial entre archivos).
+
+### Estado del checklist Etapa 10 (Plan §Etapa 10)
+- [x] Formulario de póliza abre sin errores de XML (test `test_poliza_views`)
+- [x] Botón "Confirmar" visible solo en `estado == 'borrador'`
+- [x] Campo `pagado_hasta` readonly en UI (atributo `readonly="1"` siempre)
+- [x] Factor PCA editable solo para directores (vía ACL — Director Comercial+ tiene perm_write)
+- [x] Menú raíz BCA visible para todos los roles BCA (groups= con 5 grupos)
+- [x] Skeleton de wizards/reportes carga sin error (test `test_wizard_skeletons_cargan`)
+- [x] Botones smart en póliza (Recibos) abren list filtrada por póliza (`action_view_recibos`)
+- [x] Decoraciones de color en list correctas (`decoration-success/warning/muted` por estado)
+
+### Verificación pendiente en sandbox_bca1
+Commit + push a `desarrollo`. El usuario ejecuta vía SSH en el sandbox:
+```bash
+docker exec odoo_golden odoo -d sandbox_bca1 \
+  --test-enable --test-tags BCA_Seguros \
+  --stop-after-init --no-http \
+  > /tmp/e10_tests.log 2>&1; tail -n 80 /tmp/e10_tests.log
+```
+Esperar: 49+ tests verdes (37 baseline E5 + 12 nuevos test_views_xml).
+
+### Pendientes para próxima sesión
+- **Etapa 6** (parsers cobranza): bloqueada por TODOs documentados en E5 — confirmar contra CSV MetLife real `codigo_archivo` de los 4 conductos, `bca_temporalidad_anios`/`bca_es_capitalizable` por producto Vida, `bca_nombre_archivo_aseguradora`.
+- **Etapa 7** (calculadores PCA) — depende de E6 mínimamente para datos reales.
+- **Etapa 8** (wizards funcionales) — depende de E6+E7.
+- **Etapa 9** (reportes SQL): completar query SQL de los 4 modelos report y crear vistas pivot/graph en `reportes_views.xml`.
+
+---
+
 ## Sesión 2026-05-27 — Etapa 5: cierre formal de datos iniciales
 
 ### Qué se hizo

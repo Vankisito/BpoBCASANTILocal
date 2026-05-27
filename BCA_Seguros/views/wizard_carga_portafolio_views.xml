@@ -1,4 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Vistas wizard carga portafolio — implementar en Etapa 10 -->
+    <!-- Skeleton no-op: la implementación completa (campos, action_validar,
+         action_grabar) corresponde a la Etapa 8 del Plan de Desarrollo.
+         El form vacío permite que el TransientModel cargue sin error y
+         deja el archivo listo para reemplazo. -->
+
+    <record id="view_wizard_carga_portafolio_form" model="ir.ui.view">
+        <field name="name">bca.wizard.carga.portafolio.form</field>
+        <field name="model">bca.wizard.carga.portafolio</field>
+        <field name="arch" type="xml">
+            <form string="Carga de Portafolio">
+                <sheet>
+                    <div class="alert alert-warning" role="alert">
+                        <h3>Funcionalidad pendiente</h3>
+                        <p>
+                            La carga masiva de portafolio se implementa en la
+                            <strong>Etapa 8</strong> del plan de desarrollo del
+                            módulo. Este wizard quedará disponible cuando se
+                            entreguen los parsers (Etapa 6), los calculadores
+                            de PCA (Etapa 7) y la lógica de wizards (Etapa 8).
+                        </p>
+                    </div>
+                </sheet>
+                <footer>
+                    <button string="Cerrar" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
 </odoo>
