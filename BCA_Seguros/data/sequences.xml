@@ -13,5 +13,14 @@
             <field name="number_next">1</field>
         </record>
 
+        <record id="seq_bca_bitacora_importacion" model="ir.sequence">
+            <field name="name">Secuencia Bitácora Importación BCA</field>
+            <field name="code">bca.bitacora.importacion</field>
+            <field name="prefix">BIT-%(year)s-</field>
+            <field name="padding">5</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+        </record>
+
     </data>
 </odoo>

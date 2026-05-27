@@ -1,6 +1,139 @@
+from __future__ import annotations
+
+from datetime import date
+
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
 class TestInmutabilidad(TransactionCase):
-    """Bitácora no editable, pagado_hasta solo vía campo computed."""
-    pass
+    """Etapa 2 — C1 (pagado_hasta + PCA), R-COB-09, M5 y bitácora inmutable."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        Partner = cls.env['res.partner']
+        cls.holding = Partner.create({'name': 'BCA Holding', 'bca_tipo': 'holding'})
+        cls.promotoria = Partner.create({
+            'name': 'Promotoría Test',
+            'bca_tipo': 'promotoria',
+            'parent_id': cls.holding.id,
+        })
+        cls.agente = Partner.create({
+            'name': 'Agente Test',
+            'bca_tipo': 'agente',
+            'parent_id': cls.promotoria.id,
+            'bca_estado_agente': 'con_licencia',
+        })
+        cls.contratante = Partner.create({
+            'name': 'Cliente Test',
+            'bca_tipo': 'contratante',
+        })
+        cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
+        cls.producto = cls.env['product.template'].create({
+            'name': 'Vida LSP Test',
+            'bca_es_producto_seguro': True,
+            'bca_aseguradora_id': cls.aseguradora.id,
+            'bca_ramo': 'vida',
+        })
+
+    def _crear_poliza_activa(self) -> object:
+        poliza = self.env['bca.poliza'].create({
+            'name': 'POL-INMUT-001',
+            'aseguradora_id': self.aseguradora.id,
+            'producto_id': self.producto.id,
+            'agente_id': self.agente.id,
+            'contratante_id': self.contratante.id,
+            'fecha_inicio': date(2026, 1, 1),
+            'fecha_fin': date(2027, 1, 1),
+            'periodicidad': 'mensual',
+            'prima_anual': 12000.0,
+        })
+        poliza.action_confirmar()
+        return poliza
+
+    def test_pagado_hasta_avanza_al_pagar(self) -> None:
+        """C1: pagado_hasta es computed store — avanza solo al pagar un recibo."""
+        poliza = self._crear_poliza_activa()
+        self.assertFalse(poliza.pagado_hasta,
+                         'pagado_hasta debe ser False sin recibos pagados.')
+        primer_recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
+        primer_recibo.action_registrar_pago({
+            'fecha_pago': date(2026, 1, 15),
+            'prima_neta': 1000.0,
+        })
+        self.assertEqual(poliza.pagado_hasta, primer_recibo.fecha_hasta,
+                         'pagado_hasta debe avanzar al fecha_hasta del recibo pagado.')
+
+    def test_pagado_hasta_retrocede_al_cancelar(self) -> None:
+        """C1: pagado_hasta retrocede al cancelar el último recibo pagado."""
+        poliza = self._crear_poliza_activa()
+        # Promovemos el usuario actual a Director para poder cancelar.
+        admin = self.env.ref('base.user_admin')
+        director_group = self.env.ref('BCA_Seguros.group_bca_director')
+        admin.groups_id = [(4, director_group.id)]
+
+        recibos = poliza.recibo_ids.sorted('numero_recibo')
+        recibos[0].action_registrar_pago({
+            'fecha_pago': date(2026, 1, 15),
+            'prima_neta': 1000.0,
+        })
+        recibos[1].action_registrar_pago({
+            'fecha_pago': date(2026, 2, 15),
+            'prima_neta': 1000.0,
+        })
+        self.assertEqual(poliza.pagado_hasta, recibos[1].fecha_hasta)
+
+        recibos[1].with_user(admin).action_cancelar_pago()
+        self.assertEqual(poliza.pagado_hasta, recibos[0].fecha_hasta,
+                         'pagado_hasta debe retroceder al recibo anterior pagado.')
+
+    def test_pca_inmutable_post_pago(self) -> None:
+        """C1: pca_aplicada/factor_aplicado bloqueados tras pago para no-su."""
+        poliza = self._crear_poliza_activa()
+        recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
+        recibo.action_registrar_pago({
+            'fecha_pago': date(2026, 1, 15),
+            'prima_neta': 1000.0,
+        })
+        # Usuario interno no-su no puede tocar PCA.
+        usuario = self.env['res.users'].create({
+            'name': 'Operador Test',
+            'login': 'op_test_inmut',
+            'groups_id': [(4, self.env.ref('base.group_user').id),
+                          (4, self.env.ref('BCA_Seguros.group_bca_operador').id)],
+        })
+        with self.assertRaises(UserError):
+            recibo.with_user(usuario).write({'pca_aplicada': 99.0})
+
+    def test_registrar_pago_sin_fecha_es_atomico(self) -> None:
+        """R-COB-09: validación pre-ejecución no debe modificar la BD."""
+        poliza = self._crear_poliza_activa()
+        recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
+        estado_previo = recibo.estado
+        with self.assertRaises(ValidationError):
+            recibo.action_registrar_pago({'prima_neta': 1000.0})
+        recibo.invalidate_recordset()
+        self.assertEqual(recibo.estado, estado_previo,
+                         'El recibo no debe haberse modificado al fallar la validación.')
+        self.assertFalse(recibo.fecha_pago)
+        self.assertFalse(recibo.pca_aplicada)
+
+    def test_bitacora_es_inmutable(self) -> None:
+        """Plan §2.3.5: write/unlink sobre bitácora levantan UserError para no-su."""
+        bitacora = self.env['bca.bitacora.importacion'].sudo().create({
+            'aseguradora_id': self.aseguradora.id,
+            'ramo': 'vida',
+            'nombre_archivo': 'test.csv',
+            'total_filas': 0,
+        })
+        usuario = self.env['res.users'].create({
+            'name': 'Operador Bitácora',
+            'login': 'op_test_bitacora',
+            'groups_id': [(4, self.env.ref('base.group_user').id),
+                          (4, self.env.ref('BCA_Seguros.group_bca_operador').id)],
+        })
+        with self.assertRaises(UserError):
+            bitacora.with_user(usuario).write({'nombre_archivo': 'otro.csv'})
+        with self.assertRaises(UserError):
+            bitacora.with_user(usuario).unlink()

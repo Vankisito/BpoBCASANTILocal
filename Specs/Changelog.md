@@ -4,6 +4,34 @@
 
 ---
 
+## Sesión 2026-05-27 — Etapa 2: modelos core de negocio
+
+### Qué se hizo
+Implementación completa de los 4 modelos núcleo de la Etapa 2 (`bca.poliza`, `bca.recibo`, `bca.poliza.cambio.agente`, `bca.bitacora.importacion` + `bca.bitacora.linea`) más tests unitarios. Sin cambios en vistas, seguridad ni manifest — Etapa 4 (security) y Etapa 10 (UI) cubrirán esos aspectos.
+
+### Archivos modificados
+- `BCA_Seguros/models/poliza.py` — `bca.poliza` completo: 27 campos, `_compute_promotoria_id` (C2, sin store), `_compute_pagado_hasta` (C1, store=True), `action_confirmar`, `action_cancelar`, `_generar_plan_pagos` (R-POL-05), `cambiar_agente` (M4), constraint SQL único por aseguradora (R-POL-01).
+- `BCA_Seguros/models/recibo.py` — `bca.recibo` completo: 19 campos, `write()` con bloqueo C1 (PCA inmutable post-pago, escape vía `env.su` o `allow_pca_edit`), `action_registrar_pago` con validación pre-ejecución (R-COB-09) + FIFO, `action_cancelar_pago` con chequeo explícito de grupo (M5), `_calcular_pca` con stub temporal hasta E7.
+- `BCA_Seguros/models/poliza_cambio_agente.py` — `bca.poliza.cambio.agente`: 8 campos todos `readonly=True`, sin métodos (solo se crea desde `poliza.cambiar_agente()`).
+- `BCA_Seguros/models/bitacora.py` — `bca.bitacora.importacion` + `bca.bitacora.linea`: campos completos por Plan §2.3.5, `write()/unlink()` bloqueado para no-`env.su`.
+- `BCA_Seguros/data/sequences.xml` — añadida `seq_bca_bitacora_importacion` (BIT-YYYY-00001).
+- `BCA_Seguros/tests/test_poliza.py` — 6 casos: creación mínima, unique name+aseguradora, confirmar+plan pagos mensual (12 recibos × $1000), R-POL-05 no regenerar con pagados, cambiar_agente registra historial, cambiar_agente rechaza no-agente.
+- `BCA_Seguros/tests/test_inmutabilidad.py` — 5 casos: pagado_hasta avanza/retrocede solo, PCA inmutable post-pago, R-COB-09 atómico (sin fecha_pago no toca BD), bitácora inmutable para no-su.
+
+### Decisiones de implementación
+- `_calcular_pca` atrapa `NotImplementedError` y retorna `(0.0, 0.0, 'Calculador pendiente — Etapa 7')` para no bloquear E2-E6. Será reemplazado en Etapa 7 cuando se implementen los calculadores reales.
+- `action_registrar_pago` usa `super().write()` con `with_context(allow_pca_edit=True)` para evitar el bloqueo de su propio override de `write()`. Mismo patrón en `action_cancelar_pago`.
+- `_generar_plan_pagos` borra los recibos pendientes pre-existentes (de un confirmar fallido previo) antes de regenerar, pero **nunca** toca recibos pagados (R-POL-05 lanza primero).
+- `currency_id` con default `lambda self: self.env.company.currency_id` en póliza y bitácora (§2.4.5).
+- `ramo` en `bca.poliza` es related `store=True` a `producto_id.bca_ramo` para permitir filtros eficientes.
+
+### Pendientes para próxima sesión
+- Verificación local con `odoo-bin -u BCA_Seguros --test-enable --test-tags BCA_Seguros --stop-after-init` (en máquina local; aún sin deploy a sandbox).
+- Deploy a `sandbox_bca1` y verificación manual del checklist E2 — postergado por decisión del usuario.
+- Iniciar **Etapa 3** (modelos de integración Odoo: `hr_applicant`, `crm_lead`) o **Etapa 4** (seguridad: record rules específicas de poliza/recibo/bitácora).
+
+---
+
 ## Sesión 2026-05-27 — Deploy Etapa 1 + Debug sandbox
 
 ### Qué se hizo

@@ -1,6 +1,133 @@
+from __future__ import annotations
+
+from datetime import date
+
+from psycopg2 import IntegrityError
+
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
+from odoo.tools import mute_logger
 
 
 class TestPoliza(TransactionCase):
-    """R-POL-03 (pagado_hasta readonly), R-POL-05 (no regenerar plan con pagados)."""
-    pass
+    """Etapa 2 — R-POL-01, R-POL-03, R-POL-05, M4."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        Partner = cls.env['res.partner']
+        cls.holding = Partner.create({'name': 'BCA Holding', 'bca_tipo': 'holding'})
+        cls.promotoria_a = Partner.create({
+            'name': 'Promotoría A',
+            'bca_tipo': 'promotoria',
+            'parent_id': cls.holding.id,
+        })
+        cls.promotoria_b = Partner.create({
+            'name': 'Promotoría B',
+            'bca_tipo': 'promotoria',
+            'parent_id': cls.holding.id,
+        })
+        cls.agente_a = Partner.create({
+            'name': 'Agente A',
+            'bca_tipo': 'agente',
+            'parent_id': cls.promotoria_a.id,
+            'bca_estado_agente': 'con_licencia',
+        })
+        cls.agente_b = Partner.create({
+            'name': 'Agente B',
+            'bca_tipo': 'agente',
+            'parent_id': cls.promotoria_b.id,
+            'bca_estado_agente': 'con_licencia',
+        })
+        cls.contratante = Partner.create({
+            'name': 'Cliente Test',
+            'bca_tipo': 'contratante',
+        })
+        cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
+        cls.producto = cls.env['product.template'].create({
+            'name': 'Vida LSP Test',
+            'bca_es_producto_seguro': True,
+            'bca_aseguradora_id': cls.aseguradora.id,
+            'bca_ramo': 'vida',
+        })
+
+    def _crear_poliza(self, name: str = 'POL-TEST-001', **overrides) -> object:
+        vals = {
+            'name': name,
+            'aseguradora_id': self.aseguradora.id,
+            'producto_id': self.producto.id,
+            'agente_id': self.agente_a.id,
+            'contratante_id': self.contratante.id,
+            'fecha_inicio': date(2026, 1, 1),
+            'fecha_fin': date(2027, 1, 1),
+            'periodicidad': 'mensual',
+            'prima_anual': 12000.0,
+        }
+        vals.update(overrides)
+        return self.env['bca.poliza'].create(vals)
+
+    def test_creacion_minima(self) -> None:
+        """Crear una póliza válida con los campos mínimos."""
+        poliza = self._crear_poliza()
+        self.assertEqual(poliza.estado, 'borrador')
+        self.assertEqual(poliza.promotoria_id, self.promotoria_a,
+                         'promotoria_id (computed) debe reflejar al agente actual.')
+        self.assertFalse(poliza.recibo_ids,
+                         'No deben existir recibos antes de confirmar.')
+
+    def test_unique_name_aseguradora(self) -> None:
+        """R-POL-01: número de póliza único por aseguradora."""
+        self._crear_poliza(name='POL-DUP')
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'):
+            with self.cr.savepoint():
+                self._crear_poliza(name='POL-DUP')
+
+    def test_confirmar_genera_plan_pagos_mensual(self) -> None:
+        """action_confirmar genera 12 recibos mensuales con prima fraccionada."""
+        poliza = self._crear_poliza()
+        poliza.action_confirmar()
+        self.assertEqual(poliza.estado, 'activa')
+        self.assertEqual(len(poliza.recibo_ids), 12)
+        numeros = sorted(poliza.recibo_ids.mapped('numero_recibo'))
+        self.assertEqual(numeros, list(range(1, 13)))
+        # 12000 / 12 = 1000 cada uno
+        for recibo in poliza.recibo_ids:
+            self.assertAlmostEqual(recibo.prima_neta, 1000.0, places=2)
+            self.assertEqual(recibo.estado, 'pendiente')
+
+    def test_no_regenerar_plan_con_recibos_pagados(self) -> None:
+        """R-POL-05: no se puede regenerar el plan si ya hay recibos pagados."""
+        poliza = self._crear_poliza()
+        poliza.action_confirmar()
+        # Marcamos un recibo como pagado vía bypass (sudo) para simular estado real.
+        primer_recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
+        primer_recibo.sudo().write({
+            'estado': 'pagado',
+            'fecha_pago': date(2026, 1, 15),
+            'pca_aplicada': 50.0,
+            'factor_aplicado': 0.05,
+        })
+        with self.assertRaises(UserError):
+            poliza._generar_plan_pagos()
+
+    def test_cambiar_agente_registra_historial(self) -> None:
+        """M4: cambiar_agente crea registro en cambio.agente y actualiza promotoria_id."""
+        poliza = self._crear_poliza()
+        self.assertEqual(poliza.promotoria_id, self.promotoria_a)
+        poliza.cambiar_agente(self.agente_b, motivo='Reasignación de prueba')
+        self.assertEqual(poliza.agente_id, self.agente_b)
+        self.assertEqual(poliza.promotoria_id, self.promotoria_b,
+                         'promotoria_id debe recomputarse al cambiar agente.')
+        self.assertEqual(len(poliza.cambio_agente_ids), 1)
+        cambio = poliza.cambio_agente_ids
+        self.assertEqual(cambio.agente_anterior_id, self.agente_a)
+        self.assertEqual(cambio.promotoria_anterior_id, self.promotoria_a)
+        self.assertEqual(cambio.agente_nuevo_id, self.agente_b)
+        self.assertEqual(cambio.promotoria_nueva_id, self.promotoria_b)
+        self.assertEqual(cambio.motivo, 'Reasignación de prueba')
+
+    def test_cambiar_agente_rechaza_no_agente(self) -> None:
+        """cambiar_agente debe validar que el destinatario sea de tipo agente."""
+        poliza = self._crear_poliza()
+        with self.assertRaises(ValidationError):
+            poliza.cambiar_agente(self.contratante, motivo='Inválido')
