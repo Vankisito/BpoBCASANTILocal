@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- ================================================================
-         PRIVILEGE — equivalente a "category" en versiones anteriores a v19.
-         Agrupa los grupos BCA en la interfaz de Configuración > Usuarios.
-         Odoo 19: usar res.groups.privilege + privilege_id (NO category_id).
-         ================================================================ -->
-    <record id="priv_bca_seguros" model="res.groups.privilege">
-        <field name="name">BCA Seguros</field>
-    </record>
-
-    <!-- ================================================================
          GRUPOS BCA
+
+         NOTA v19: res.groups.privilege no existe en este build de Odoo 19.
+         Los grupos quedan sin categoría (privilege_id omitido).
+         Cuando esté disponible en el build de producción, agregar:
+           <record id="priv_bca_seguros" model="res.groups.privilege">
+               <field name="name">BCA Seguros</field>
+           </record>
+           + <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
+           en cada grupo.
 
          JERARQUÍA (implied_ids = membresía acumulativa):
            group_bca_agente          — independiente, NO en la cadena
@@ -29,33 +29,28 @@
     <!-- Agente: acceso mínimo, solo sus propios registros -->
     <record id="group_bca_agente" model="res.groups">
         <field name="name">Agente BCA</field>
-        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
     </record>
 
     <!-- Operador: acceso operacional de lectura/escritura -->
     <record id="group_bca_operador" model="res.groups">
         <field name="name">Operador BCA</field>
-        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
     </record>
 
     <!-- Líder: hereda operador -->
     <record id="group_bca_lider" model="res.groups">
         <field name="name">Líder BCA</field>
-        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
         <field name="implied_ids" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
     </record>
 
     <!-- Director Comercial: hereda lider (y por cadena, operador) -->
     <record id="group_bca_director_comercial" model="res.groups">
         <field name="name">Director Comercial BCA</field>
-        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
         <field name="implied_ids" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
     </record>
 
     <!-- Director: hereda director_comercial (y por cadena, lider + operador) -->
     <record id="group_bca_director" model="res.groups">
         <field name="name">Director BCA</field>
-        <field name="privilege_id" ref="BCA_Seguros.priv_bca_seguros"/>
         <field name="implied_ids" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
     </record>
 </odoo>
