@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Puestos de trabajo BCA — implementar en Etapa 5 -->
-    <!-- Registros: Captación de Promotoría, Reclutamiento de Agente -->
+    <data noupdate="1">
+
+        <record id="job_captacion_promotoria" model="hr.job">
+            <field name="name">Captación de Promotoría</field>
+            <field name="description">Reclutamiento de nuevas promotorías afiliadas al Grupo BCA. Al contratar, se crea automáticamente el res.partner promotoría adscrito a Grupo BCA.</field>
+        </record>
+
+        <record id="job_reclutamiento_agente" model="hr.job">
+            <field name="name">Reclutamiento de Agente</field>
+            <field name="description">Reclutamiento de agentes de seguros para una promotoría afiliada. Requiere especificar la promotoría destino en el formulario del candidato.</field>
+        </record>
+
+    </data>
 </odoo>
