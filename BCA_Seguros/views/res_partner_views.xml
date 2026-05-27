@@ -47,10 +47,12 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_tree"/>
         <field name="arch" type="xml">
-            <field name="display_name" position="after">
+            <!-- Insertar al final del list (más robusto que asumir orden de
+                 columnas heredadas que pueden variar entre versiones). -->
+            <xpath expr="//list" position="inside">
                 <field name="bca_tipo" optional="hide"/>
                 <field name="bca_estado_agente" optional="hide"/>
-            </field>
+            </xpath>
         </field>
     </record>
 
