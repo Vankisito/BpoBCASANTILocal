@@ -28,9 +28,29 @@ Cierre formal de la Etapa 5. Los 7 archivos `data/*.xml` ya existían desde E1 p
 - **Conductos reemplazados, no agregados**: el verbo del cliente fue "agrega" pero los 7 anteriores eran placeholders con códigos inventados (`CTECONDUENTO1`, `TC_EFECTIVO`, etc.). Reemplazo total. Si el cliente quería conservar alguno, lo recreará vía UI ahora que Operador puede crear conductos.
 
 ### Estado del checklist Etapa 5 (Plan §5)
-- [x] Datos cargados correctamente al instalar (pendiente verificación en sandbox tras deploy)
+- [x] Datos cargados correctamente al instalar — verificado en sandbox
 - [x] Factores MetLife 2026 visibles en UI con vigencia correcta (vinculados a productos vía `producto_ids`)
 - [⚠] Conductos con `codigo_archivo` exacto del CSV — pendiente verificación con CSV real en E6 (TODO documentado en `conductos_metlife.xml`)
+
+### Verificación en sandbox_bca1 (APROBADA — 2026-05-27 19:35)
+Deploy automático vía `deploy-sandbox.yml` tras push del commit `9cea4b6` a `desarrollo`.
+```
+docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http
+```
+- Workflow GitHub Actions: ✅ verde.
+- Tests: **37 tests, 9.71s, 2514 queries, 0 failures, 0 errors** ✅ (idéntico al baseline E4 — el `implied_ids product.group_product_manager` no rompió nada).
+- Smoke post-deploy: 13 productos seguro (11 Vida + 2 GMM) ✅; categorías MetLife/{Vida,GMM} ✅.
+
+### Cleanup post-deploy (manual vía shell)
+El `noupdate="1"` de `factores_metlife_2026.xml` previno que el `odoo -u` aplicara los nuevos `producto_ids` a los 14 factores Vida ya existentes desde E1 (la regla `noupdate` solo crea nuevos; no sobreescribe). Igualmente, `conductos_metlife.xml` con `noupdate="1"` dejó los 7 conductos placeholder de E1 como huérfanos al renombrar sus XML IDs.
+
+Fix manual en `odoo shell`:
+1. Borrados 7 conductos huérfanos (CTE Conduento 1, Depósito Bancario, TC Efectivo/Cheque/Crédito/Débito/Transferencia).
+2. Asignados 14 `producto_ids` a factores Vida vía `write({'producto_ids': [(6,0,[product.id])]})`.
+
+Verificación final: conductos=4 ✅, factores con `producto_ids`=14 ✅.
+
+**Hallazgo registrado en memoria del proyecto:** `noupdate="1"` no aplica cambios a registros existentes en `-u`. Workarounds: write directo en shell, borrar+recrear, o script `migrations/X.Y.Z/post_migrate.py`. Si en E6 o posterior se cambia estructura de datos seed, planear migración explícita.
 
 ### Pendientes para próxima sesión
 - Verificación en sandbox: `odoo -u BCA_Seguros -d sandbox_bca1 --stop-after-init --no-http` debe instalar sin errores; smoke con `env['product.template'].search_count([('bca_es_producto_seguro','=',True)])` → 13.
