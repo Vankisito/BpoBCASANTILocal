@@ -30,7 +30,7 @@ jobs:
             sleep 45
             docker exec odoo_golden odoo \
               -u BCA_Seguros \
-              -d sandbox_bca \
+              -d sandbox_bca1 \
               --stop-after-init \
               --no-http
             docker exec odoo_golden grep -i "BCA_Seguros" /var/log/odoo/odoo.log | tail -5
