@@ -69,9 +69,10 @@ class TestInmutabilidad(TransactionCase):
         """C1: pagado_hasta retrocede al cancelar el último recibo pagado."""
         poliza = self._crear_poliza_activa()
         # Promovemos el usuario actual a Director para poder cancelar.
+        # Odoo 19: res.users.groups_id se renombró a group_ids.
         admin = self.env.ref('base.user_admin')
         director_group = self.env.ref('BCA_Seguros.group_bca_director')
-        admin.groups_id = [(4, director_group.id)]
+        admin.group_ids = [(4, director_group.id)]
 
         recibos = poliza.recibo_ids.sorted('numero_recibo')
         recibos[0].action_registrar_pago({
@@ -100,7 +101,7 @@ class TestInmutabilidad(TransactionCase):
         usuario = self.env['res.users'].create({
             'name': 'Operador Test',
             'login': 'op_test_inmut',
-            'groups_id': [(4, self.env.ref('base.group_user').id),
+            'group_ids': [(4, self.env.ref('base.group_user').id),
                           (4, self.env.ref('BCA_Seguros.group_bca_operador').id)],
         })
         with self.assertRaises(UserError):
@@ -130,7 +131,7 @@ class TestInmutabilidad(TransactionCase):
         usuario = self.env['res.users'].create({
             'name': 'Operador Bitácora',
             'login': 'op_test_bitacora',
-            'groups_id': [(4, self.env.ref('base.group_user').id),
+            'group_ids': [(4, self.env.ref('base.group_user').id),
                           (4, self.env.ref('BCA_Seguros.group_bca_operador').id)],
         })
         with self.assertRaises(UserError):
