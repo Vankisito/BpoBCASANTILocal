@@ -6,6 +6,17 @@
          Fuente: Tabla de PCA MetLife vigente desde 2026-01-01.
          base.MXN y base.USD deben estar activas en res.currency antes de instalar.
 
+         Productos Vida con factor asignado en esta tabla:
+           Universales, TempoLife, TempoLife GP/RP, TotalLife, EducaLife,
+           PerfectLife, Horizonte.
+         Productos Vida sin factor todavía (definidos en productos_metlife.xml):
+           Perfect Life, Vida Pagos, Metalife Retiro, Metalife tu Futuro.
+         Cuando se publique su factor, agregar el registro aquí o crear desde UI
+         (editable por Director Comercial y Director General — ver ACL).
+
+         GMM: los 3 factores discriminan por coaseguro/deducible, no por producto
+         (sin producto_ids).
+
          noupdate="1": protege contra sobreescritura en odoo-bin -u. -->
     <data noupdate="1">
 
@@ -18,6 +29,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.MXN"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_universales')])]"/>
             <field name="factor">1.0</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -28,6 +40,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.USD"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_universales')])]"/>
             <field name="factor">1.0</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -38,6 +51,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.MXN"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_tempolife')])]"/>
             <field name="factor">1.0</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -48,6 +62,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.USD"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_tempolife')])]"/>
             <field name="factor">0.8</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -58,6 +73,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.MXN"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_tempolife_gprp')])]"/>
             <field name="factor">1.0</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -68,6 +84,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.USD"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_tempolife_gprp')])]"/>
             <field name="factor">0.8</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -78,6 +95,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.MXN"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_totallife')])]"/>
             <field name="factor">1.0</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -88,6 +106,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.USD"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_totallife')])]"/>
             <field name="factor">0.8</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -98,6 +117,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.MXN"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_edutalife')])]"/>
             <field name="factor">1.0</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -108,6 +128,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.USD"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_edutalife')])]"/>
             <field name="factor">0.7</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -118,6 +139,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.MXN"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_perfectlife')])]"/>
             <field name="factor">1.0</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -128,6 +150,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.USD"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_perfectlife')])]"/>
             <field name="factor">0.7</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -138,6 +161,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.MXN"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_horizonte')])]"/>
             <field name="factor">1.0</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -148,6 +172,7 @@
             <field name="aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
             <field name="ramo">vida</field>
             <field name="currency_id" ref="base.USD"/>
+            <field name="producto_ids" eval="[(6, 0, [ref('BCA_Seguros.producto_metlife_horizonte')])]"/>
             <field name="factor">0.7</field>
             <field name="vigencia_desde">2026-01-01</field>
             <field name="activo" eval="True"/>
@@ -155,7 +180,8 @@
 
         <!-- ============================================================
              GMM — 3 registros
-             Lógica de selección del calculador:
+             Sin producto_ids: aplica a cualquier producto GMM MetLife.
+             Lógica de selección del calculador (Etapa 7):
                coaseguro >= 10% y deducible >= 29,000 MXN → factor 120%
                coaseguro >= 10% y deducible < 29,000 MXN  → factor 100%
                coaseguro <= 5%  (sin importar deducible)  → factor 0%

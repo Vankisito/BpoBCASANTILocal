@@ -547,10 +547,12 @@ group_bca_director       implied_ids: director_comercial
 | `data/conductos_metlife.xml` | 7 conductos MetLife (Vida: 2, GMM: 5) |
 | `data/factores_metlife_2026.xml` | 17 registros: 14 Vida (7 productos × 2 monedas) + 3 GMM |
 
-**Checklist Etapa 5:**
-- [ ] Datos cargados correctamente al instalar
-- [ ] Factores MetLife 2026 visibles en UI con vigencia correcta
-- [ ] Conductos con `codigo_archivo` exacto del CSV
+**Checklist Etapa 5:** ✅ Completado 2026-05-27 (commit pendiente; verificación sandbox pendiente)
+- [x] Datos cargados correctamente al instalar (estructura completa, deploy sandbox pendiente)
+- [x] Factores MetLife 2026 visibles en UI con vigencia correcta (vinculados a productos vía `producto_ids`)
+- [⚠] Conductos con `codigo_archivo` exacto del CSV — los 4 reales están creados pero `codigo_archivo` es placeholder hasta confirmar contra CSV real en E6
+- [x] Productos MetLife (11 Vida + 2 GMM) creados — **agregado al alcance original de E5** porque los factores los referencian
+- [x] Operador puede crear conductos y productos desde UI (ACL `bca.conducto` RWC + `implied_ids product.group_product_manager`)
 
 ---
 

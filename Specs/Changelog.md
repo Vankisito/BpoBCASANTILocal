@@ -4,6 +4,41 @@
 
 ---
 
+## Sesión 2026-05-27 — Etapa 5: cierre formal de datos iniciales
+
+### Qué se hizo
+Cierre formal de la Etapa 5. Los 7 archivos `data/*.xml` ya existían desde E1 pero con huecos: factores Vida sin vincular a productos, categorías de producto sin jerarquía, conductos con códigos placeholder, y no había seed de productos MetLife (referenciados por los factores). Se cerraron esos huecos y se cuadraron datos con catálogo real provisto por cliente.
+
+### Archivos modificados
+- `BCA_Seguros/data/product_categories.xml` — jerarquía completa: `Productos de Seguro BCA → MetLife → {Vida, GMM}` y `Productos de Seguro BCA → Qualitas → Autos`. Antes había solo la raíz.
+- `BCA_Seguros/data/productos_metlife.xml` — **NUEVO**. 13 productos `product.template`: 11 Vida (7 con factor preexistente: Universales, TempoLife, TempoLife GP/RP, TotalLife, EducaLife, PerfectLife, Horizonte; 4 nuevos sin factor todavía: Perfect Life, Vida Pagos, Metalife Retiro, Metalife tu Futuro) + 2 GMM (MedicaLife, Primordial). Todos con `bca_es_producto_seguro=True`, `bca_aseguradora_id=partner_metlife`, `bca_ramo`, `type=service` y `categ_id` correcto.
+- `BCA_Seguros/data/factores_metlife_2026.xml` — añadido `producto_ids` a los 14 factores Vida (vinculados al producto correspondiente). Los 3 GMM siguen sin `producto_ids` (discriminan por coaseguro/deducible, no por producto — Arq §5.2).
+- `BCA_Seguros/data/conductos_metlife.xml` — reescrito con los 4 conductos reales provistos por cliente: Agente Directo, Cargo Automático, Tarjeta de Crédito, Tarjeta de Débito. Antes había 7 placeholders (CTE Conduento 1, Depósito Bancario, TC Efectivo, TC Cheque, TC Crédito, TC Débito, TC Transferencia) marcados como "estimados" en el comentario del propio archivo.
+- `BCA_Seguros/security/ir.model.access.csv` — `bca.conducto`: Operador R → RWC, Líder R → RWC. Operador es quien mantiene el catálogo conforme las aseguradoras publican.
+- `BCA_Seguros/security/groups.xml` — `group_bca_operador` ahora implica `product.group_product_manager`. Sin esto el Operador queda solo en lectura de `product.template` y no puede dar de alta nuevos productos de seguro.
+- `BCA_Seguros/__manifest__.py` — añadido `data/productos_metlife.xml` al `data[]` entre `aseguradoras_iniciales.xml` y `conductos_metlife.xml` (factores depende de productos).
+
+### Decisiones de implementación
+- **Productos Vida = 11, no 4 ni 7**: cliente confirmó que los 7 productos referenciados por los factores de E1 son reales (no placeholders como sugería el comentario del XML) y que los 4 nuevos también son reales. Ambos conjuntos coexisten. Los 4 nuevos hoy no tienen factor — cuando se publique su factor 2026, se crea desde UI por Director Comercial o se añade aquí.
+- **Factores numéricos 2026**: cliente confirmó que los valores actuales (Universales/PerfectLife/Horizonte/EducaLife = 1.0/0.7; TempoLife/TempoLife GP/RP/TotalLife = 1.0/0.8) son los oficiales. Se mantienen.
+- **Productos GMM sin factor propio**: MedicaLife y Primordial comparten los 3 factores GMM que discriminan por regla coaseguro/deducible (10%+ded≥29k → 1.2; 10%+ded<29k → 1.0; ≤5% → 0.0).
+- **`bca_temporalidad_anios` y `bca_es_capitalizable`**: hoy 0/False en todos los productos Vida. Marcados con TODO en cabecera del XML — cliente confirmará valores reales antes de E6/E7 (afectan exclusiones PCA por temporalidad < 10 años y aportación adicional en capitalizable).
+- **`bca_nombre_archivo_aseguradora`**: vacío en todos los productos. Se llena en E6 cuando se inspeccionen los CSV LSP/GCAYE reales.
+- **Operador puede gestionar producto.template global de Odoo, no solo BCA**: vía `implied_ids = product.group_product_manager`. Decisión aceptada por el cliente — el Operador BCA es personal administrativo dedicado, el riesgo de tocar productos no-BCA es bajo. Alternativa rechazada: ACL custom + record rule filtrada a `bca_es_producto_seguro=True` (más complejo, sin valor inmediato).
+- **Conductos reemplazados, no agregados**: el verbo del cliente fue "agrega" pero los 7 anteriores eran placeholders con códigos inventados (`CTECONDUENTO1`, `TC_EFECTIVO`, etc.). Reemplazo total. Si el cliente quería conservar alguno, lo recreará vía UI ahora que Operador puede crear conductos.
+
+### Estado del checklist Etapa 5 (Plan §5)
+- [x] Datos cargados correctamente al instalar (pendiente verificación en sandbox tras deploy)
+- [x] Factores MetLife 2026 visibles en UI con vigencia correcta (vinculados a productos vía `producto_ids`)
+- [⚠] Conductos con `codigo_archivo` exacto del CSV — pendiente verificación con CSV real en E6 (TODO documentado en `conductos_metlife.xml`)
+
+### Pendientes para próxima sesión
+- Verificación en sandbox: `odoo -u BCA_Seguros -d sandbox_bca1 --stop-after-init --no-http` debe instalar sin errores; smoke con `env['product.template'].search_count([('bca_es_producto_seguro','=',True)])` → 13.
+- Suite de tests E4 (37 tests): verificar que sigue verde tras añadir `implied_ids product.group_product_manager` al Operador. Riesgo: si algún test asume ACL de Operador sobre product.template, podría cambiar comportamiento. Bajo riesgo (tests E4 no tocan product.template).
+- **Etapa 6** (parsers de cobranza) o **Etapa 10** (UI/menú navegable). Antes de E6 hay que confirmar con cliente: (a) valores reales de `bca_temporalidad_anios` y `bca_es_capitalizable` por producto Vida; (b) `bca_nombre_archivo_aseguradora` mirando CSV real; (c) `codigo_archivo` exacto de los 4 conductos en el CSV.
+
+---
+
 ## Sesión 2026-05-27 — Etapa 4: seguridad (record rules + ACL completa + tests)
 
 ### Qué se hizo

@@ -31,9 +31,15 @@
         <field name="name">Agente BCA</field>
     </record>
 
-    <!-- Operador: acceso operacional de lectura/escritura -->
+    <!-- Operador: acceso operacional de lectura/escritura.
+         implied_ids = product.group_product_manager:
+         el Operador es responsable de mantener el catálogo de productos
+         de seguros (alta de nuevos productos MetLife/Qualitas conforme
+         las aseguradoras publican). Sin este grupo, product.template
+         queda solo en lectura para el Operador. -->
     <record id="group_bca_operador" model="res.groups">
         <field name="name">Operador BCA</field>
+        <field name="implied_ids" eval="[(4, ref('product.group_product_manager'))]"/>
     </record>
 
     <!-- Líder: hereda operador -->

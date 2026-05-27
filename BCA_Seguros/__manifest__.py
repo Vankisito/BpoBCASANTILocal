@@ -17,6 +17,7 @@
         'data/product_categories.xml',
         'data/hr_jobs.xml',
         'data/aseguradoras_iniciales.xml',
+        'data/productos_metlife.xml',
         'data/conductos_metlife.xml',
         'data/factores_metlife_2026.xml',
         # Vistas

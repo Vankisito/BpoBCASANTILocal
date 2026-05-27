@@ -1,6 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-acl_bca_conducto_operador,bca.conducto operador,model_bca_conducto,BCA_Seguros.group_bca_operador,1,0,0,0
-acl_bca_conducto_lider,bca.conducto lider,model_bca_conducto,BCA_Seguros.group_bca_lider,1,0,0,0
+acl_bca_conducto_operador,bca.conducto operador,model_bca_conducto,BCA_Seguros.group_bca_operador,1,1,1,0
+acl_bca_conducto_lider,bca.conducto lider,model_bca_conducto,BCA_Seguros.group_bca_lider,1,1,1,0
 acl_bca_conducto_dir_comercial,bca.conducto dir_comercial,model_bca_conducto,BCA_Seguros.group_bca_director_comercial,1,1,1,0
 acl_bca_conducto_director,bca.conducto director,model_bca_conducto,BCA_Seguros.group_bca_director,1,1,1,1
 acl_bca_factor_pca_operador,bca.factor.pca operador,model_bca_factor_pca,BCA_Seguros.group_bca_operador,1,0,0,0
