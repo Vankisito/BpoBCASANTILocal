@@ -176,4 +176,457 @@
         <field name="perm_create" eval="True"/>
         <field name="perm_unlink" eval="True"/>
     </record>
+
+    <!-- ================================================================
+         ETAPA 4 — RECORD RULES DE NEGOCIO
+         Pólizas, recibos, bitácora, cambio de agente y reportes SQL.
+
+         Regla A3 (Plan §2.4.3): todos los grupos no-agente con ACL deben
+         tener una rule explícita [(1,'=',1)] por modelo, para neutralizar
+         la herencia acumulativa de implied_ids que de otro modo combinaría
+         con AND la rule restrictiva del agente.
+         ================================================================ -->
+
+    <!-- ============================================================
+         bca.poliza
+         Agente: solo pólizas donde es el agente_id (vinculado a su user).
+         Operador+: acceso global con perm_unlink/create variable según rol.
+         ============================================================ -->
+    <record id="rule_bca_poliza_agente" model="ir.rule">
+        <field name="name">bca.poliza: agente solo propias</field>
+        <field name="model_id" ref="model_bca_poliza"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
+        <field name="domain_force">[('agente_id.user_ids', 'in', [user.id])]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_poliza_operador" model="ir.rule">
+        <field name="name">bca.poliza: acceso global operador</field>
+        <field name="model_id" ref="model_bca_poliza"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_poliza_lider" model="ir.rule">
+        <field name="name">bca.poliza: acceso global líder</field>
+        <field name="model_id" ref="model_bca_poliza"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_poliza_dir_comercial" model="ir.rule">
+        <field name="name">bca.poliza: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_poliza"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="rule_bca_poliza_director" model="ir.rule">
+        <field name="name">bca.poliza: acceso global director</field>
+        <field name="model_id" ref="model_bca_poliza"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- ============================================================
+         bca.recibo
+         Agente: solo recibos cuya póliza tiene como agente_id su user.
+         Operador/Líder: lectura/escritura sin create/unlink (M5).
+         Director Comercial/Director: control total (cancelación M5).
+         ============================================================ -->
+    <record id="rule_bca_recibo_agente" model="ir.rule">
+        <field name="name">bca.recibo: agente solo propios</field>
+        <field name="model_id" ref="model_bca_recibo"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
+        <field name="domain_force">[('poliza_id.agente_id.user_ids', 'in', [user.id])]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_recibo_operador" model="ir.rule">
+        <field name="name">bca.recibo: acceso global operador</field>
+        <field name="model_id" ref="model_bca_recibo"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_recibo_lider" model="ir.rule">
+        <field name="name">bca.recibo: acceso global líder</field>
+        <field name="model_id" ref="model_bca_recibo"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_recibo_dir_comercial" model="ir.rule">
+        <field name="name">bca.recibo: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_recibo"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="rule_bca_recibo_director" model="ir.rule">
+        <field name="name">bca.recibo: acceso global director</field>
+        <field name="model_id" ref="model_bca_recibo"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- ============================================================
+         bca.bitacora.importacion
+         Agente: sin acceso (no hay ACL).
+         Operador+ (decisión Etapa 4): lectura global — el operador necesita
+         ver las importaciones que él mismo dispara desde el wizard.
+         ============================================================ -->
+    <record id="rule_bca_bitacora_imp_operador" model="ir.rule">
+        <field name="name">bca.bitacora.importacion: acceso global operador</field>
+        <field name="model_id" ref="model_bca_bitacora_importacion"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_bitacora_imp_lider" model="ir.rule">
+        <field name="name">bca.bitacora.importacion: acceso global líder</field>
+        <field name="model_id" ref="model_bca_bitacora_importacion"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_bitacora_imp_dir_comercial" model="ir.rule">
+        <field name="name">bca.bitacora.importacion: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_bitacora_importacion"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_bitacora_imp_director" model="ir.rule">
+        <field name="name">bca.bitacora.importacion: acceso global director</field>
+        <field name="model_id" ref="model_bca_bitacora_importacion"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- ============================================================
+         bca.bitacora.linea — mismo criterio que la cabecera.
+         ============================================================ -->
+    <record id="rule_bca_bitacora_lin_operador" model="ir.rule">
+        <field name="name">bca.bitacora.linea: acceso global operador</field>
+        <field name="model_id" ref="model_bca_bitacora_linea"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_bitacora_lin_lider" model="ir.rule">
+        <field name="name">bca.bitacora.linea: acceso global líder</field>
+        <field name="model_id" ref="model_bca_bitacora_linea"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_bitacora_lin_dir_comercial" model="ir.rule">
+        <field name="name">bca.bitacora.linea: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_bitacora_linea"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_bitacora_lin_director" model="ir.rule">
+        <field name="name">bca.bitacora.linea: acceso global director</field>
+        <field name="model_id" ref="model_bca_bitacora_linea"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- ============================================================
+         bca.poliza.cambio.agente — historial inmutable (M4).
+         Lectura para Operador+. Sin write/create/unlink: solo el método
+         bca.poliza.cambiar_agente() inserta registros.
+         ============================================================ -->
+    <record id="rule_bca_cambio_agente_operador" model="ir.rule">
+        <field name="name">bca.poliza.cambio.agente: acceso global operador</field>
+        <field name="model_id" ref="model_bca_poliza_cambio_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_cambio_agente_lider" model="ir.rule">
+        <field name="name">bca.poliza.cambio.agente: acceso global líder</field>
+        <field name="model_id" ref="model_bca_poliza_cambio_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_cambio_agente_dir_comercial" model="ir.rule">
+        <field name="name">bca.poliza.cambio.agente: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_poliza_cambio_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_cambio_agente_director" model="ir.rule">
+        <field name="name">bca.poliza.cambio.agente: acceso global director</field>
+        <field name="model_id" ref="model_bca_poliza_cambio_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- ================================================================
+         REPORTES SQL (vistas con _auto=False)
+
+         TODO Etapa 9: cuando las vistas pca_por_agente y estado_cartera
+         expongan el campo agente_id (hoy son SELECT WHERE FALSE), agregar
+         filtrado por user.id al agente. Por ahora, todas las rules son
+         [(1,'=',1)] — el control efectivo se hace en la ACL (CSV).
+         ================================================================ -->
+    <record id="rule_rep_pca_agente_agente" model="ir.rule">
+        <field name="name">bca.reporte.pca.agente: acceso agente (TODO E9 filtrado)</field>
+        <field name="model_id" ref="model_bca_reporte_pca_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_pca_agente_operador" model="ir.rule">
+        <field name="name">bca.reporte.pca.agente: acceso global operador</field>
+        <field name="model_id" ref="model_bca_reporte_pca_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_pca_agente_lider" model="ir.rule">
+        <field name="name">bca.reporte.pca.agente: acceso global líder</field>
+        <field name="model_id" ref="model_bca_reporte_pca_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_pca_agente_dir_comercial" model="ir.rule">
+        <field name="name">bca.reporte.pca.agente: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_reporte_pca_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_pca_agente_director" model="ir.rule">
+        <field name="name">bca.reporte.pca.agente: acceso global director</field>
+        <field name="model_id" ref="model_bca_reporte_pca_agente"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- bca.reporte.estado.cartera (mismo patrón que pca.agente) -->
+    <record id="rule_rep_estado_cartera_agente" model="ir.rule">
+        <field name="name">bca.reporte.estado.cartera: acceso agente (TODO E9 filtrado)</field>
+        <field name="model_id" ref="model_bca_reporte_estado_cartera"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_estado_cartera_operador" model="ir.rule">
+        <field name="name">bca.reporte.estado.cartera: acceso global operador</field>
+        <field name="model_id" ref="model_bca_reporte_estado_cartera"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_estado_cartera_lider" model="ir.rule">
+        <field name="name">bca.reporte.estado.cartera: acceso global líder</field>
+        <field name="model_id" ref="model_bca_reporte_estado_cartera"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_estado_cartera_dir_comercial" model="ir.rule">
+        <field name="name">bca.reporte.estado.cartera: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_reporte_estado_cartera"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_estado_cartera_director" model="ir.rule">
+        <field name="name">bca.reporte.estado.cartera: acceso global director</field>
+        <field name="model_id" ref="model_bca_reporte_estado_cartera"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- bca.reporte.pca.promotoria (Líder+) -->
+    <record id="rule_rep_pca_promo_lider" model="ir.rule">
+        <field name="name">bca.reporte.pca.promotoria: acceso global líder</field>
+        <field name="model_id" ref="model_bca_reporte_pca_promotoria"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_pca_promo_dir_comercial" model="ir.rule">
+        <field name="name">bca.reporte.pca.promotoria: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_reporte_pca_promotoria"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_pca_promo_director" model="ir.rule">
+        <field name="name">bca.reporte.pca.promotoria: acceso global director</field>
+        <field name="model_id" ref="model_bca_reporte_pca_promotoria"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- bca.reporte.pca.consolidado (Director Comercial+) -->
+    <record id="rule_rep_pca_cons_dir_comercial" model="ir.rule">
+        <field name="name">bca.reporte.pca.consolidado: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_reporte_pca_consolidado"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_rep_pca_cons_director" model="ir.rule">
+        <field name="name">bca.reporte.pca.consolidado: acceso global director</field>
+        <field name="model_id" ref="model_bca_reporte_pca_consolidado"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
 </odoo>
