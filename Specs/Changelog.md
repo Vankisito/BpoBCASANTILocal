@@ -25,9 +25,15 @@ Implementación completa de los 4 modelos núcleo de la Etapa 2 (`bca.poliza`, `
 - `currency_id` con default `lambda self: self.env.company.currency_id` en póliza y bitácora (§2.4.5).
 - `ramo` en `bca.poliza` es related `store=True` a `producto_id.bca_ramo` para permitir filtros eficientes.
 
+### Verificación E2 en sandbox_bca1 (APROBADA)
+Deploy automático vía `deploy-sandbox.yml` tras push del commit `04e0f7b` a `desarrollo` (2026-05-27).
+- `odoo -u BCA_Seguros -d sandbox_bca1 --stop-after-init --no-http` → terminó sin errores.
+- Workflow GitHub Actions: ✅ verde.
+- Registry load + schema migration sin warnings de los 4 modelos nuevos (`bca.poliza`, `bca.recibo`, `bca.poliza.cambio.agente`, `bca.bitacora.importacion`, `bca.bitacora.linea`).
+
 ### Pendientes para próxima sesión
-- Verificación local con `odoo-bin -u BCA_Seguros --test-enable --test-tags BCA_Seguros --stop-after-init` (en máquina local; aún sin deploy a sandbox).
-- Deploy a `sandbox_bca1` y verificación manual del checklist E2 — postergado por decisión del usuario.
+- Ejecutar tests E2 en sandbox: `docker exec odoo_golden odoo --test-enable --test-tags BCA_Seguros -d sandbox_bca1 --stop-after-init --no-http` (validación manual del checklist).
+- Verificación manual UI con shell de Odoo (crear póliza → confirmar → 12 recibos; pagar → pagado_hasta avanza; cancelar → retrocede; cambiar_agente → historial).
 - Iniciar **Etapa 3** (modelos de integración Odoo: `hr_applicant`, `crm_lead`) o **Etapa 4** (seguridad: record rules específicas de poliza/recibo/bitácora).
 
 ---
