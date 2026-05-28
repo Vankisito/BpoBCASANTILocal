@@ -7,4 +7,5 @@ from . import (
     test_hr_applicant,
     test_crm_lead,
     test_views_xml,
+    test_parsers,
 )

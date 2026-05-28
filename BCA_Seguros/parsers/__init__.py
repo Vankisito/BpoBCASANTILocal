@@ -1,10 +1,12 @@
 from .base import ParserBase
 from .metlife_lsp import ParserMetLifeVida
 from .metlife_gcaye import ParserMetLifeGMM
+from .qualitas import ParserQualitas
 
 _REGISTRY = {
     ('METLIFE', 'vida'): ParserMetLifeVida,
     ('METLIFE', 'gmm'): ParserMetLifeGMM,
+    ('QUALITAS', 'autos'): ParserQualitas,
 }
 
 
