@@ -47,6 +47,24 @@
                             </list>
                         </field>
                     </group>
+                    <group invisible="bca_tipo != 'contratante'">
+                        <group name="bca_demograficos" string="Datos Demográficos">
+                            <!-- RFC → vat, domicilio → street/city/zip/state_id ya
+                                 están en el form estándar de res.partner. -->
+                            <field name="bca_fecha_nacimiento"/>
+                            <field name="bca_estado_civil"/>
+                            <field name="bca_genero"/>
+                        </group>
+                        <group name="bca_referencias_pago" string="Referencias de Pago">
+                            <field name="bca_ref_prima_basica_trad"/>
+                            <field name="bca_fondo_variable"/>
+                            <field name="bca_fondo_fijo"/>
+                            <field name="bca_fondo_variable_ppr"/>
+                            <field name="bca_fondo_fijo_ppr"/>
+                            <field name="bca_fondo_variable_cpea"/>
+                            <field name="bca_fondo_fijo_cpea"/>
+                        </group>
+                    </group>
                 </page>
             </xpath>
 

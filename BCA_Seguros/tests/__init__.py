@@ -1,5 +1,6 @@
 from . import (
     test_poliza,
+    test_poliza_vida,
     test_cobranza_fifo,
     test_pca_metlife,
     test_inmutabilidad,

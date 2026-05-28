@@ -248,6 +248,67 @@
     </record>
 
     <!-- ============================================================
+         bca.poliza.beneficiario — hijo de la póliza (mismo criterio de
+         visibilidad que la póliza: el agente ve los beneficiarios de SUS
+         pólizas; se muestran en el One2many del form de póliza).
+         Operador/Líder: RWC global. Director Comercial/Director: control total.
+         ============================================================ -->
+    <record id="rule_bca_beneficiario_agente" model="ir.rule">
+        <field name="name">bca.poliza.beneficiario: agente solo propios</field>
+        <field name="model_id" ref="model_bca_poliza_beneficiario"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
+        <field name="domain_force">[('poliza_id.agente_id.user_ids', 'in', [user.id])]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_beneficiario_operador" model="ir.rule">
+        <field name="name">bca.poliza.beneficiario: acceso global operador</field>
+        <field name="model_id" ref="model_bca_poliza_beneficiario"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_beneficiario_lider" model="ir.rule">
+        <field name="name">bca.poliza.beneficiario: acceso global líder</field>
+        <field name="model_id" ref="model_bca_poliza_beneficiario"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_beneficiario_dir_comercial" model="ir.rule">
+        <field name="name">bca.poliza.beneficiario: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_poliza_beneficiario"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="rule_bca_beneficiario_director" model="ir.rule">
+        <field name="name">bca.poliza.beneficiario: acceso global director</field>
+        <field name="model_id" ref="model_bca_poliza_beneficiario"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- ============================================================
          bca.recibo
          Agente: solo recibos cuya póliza tiene como agente_id su user.
          Operador/Líder: lectura/escritura sin create/unlink (M5).

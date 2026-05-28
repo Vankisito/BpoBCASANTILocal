@@ -17,6 +17,11 @@ acl_bca_poliza_operador,bca.poliza operador,model_bca_poliza,BCA_Seguros.group_b
 acl_bca_poliza_lider,bca.poliza lider,model_bca_poliza,BCA_Seguros.group_bca_lider,1,1,1,0
 acl_bca_poliza_dir_comercial,bca.poliza dir_comercial,model_bca_poliza,BCA_Seguros.group_bca_director_comercial,1,1,1,1
 acl_bca_poliza_director,bca.poliza director,model_bca_poliza,BCA_Seguros.group_bca_director,1,1,1,1
+acl_bca_beneficiario_agente,bca.poliza.beneficiario agente,model_bca_poliza_beneficiario,BCA_Seguros.group_bca_agente,1,0,0,0
+acl_bca_beneficiario_operador,bca.poliza.beneficiario operador,model_bca_poliza_beneficiario,BCA_Seguros.group_bca_operador,1,1,1,0
+acl_bca_beneficiario_lider,bca.poliza.beneficiario lider,model_bca_poliza_beneficiario,BCA_Seguros.group_bca_lider,1,1,1,0
+acl_bca_beneficiario_dir_comercial,bca.poliza.beneficiario dir_comercial,model_bca_poliza_beneficiario,BCA_Seguros.group_bca_director_comercial,1,1,1,1
+acl_bca_beneficiario_director,bca.poliza.beneficiario director,model_bca_poliza_beneficiario,BCA_Seguros.group_bca_director,1,1,1,1
 acl_bca_recibo_agente,bca.recibo agente,model_bca_recibo,BCA_Seguros.group_bca_agente,1,0,0,0
 acl_bca_recibo_operador,bca.recibo operador,model_bca_recibo,BCA_Seguros.group_bca_operador,1,1,0,0
 acl_bca_recibo_lider,bca.recibo lider,model_bca_recibo,BCA_Seguros.group_bca_lider,1,1,0,0

@@ -5,6 +5,7 @@ from . import (
     conducto,
     factor_pca,
     poliza,
+    poliza_beneficiario,
     poliza_cambio_agente,
     recibo,
     bitacora,

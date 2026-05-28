@@ -9,10 +9,23 @@ TIPO_SELECTION = [
     ('promotoria', 'Promotoría'),
     ('agente', 'Agente'),
     ('contratante', 'Contratante'),
+    ('asegurado', 'Asegurado'),
 ]
 ESTADO_AGENTE_SELECTION = [
     ('prospecto', 'Prospecto'),
     ('con_licencia', 'Con Licencia'),
+]
+ESTADO_CIVIL_SELECTION = [
+    ('soltero', 'Soltero(a)'),
+    ('casado', 'Casado(a)'),
+    ('divorciado', 'Divorciado(a)'),
+    ('viudo', 'Viudo(a)'),
+    ('union_libre', 'Unión Libre'),
+]
+GENERO_SELECTION = [
+    ('masculino', 'Masculino'),
+    ('femenino', 'Femenino'),
+    ('otro', 'Otro'),
 ]
 
 
@@ -34,6 +47,29 @@ class ResPartner(models.Model):
         string='Código Aseguradora',
         index=True,
     )
+
+    # Datos demográficos del contratante (los faltantes en res.partner estándar).
+    # RFC → campo estándar `vat`; domicilio → street/street2/city/zip/state_id.
+    bca_fecha_nacimiento: fields.Date = fields.Date(string='Fecha de Nacimiento')
+    bca_estado_civil: str = fields.Selection(
+        ESTADO_CIVIL_SELECTION,
+        string='Estado Civil',
+    )
+    bca_genero: str = fields.Selection(
+        GENERO_SELECTION,
+        string='Género',
+    )
+
+    # Referencias de pago del contratante (MetLife Vida).
+    bca_ref_prima_basica_trad: str = fields.Char(
+        string='Referencia Prima Básica (TRAD)',
+    )
+    bca_fondo_variable: str = fields.Char(string='Fondo Variable')
+    bca_fondo_fijo: str = fields.Char(string='Fondo Fijo')
+    bca_fondo_variable_ppr: str = fields.Char(string='Fondo Variable PPR')
+    bca_fondo_fijo_ppr: str = fields.Char(string='Fondo Fijo PPR')
+    bca_fondo_variable_cpea: str = fields.Char(string='Fondo Variable CPEA')
+    bca_fondo_fijo_cpea: str = fields.Char(string='Fondo Fijo CPEA')
 
     agente_aseguradora_ids: list[int] = fields.One2many(
         'res.partner.agente.aseguradora',

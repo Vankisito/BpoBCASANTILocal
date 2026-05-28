@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
 
 from .product_template import RAMO_SELECTION
 
@@ -23,6 +24,14 @@ TIPO_COBERTURA_SELECTION = [
     ('estandar', 'Estándar'),
     ('accidentes', 'Accidentes'),
     ('invalidez', 'Invalidez'),
+]
+# Estatus de pago declarativo del layout de portafolio. NO es la fuente de
+# verdad operativa de la vigencia de pago (esa es pagado_hasta, computed desde
+# los recibos); es un dato informativo capturado tal como lo trae la aseguradora.
+ESTATUS_PAGO_SELECTION = [
+    ('al_corriente', 'Al Corriente'),
+    ('vencido', 'Vencido'),
+    ('suspendido', 'Suspendido'),
 ]
 
 # meses por período — usado en _generar_plan_pagos
@@ -97,6 +106,16 @@ class BcaPoliza(models.Model):
         ondelete='restrict',
         domain=[('bca_tipo', '=', 'contratante')],
     )
+    # La persona cuya vida está asegurada puede coincidir con el contratante
+    # (caso más común). bca_tipo es de valor único, así que el domain admite
+    # tanto el tipo dedicado 'asegurado' como un contratante existente.
+    asegurado_id: int = fields.Many2one(
+        'res.partner',
+        string='Asegurado',
+        ondelete='restrict',
+        domain=['|', ('bca_tipo', '=', 'asegurado'), ('bca_tipo', '=', 'contratante')],
+        help='Persona cuya vida está asegurada. Solo aplica para ramo Vida.',
+    )
     poliza_origen_id: int = fields.Many2one(
         'bca.poliza',
         string='Póliza Origen',
@@ -108,6 +127,26 @@ class BcaPoliza(models.Model):
         string='Moneda',
         required=True,
         default=lambda self: self.env.company.currency_id,
+    )
+
+    plan: str = fields.Char(
+        string='Plan',
+        help='Plan específico asociado al producto.',
+    )
+    fecha_emision: fields.Date = fields.Date(string='Fecha de Emisión')
+    # Conducto por defecto de la póliza: se propaga a los recibos generados en
+    # el plan de pagos (_crear_recibos_anualidad).
+    conducto_id: int = fields.Many2one(
+        'bca.conducto',
+        string='Conducto de Cobro',
+        ondelete='restrict',
+        domain="[('aseguradora_id', '=', aseguradora_id), ('activo', '=', True)]",
+    )
+    estatus_pago: str = fields.Selection(
+        ESTATUS_PAGO_SELECTION,
+        string='Estatus de Pago',
+        help='Dato declarativo del portafolio. La vigencia de pago operativa '
+             'la determina "Pagado Hasta" a partir de los recibos.',
     )
 
     prima_anual: float = fields.Monetary(
@@ -183,6 +222,21 @@ class BcaPoliza(models.Model):
     es_aportacion_adicional: bool = fields.Boolean(
         string='Aportación Adicional',
         help='Solo aplica para Vida capitalizable. Excluye recibo de PCA.',
+    )
+    coberturas_adicionales: str = fields.Text(
+        string='Coberturas Adicionales',
+        help='Coberturas adicionales incluidas en la póliza. Solo aplica para ramo Vida.',
+    )
+    beneficiario_ids: list[int] = fields.One2many(
+        'bca.poliza.beneficiario',
+        'poliza_id',
+        string='Beneficiarios',
+    )
+    beneficiarios_porcentaje_total: float = fields.Float(
+        string='% Total Beneficiarios',
+        compute='_compute_beneficiarios_porcentaje_total',
+        digits=(5, 2),
+        help='Suma de los porcentajes de los beneficiarios. Debe ser 100% al confirmar.',
     )
 
     recibo_ids: list[int] = fields.One2many(
@@ -260,6 +314,29 @@ class BcaPoliza(models.Model):
         for pol in self:
             pol.cambio_agente_count = len(pol.cambio_agente_ids)
 
+    @api.depends('beneficiario_ids.porcentaje')
+    def _compute_beneficiarios_porcentaje_total(self) -> None:
+        for pol in self:
+            pol.beneficiarios_porcentaje_total = sum(
+                pol.beneficiario_ids.mapped('porcentaje')
+            )
+
+    def _validar_porcentaje_beneficiarios(self) -> None:
+        """Si la póliza tiene beneficiarios, sus porcentajes deben sumar 100%.
+
+        Se invoca al confirmar (no como @api.constrains) para permitir la
+        captura progresiva de la póliza en borrador con datos parciales.
+        """
+        self.ensure_one()
+        if not self.beneficiario_ids:
+            return
+        total = sum(self.beneficiario_ids.mapped('porcentaje'))
+        if float_compare(total, 100.0, precision_digits=2) != 0:
+            raise ValidationError(
+                _('La suma de los porcentajes de los beneficiarios debe ser '
+                  '100%% (actual: %.2f%%).') % total
+            )
+
     @api.depends('recibo_ids.estado', 'recibo_ids.fecha_hasta')
     def _compute_pagado_hasta(self) -> None:
         """C1: Recalcula pagado_hasta como máxima fecha_hasta de recibos pagados.
@@ -290,6 +367,7 @@ class BcaPoliza(models.Model):
                     _("Solo pólizas en estado 'Borrador' pueden confirmarse "
                       "(actual: %s).") % pol.estado
                 )
+            pol._validar_porcentaje_beneficiarios()
             pol.estado = 'activa'
             pol._generar_plan_pagos()
         return True
@@ -336,6 +414,7 @@ class BcaPoliza(models.Model):
                 'fecha_hasta': fecha_hasta,
                 'prima_neta': prima_por_recibo,
                 'monto_modal': prima_por_recibo,
+                'conducto_id': self.conducto_id.id,
             })
             numero += 1
         return creados
