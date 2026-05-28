@@ -114,7 +114,8 @@ class BcaPoliza(models.Model):
         string='Asegurado',
         ondelete='restrict',
         domain=['|', ('bca_tipo', '=', 'asegurado'), ('bca_tipo', '=', 'contratante')],
-        help='Persona cuya vida está asegurada. Solo aplica para ramo Vida.',
+        help='Persona asegurada titular cuando es distinta del contratante. '
+             'Aplica para ramo Vida y GMM.',
     )
     poliza_origen_id: int = fields.Many2one(
         'bca.poliza',
@@ -161,6 +162,12 @@ class BcaPoliza(models.Model):
     recargo_fraccionamiento: float = fields.Monetary(
         string='Recargo Fraccionamiento',
         currency_field='currency_id',
+        help='Recargo por fraccionar el pago de la prima (layout: "Recargos (pago fraccionado)").',
+    )
+    recargo_fijo: float = fields.Monetary(
+        string='Recargo Fijo',
+        currency_field='currency_id',
+        help='Recargo fijo aplicado a la póliza. Dato informativo del portafolio.',
     )
     suma_asegurada: float = fields.Monetary(
         string='Suma Asegurada',
@@ -198,15 +205,27 @@ class BcaPoliza(models.Model):
     deducible: float = fields.Monetary(
         string='Deducible',
         currency_field='currency_id',
-        help='Solo aplica para ramo GMM.',
+        help='Solo aplica para ramo GMM. Influye en el factor de PCA.',
     )
     coaseguro: float = fields.Float(
         string='Coaseguro (%)',
-        help='Solo aplica para ramo GMM. Porcentaje en formato 0.05 = 5%.',
+        help='Solo aplica para ramo GMM. Porcentaje en formato 0.05 = 5%. '
+             'Un coaseguro ≤ 5% no computa PCA.',
     )
     nivel_hospitalario: str = fields.Char(
         string='Nivel Hospitalario',
         help='Solo aplica para ramo GMM.',
+    )
+    iva: float = fields.Monetary(
+        string='IVA',
+        currency_field='currency_id',
+        help='IVA correspondiente a la prima. Solo aplica para ramo GMM. '
+             'Dato informativo del portafolio; no entra en el cálculo de PCA.',
+    )
+    bca_sub_ramo_codigo: str = fields.Char(
+        string='Código Ramo / Sub-ramo',
+        help='Código del ramo o sub-ramo tal como lo entrega la aseguradora. '
+             'Informativo — el ramo operativo se deriva del producto.',
     )
 
     # Campos Vida
@@ -225,7 +244,7 @@ class BcaPoliza(models.Model):
     )
     coberturas_adicionales: str = fields.Text(
         string='Coberturas Adicionales',
-        help='Coberturas adicionales incluidas en la póliza. Solo aplica para ramo Vida.',
+        help='Coberturas adicionales incluidas en la póliza. Aplica para ramo Vida y GMM.',
     )
     beneficiario_ids: list[int] = fields.One2many(
         'bca.poliza.beneficiario',
@@ -322,12 +341,18 @@ class BcaPoliza(models.Model):
             )
 
     def _validar_porcentaje_beneficiarios(self) -> None:
-        """Si la póliza tiene beneficiarios, sus porcentajes deben sumar 100%.
+        """Si la póliza Vida tiene beneficiarios, sus porcentajes deben sumar 100%.
 
         Se invoca al confirmar (no como @api.constrains) para permitir la
         captura progresiva de la póliza en borrador con datos parciales.
+
+        Solo aplica a Vida: en GMM el mismo One2many (beneficiario_ids) se reúsa
+        para los asegurados adicionales (dependientes cubiertos), que no tienen
+        porcentaje de reparto, por lo que la regla del 100% no corresponde.
         """
         self.ensure_one()
+        if self.ramo != 'vida':
+            return
         if not self.beneficiario_ids:
             return
         total = sum(self.beneficiario_ids.mapped('porcentaje'))

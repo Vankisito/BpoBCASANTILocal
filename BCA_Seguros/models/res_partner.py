@@ -64,6 +64,10 @@ class ResPartner(models.Model):
     bca_ref_prima_basica_trad: str = fields.Char(
         string='Referencia Prima Básica (TRAD)',
     )
+    # Referencia de cobro de la prima médica (MetLife GMM).
+    bca_ref_prima_medica: str = fields.Char(
+        string='Referencia Prima (MÉDICA)',
+    )
     bca_fondo_variable: str = fields.Char(string='Fondo Variable')
     bca_fondo_fijo: str = fields.Char(string='Fondo Fijo')
     bca_fondo_variable_ppr: str = fields.Char(string='Fondo Variable PPR')

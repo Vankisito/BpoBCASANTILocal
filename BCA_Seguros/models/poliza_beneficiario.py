@@ -42,5 +42,12 @@ class BcaPolizaBeneficiario(models.Model):
         string='% al que tiene Derecho',
         digits=(5, 2),
         help='Porcentaje de la suma asegurada que corresponde al beneficiario. '
-             'La suma de todos los beneficiarios debe ser 100%.',
+             'La suma de todos los beneficiarios debe ser 100%. Solo aplica a Vida.',
+    )
+    # Usado por los asegurados adicionales (dependientes) de GMM, que reúsan este
+    # modelo. Para beneficiarios de Vida queda vacío.
+    fecha_nacimiento: fields.Date = fields.Date(
+        string='Fecha de Nacimiento',
+        help='Fecha de nacimiento del asegurado adicional (dependiente). '
+             'Solo aplica para ramo GMM.',
     )
