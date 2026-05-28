@@ -177,7 +177,8 @@ class TestRecordRules(TransactionCase):
             self.recibo_a.with_user(self.user_operador).action_cancelar_pago()
 
     def test_director_comercial_puede_cancelar_recibo(self) -> None:
-        """M5: Director Comercial es uno de los dos roles autorizados."""
+        """M5/R6: Director Comercial puede cancelar el pago. Cancelar el pago
+        revierte el recibo a 'pendiente' (no lo anula) y limpia la PCA."""
         self.recibo_a.with_user(self.user_dc).action_cancelar_pago()
-        self.assertEqual(self.recibo_a.estado, 'cancelado')
+        self.assertEqual(self.recibo_a.estado, 'pendiente')
         self.assertEqual(self.recibo_a.pca_aplicada, 0.0)
