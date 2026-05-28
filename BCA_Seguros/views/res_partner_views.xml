@@ -50,6 +50,26 @@
                 </page>
             </xpath>
 
+            <!-- C1: smart buttons de Pólizas y Recibos en contratantes y agentes.
+                 bca_tipo está presente en la vista (tab BCA Seguros), por lo que
+                 las expresiones invisible= resuelven. -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_bca_polizas"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-file-text-o"
+                        invisible="bca_tipo not in ('contratante', 'agente')">
+                    <field name="bca_poliza_count" widget="statinfo" string="Pólizas"/>
+                </button>
+                <button name="action_view_bca_recibos"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-money"
+                        invisible="bca_tipo not in ('contratante', 'agente')">
+                    <field name="bca_recibo_count" widget="statinfo" string="Recibos"/>
+                </button>
+            </xpath>
+
         </field>
     </record>
 

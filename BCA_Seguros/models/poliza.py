@@ -5,6 +5,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from .product_template import RAMO_SELECTION
+
 PERIODICIDAD_SELECTION = [
     ('mensual', 'Mensual'),
     ('trimestral', 'Trimestral'),
@@ -59,10 +61,16 @@ class BcaPoliza(models.Model):
         ondelete='restrict',
         domain=[('bca_es_producto_seguro', '=', True)],
     )
+    # Computed-editable: se autocompleta desde el producto (compat. con
+    # imports/tests que crean la póliza con producto_id y sin ramo), pero es
+    # editable para usarlo como filtro intermedio de la cascada
+    # Aseguradora → Ramo → Productos en la vista.
     ramo: str = fields.Selection(
-        related='producto_id.bca_ramo',
+        RAMO_SELECTION,
         string='Ramo',
+        compute='_compute_ramo',
         store=True,
+        readonly=False,
     )
     agente_id: int = fields.Many2one(
         'res.partner',
@@ -203,6 +211,37 @@ class BcaPoliza(models.Model):
         'El número de póliza debe ser único por aseguradora.',
     )
 
+    @api.depends('producto_id')
+    def _compute_ramo(self) -> None:
+        for pol in self:
+            if pol.producto_id:
+                pol.ramo = pol.producto_id.bca_ramo
+
+    @api.onchange('aseguradora_id', 'ramo')
+    def _onchange_filtros_producto(self) -> None:
+        """Cascada Aseguradora → Ramo → Productos: si el producto elegido ya
+        no cumple los filtros de aseguradora/ramo, lo limpia."""
+        for pol in self:
+            prod = pol.producto_id
+            if not prod:
+                continue
+            if (pol.aseguradora_id and prod.bca_aseguradora_id != pol.aseguradora_id) \
+                    or (pol.ramo and prod.bca_ramo != pol.ramo):
+                pol.producto_id = False
+
+    @api.onchange('fecha_inicio', 'periodicidad', 'temporalidad_anios', 'ramo')
+    def _onchange_fecha_fin(self) -> None:
+        """Sugiere fecha_fin (editable): Vida = inicio + temporalidad_anios;
+        otros ramos = inicio + 1 año. No se ejecuta en create (los imports de
+        portafolio fijan su propio fecha_fin)."""
+        for pol in self:
+            if not pol.fecha_inicio:
+                continue
+            if pol.ramo == 'vida' and pol.temporalidad_anios:
+                pol.fecha_fin = pol.fecha_inicio + relativedelta(years=pol.temporalidad_anios)
+            else:
+                pol.fecha_fin = pol.fecha_inicio + relativedelta(years=1)
+
     @api.depends('agente_id', 'agente_id.parent_id')
     def _compute_promotoria_id(self) -> None:
         for pol in self:
@@ -261,8 +300,52 @@ class BcaPoliza(models.Model):
             pol.estado = 'cancelada'
         return True
 
+    def _crear_recibos_anualidad(self, inicio, numero_inicial: int):
+        """Crea los recibos de UN año-póliza (anualidad) a partir de `inicio`.
+
+        El número de recibos por anualidad depende solo de la periodicidad
+        (mensual→12, trimestral→4, semestral→2, anual→1). La prima_anual se
+        fracciona dentro de cada año. El último recibo se topa a fecha_fin.
+        """
+        self.ensure_one()
+        meses = MESES_POR_PERIODO[self.periodicidad]
+        recibos_por_anio = 12 // meses
+        prima_por_recibo = (
+            (self.prima_anual or 0.0) / recibos_por_anio if recibos_por_anio else 0.0
+        )
+        fin_anualidad = inicio + relativedelta(years=1)
+        if fin_anualidad > self.fecha_fin:
+            fin_anualidad = self.fecha_fin
+
+        # bca_generando_plan: evita que el create() de bca.recibo redirija al
+        # recibo pendiente (esa protección es solo para la creación manual).
+        Recibo = self.env['bca.recibo'].with_context(bca_generando_plan=True)
+        creados = self.env['bca.recibo']
+        numero = numero_inicial
+        for i in range(recibos_por_anio):
+            fecha_desde = inicio + relativedelta(months=meses * i)
+            if fecha_desde >= fin_anualidad:
+                break
+            fecha_hasta = inicio + relativedelta(months=meses * (i + 1))
+            if fecha_hasta > fin_anualidad:
+                fecha_hasta = fin_anualidad
+            creados |= Recibo.create({
+                'poliza_id': self.id,
+                'numero_recibo': numero,
+                'fecha_desde': fecha_desde,
+                'fecha_hasta': fecha_hasta,
+                'prima_neta': prima_por_recibo,
+                'monto_modal': prima_por_recibo,
+            })
+            numero += 1
+        return creados
+
     def _generar_plan_pagos(self) -> list[int]:
-        """Genera N recibos según periodicidad.
+        """Genera los recibos del PRIMER año-póliza (anualidad vigente).
+
+        El resto del término se materializa anualidad por anualidad vía
+        _generar_siguiente_anualidad (avance automático al pagar o botón
+        manual), para no crear cientos de recibos de golpe en pólizas largas.
 
         R-POL-05: No se ejecuta si ya hay recibos pagados — protege contra
         regeneración accidental que destruiría el historial de pagos.
@@ -275,28 +358,42 @@ class BcaPoliza(models.Model):
 
         # Si había recibos solo pendientes (de un intento previo), descartarlos.
         self.recibo_ids.filtered(lambda r: r.estado == 'pendiente').unlink()
+        return self._crear_recibos_anualidad(self.fecha_inicio, 1).ids
 
-        meses = MESES_POR_PERIODO[self.periodicidad]
-        n_recibos = max(1, ((self.fecha_fin.year - self.fecha_inicio.year) * 12
-                           + (self.fecha_fin.month - self.fecha_inicio.month)) // meses)
-        prima_por_recibo = (self.prima_anual or 0.0) / n_recibos if n_recibos else 0.0
+    def _generar_siguiente_anualidad(self) -> list[int]:
+        """Genera la siguiente anualidad si aún queda término por cubrir.
 
-        Recibo = self.env['bca.recibo']
-        creados = self.env['bca.recibo']
-        for i in range(n_recibos):
-            fecha_desde = self.fecha_inicio + relativedelta(months=meses * i)
-            fecha_hasta = self.fecha_inicio + relativedelta(months=meses * (i + 1))
-            if i == n_recibos - 1 and fecha_hasta > self.fecha_fin:
-                fecha_hasta = self.fecha_fin
-            creados |= Recibo.create({
-                'poliza_id': self.id,
-                'numero_recibo': i + 1,
-                'fecha_desde': fecha_desde,
-                'fecha_hasta': fecha_hasta,
-                'prima_neta': prima_por_recibo,
-                'monto_modal': prima_por_recibo,
-            })
-        return creados.ids
+        Toma el fin de la última anualidad generada (máx fecha_hasta de los
+        recibos existentes) y crea el año siguiente, numerando a continuación.
+        Idempotente respecto al término: no genera nada si ya se llegó a
+        fecha_fin.
+        """
+        self.ensure_one()
+        if not self.recibo_ids:
+            return []
+        ultimo_fin = max(self.recibo_ids.mapped('fecha_hasta'))
+        if ultimo_fin >= self.fecha_fin:
+            return []
+        numero_inicial = max(self.recibo_ids.mapped('numero_recibo')) + 1
+        return self._crear_recibos_anualidad(ultimo_fin, numero_inicial).ids
+
+    def action_generar_siguiente_anualidad(self) -> bool:
+        """Botón manual: genera la siguiente anualidad (fallback al avance
+        automático que ocurre al pagar el último recibo de la anualidad)."""
+        self.ensure_one()
+        if self.estado != 'activa':
+            raise UserError(
+                _('Solo pólizas activas pueden generar anualidades.')
+            )
+        if self.recibo_ids.filtered(lambda r: r.estado == 'pendiente'):
+            raise UserError(
+                _('Aún hay recibos pendientes en la anualidad actual.')
+            )
+        if not self._generar_siguiente_anualidad():
+            raise UserError(
+                _('No queda término por generar: la póliza ya cubre hasta su fecha de fin.')
+            )
+        return True
 
     def cambiar_agente(self, nuevo_agente, motivo: str) -> bool:
         """M4: Único punto autorizado para cambiar el agente de una póliza.

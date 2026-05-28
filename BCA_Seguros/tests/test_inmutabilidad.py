@@ -120,6 +120,65 @@ class TestInmutabilidad(TransactionCase):
         self.assertFalse(recibo.fecha_pago)
         self.assertFalse(recibo.pca_aplicada)
 
+    # --- R6: cancelar pago (→ pendiente) vs anular recibo (→ cancelado) ---
+
+    def _promover_a_director(self) -> None:
+        director = self.env.ref('BCA_Seguros.group_bca_director')
+        self.env.user.group_ids = [(4, director.id)]
+
+    def test_cancelar_pago_revierte_a_pendiente(self) -> None:
+        """R6: 'Cancelar Pago' deshace el pago y limpia los datos; NO anula."""
+        self._promover_a_director()
+        poliza = self._crear_poliza_activa()
+        recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
+        recibo.action_registrar_pago({
+            'fecha_pago': date(2026, 1, 15),
+            'prima_neta': 1000.0,
+        })
+        self.assertEqual(recibo.estado, 'pagado')
+
+        recibo.action_cancelar_pago()
+        self.assertEqual(recibo.estado, 'pendiente',
+                         'Cancelar el pago debe devolver el recibo a pendiente.')
+        self.assertFalse(recibo.fecha_pago)
+        self.assertFalse(recibo.conducto_id)
+        self.assertFalse(recibo.agente_id)
+        self.assertEqual(recibo.pca_aplicada, 0.0)
+        self.assertFalse(poliza.pagado_hasta)
+
+    def test_cancelar_pago_respeta_fifo(self) -> None:
+        """R6: solo el último recibo pagado puede revertirse."""
+        self._promover_a_director()
+        poliza = self._crear_poliza_activa()
+        recibos = poliza.recibo_ids.sorted('numero_recibo')
+        recibos[0].action_registrar_pago({
+            'fecha_pago': date(2026, 1, 15), 'prima_neta': 1000.0,
+        })
+        recibos[1].action_registrar_pago({
+            'fecha_pago': date(2026, 2, 15), 'prima_neta': 1000.0,
+        })
+        with self.assertRaises(UserError):
+            recibos[0].action_cancelar_pago()
+
+    def test_anular_recibo_pendiente(self) -> None:
+        """R6: 'Anular Recibo' lleva un pendiente a cancelado."""
+        self._promover_a_director()
+        poliza = self._crear_poliza_activa()
+        recibo = poliza.recibo_ids.sorted('numero_recibo')[-1]
+        recibo.action_anular_recibo()
+        self.assertEqual(recibo.estado, 'cancelado')
+
+    def test_anular_recibo_pagado_rechazado(self) -> None:
+        """R6: no se puede anular un recibo pagado (cancelar el pago primero)."""
+        self._promover_a_director()
+        poliza = self._crear_poliza_activa()
+        recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
+        recibo.action_registrar_pago({
+            'fecha_pago': date(2026, 1, 15), 'prima_neta': 1000.0,
+        })
+        with self.assertRaises(UserError):
+            recibo.action_anular_recibo()
+
     def test_bitacora_es_inmutable(self) -> None:
         """Plan §2.3.5: write/unlink sobre bitácora levantan UserError para no-su."""
         bitacora = self.env['bca.bitacora.importacion'].sudo().create({

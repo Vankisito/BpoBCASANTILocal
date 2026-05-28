@@ -131,3 +131,57 @@ class TestPoliza(TransactionCase):
         poliza = self._crear_poliza()
         with self.assertRaises(ValidationError):
             poliza.cambiar_agente(self.contratante, motivo='Inválido')
+
+    # --- P5: generación por anualidad con avance automático ---
+
+    def test_anualidad_vida_anual_genera_un_recibo(self) -> None:
+        """Vida anual 10 años: al confirmar solo se genera la 1ª anualidad."""
+        poliza = self._crear_poliza(
+            periodicidad='anual',
+            fecha_fin=date(2036, 1, 1),
+            temporalidad_anios=10,
+        )
+        poliza.action_confirmar()
+        self.assertEqual(len(poliza.recibo_ids), 1,
+                         'Solo debe generarse el recibo de la anualidad vigente.')
+        recibo = poliza.recibo_ids
+        self.assertEqual(recibo.numero_recibo, 1)
+        self.assertEqual(recibo.fecha_desde, date(2026, 1, 1))
+        self.assertEqual(recibo.fecha_hasta, date(2027, 1, 1))
+        self.assertAlmostEqual(recibo.prima_neta, 12000.0, places=2)
+
+    def test_anualidad_avance_al_pagar(self) -> None:
+        """Pagar el último recibo de la anualidad genera la siguiente."""
+        poliza = self._crear_poliza(
+            periodicidad='anual',
+            fecha_fin=date(2036, 1, 1),
+            temporalidad_anios=10,
+        )
+        poliza.action_confirmar()
+        poliza.recibo_ids.action_registrar_pago({
+            'fecha_pago': date(2026, 1, 15),
+            'prima_neta': 12000.0,
+        })
+        self.assertEqual(len(poliza.recibo_ids), 2,
+                         'Al pagar la anualidad vigente se genera la siguiente.')
+        pendiente = poliza.recibo_ids.filtered(lambda r: r.estado == 'pendiente')
+        self.assertEqual(len(pendiente), 1)
+        self.assertEqual(pendiente.numero_recibo, 2)
+        self.assertEqual(pendiente.fecha_desde, date(2027, 1, 1))
+        self.assertEqual(pendiente.fecha_hasta, date(2028, 1, 1))
+
+    def test_anualidad_no_excede_fecha_fin(self) -> None:
+        """Al cubrir hasta fecha_fin no se generan más anualidades."""
+        poliza = self._crear_poliza(
+            periodicidad='anual',
+            fecha_fin=date(2027, 1, 1),
+            temporalidad_anios=1,
+        )
+        poliza.action_confirmar()
+        poliza.recibo_ids.action_registrar_pago({
+            'fecha_pago': date(2026, 1, 15),
+            'prima_neta': 12000.0,
+        })
+        self.assertEqual(len(poliza.recibo_ids), 1,
+                         'La póliza ya cubre hasta fecha_fin: sin nuevas anualidades.')
+        self.assertEqual(poliza.recibo_ids.estado, 'pagado')

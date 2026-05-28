@@ -20,6 +20,7 @@
                 <field name="currency_id" column_invisible="True"/>
                 <field name="fecha_pago" optional="show"/>
                 <field name="conducto_id" optional="hide"/>
+                <field name="agente_poliza_id" optional="show"/>
                 <field name="agente_id" optional="hide"/>
                 <field name="promotoria_id" optional="hide"/>
                 <field name="pca_aplicada" widget="monetary"
@@ -48,8 +49,14 @@
                     <button name="action_cancelar_pago"
                             type="object"
                             string="Cancelar Pago"
-                            confirm="Vas a cancelar este pago. La PCA se reseteará a 0 y la póliza retrocederá pagado_hasta. ¿Continuar?"
+                            confirm="Vas a deshacer este pago: el recibo volverá a Pendiente y se limpiarán los datos del pago (PCA, conducto, fecha). ¿Continuar?"
                             invisible="estado != 'pagado'"
+                            groups="BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"/>
+                    <button name="action_anular_recibo"
+                            type="object"
+                            string="Anular Recibo"
+                            confirm="Vas a anular este recibo: quedará Cancelado y no se cobrará. ¿Continuar?"
+                            invisible="estado != 'pendiente'"
                             groups="BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"/>
                     <field name="estado" widget="statusbar"
                            statusbar_visible="pendiente,pagado,cancelado"/>
@@ -77,13 +84,13 @@
                             <field name="currency_id" readonly="1"/>
                         </group>
                         <group string="Importes">
-                            <field name="monto_modal"
-                                   readonly="estado != 'pendiente'"/>
-                            <field name="recargo"
-                                   readonly="estado != 'pendiente'"/>
-                            <field name="prima_neta"
-                                   readonly="estado != 'pendiente'"/>
-                            <field name="prima_total"
+                            <!-- Vienen del plan de pagos de la póliza (readonly).
+                                 Solo prima_total ("lo que paga el cliente") es
+                                 editable mientras el recibo esté pendiente. -->
+                            <field name="monto_modal" widget="monetary" readonly="1"/>
+                            <field name="recargo" widget="monetary" readonly="1"/>
+                            <field name="prima_neta" widget="monetary" readonly="1"/>
+                            <field name="prima_total" widget="monetary"
                                    readonly="estado != 'pendiente'"/>
                         </group>
                     </group>
@@ -96,6 +103,7 @@
                                    help="Completá antes de presionar 'Registrar Pago'."/>
                             <field name="conducto_id"
                                    options="{'no_create': True}"
+                                   required="estado == 'pendiente'"
                                    readonly="estado == 'pagado'"/>
                             <field name="folio_endoso"
                                    readonly="estado == 'pagado'"/>
@@ -132,6 +140,7 @@
             <search string="Buscar Recibos">
                 <field name="name"/>
                 <field name="poliza_id"/>
+                <field name="agente_poliza_id"/>
                 <field name="agente_id"/>
                 <field name="promotoria_id"/>
                 <field name="conducto_id"/>
@@ -153,7 +162,7 @@
                     <filter name="group_estado" string="Estado"
                             context="{'group_by': 'estado'}"/>
                     <filter name="group_agente" string="Agente"
-                            context="{'group_by': 'agente_id'}"/>
+                            context="{'group_by': 'agente_poliza_id'}"/>
                     <filter name="group_promotoria" string="Promotoría"
                             context="{'group_by': 'promotoria_id'}"/>
                     <filter name="group_conducto" string="Conducto"

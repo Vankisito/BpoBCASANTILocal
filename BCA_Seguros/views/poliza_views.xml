@@ -43,6 +43,10 @@
                             string="Confirmar"
                             class="oe_highlight"
                             invisible="estado != 'borrador'"/>
+                    <button name="action_generar_siguiente_anualidad"
+                            type="object"
+                            string="Generar siguiente anualidad"
+                            invisible="estado != 'activa'"/>
                     <button name="action_cancelar"
                             type="object"
                             string="Cancelar"
@@ -81,13 +85,18 @@
                     </div>
                     <group>
                         <group string="Aseguradora y producto">
+                            <!-- Cascada Aseguradora → Ramo → Productos: el
+                                 domain de producto_id se filtra por la
+                                 aseguradora y el ramo elegidos. -->
                             <field name="aseguradora_id"
                                    options="{'no_create': True}"
                                    readonly="estado != 'borrador'"/>
+                            <field name="ramo"
+                                   readonly="estado != 'borrador'"/>
                             <field name="producto_id"
                                    options="{'no_create': True}"
+                                   domain="[('bca_es_producto_seguro', '=', True), ('bca_aseguradora_id', '=', aseguradora_id), ('bca_ramo', '=', ramo)]"
                                    readonly="estado != 'borrador'"/>
-                            <field name="ramo"/>
                             <field name="poliza_origen_id"
                                    options="{'no_create': True}"
                                    readonly="estado != 'borrador'"/>
@@ -114,13 +123,13 @@
                             <field name="currency_id"
                                    options="{'no_create': True}"
                                    readonly="estado != 'borrador'"/>
-                            <field name="prima_anual"
+                            <field name="prima_anual" widget="monetary"
                                    readonly="estado != 'borrador'"/>
-                            <field name="prima_fraccionada"
+                            <field name="prima_fraccionada" widget="monetary"
                                    readonly="estado != 'borrador'"/>
-                            <field name="recargo_fraccionamiento"
+                            <field name="recargo_fraccionamiento" widget="monetary"
                                    readonly="estado != 'borrador'"/>
-                            <field name="suma_asegurada"
+                            <field name="suma_asegurada" widget="monetary"
                                    readonly="estado != 'borrador'"/>
                         </group>
                     </group>
@@ -137,7 +146,7 @@
                         <page name="atributos_gmm" string="Atributos GMM"
                               invisible="ramo != 'gmm'">
                             <group>
-                                <field name="deducible"/>
+                                <field name="deducible" widget="monetary"/>
                                 <field name="coaseguro"/>
                                 <field name="nivel_hospitalario"/>
                             </group>
