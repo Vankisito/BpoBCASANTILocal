@@ -4,6 +4,56 @@
 
 ---
 
+## Sesión 2026-05-27 (c) — Etapa 6: Parsers de cobranza MetLife + Qualitas placeholder
+
+### Qué se hizo
+Etapa 6 cerrada. Los parsers de cobranza para MetLife (LSP y GCAYE) están funcionales: leen filas dict-like, normalizan montos y fechas, buscan póliza por nombre+aseguradora, aplican FIFO al primer recibo pendiente vía `recibo.action_registrar_pago` (ya existente desde E2), resuelven conducto por `codigo_archivo` y reportan resultado en formato compatible con `bca.bitacora.linea` (`{'marca','recibo_id','mensaje','numero_poliza_raw'}`). Qualitas queda como placeholder con `NotImplementedError`. El wizard de Cobranza Diaria (E8) consumirá los parsers tal como están — firmas estables.
+
+### Decisiones tomadas con el usuario (antes de implementar)
+- **CSV reales aún no disponibles**: implementar con nombres de columnas según specs (§5.3 + §4.2) marcados como TODO; confirmar contra CSV real antes de E8.
+- **Librería CSV**: `csv.DictReader` (stdlib) + `decimal.Decimal` — sin agregar `pandas` a `external_dependencies`.
+- **Alcance de tests**: suite completa de 18 tests (terminaron siendo 19 — agregué `test_normalizar_monto` para input solo-espacios).
+
+### Archivos modificados
+- `BCA_Seguros/parsers/base.py` — refactor: `validar_estructura(fieldnames)` (era `(df)`), wrapper `procesar_fila` con R-COB-08 (try/except + `env.cr.savepoint()` por fila), helpers compartidos (`_buscar_poliza`, `_primer_recibo_pendiente`, `_resolver_conducto`, `_linea_error`). `normalizar_monto` con `Decimal(texto.replace(',', '')).quantize(Decimal('0.01'))`; `normalizar_fecha` con `strptime('%d/%m/%Y')`. Vacío/None → 0.0 en monto, `ValidationError` en fecha.
+- `BCA_Seguros/parsers/metlife_lsp.py` — `ParserMetLifeVida` con 13 columnas LSP tentativas (TODO confirmar). `_procesar_fila_interna` mapea `prima_modal` → `prima_neta`, sin `folio_endoso`.
+- `BCA_Seguros/parsers/metlife_gcaye.py` — `ParserMetLifeGMM` con 14 columnas GCAYE + `filtrar_filas` aplica R-COB-01: filas con `estatus_pago in {'anulado','cancelado'}` se omiten, crea línea bitácora `marca='anulado'` vía `sudo()` e incrementa `anulaciones_ignoradas` en cabecera. `_procesar_fila_interna` toma `prima_neta` columnar y propaga `folio_endoso`.
+- `BCA_Seguros/parsers/qualitas.py` — **NUEVO**. `ParserQualitas(ParserBase)` con `aseguradora_codigo='QUALITAS'`, `ramo='autos'`, `_procesar_fila_interna` lanza `NotImplementedError('Parser Qualitas no implementado (post v1.0).')`. El wrapper de base NO atrapa `NotImplementedError` (placeholders abortan).
+- `BCA_Seguros/parsers/__init__.py` — registrada combinación `('QUALITAS','autos')` en `_REGISTRY`. Exportado `ParserQualitas`.
+- `BCA_Seguros/tests/test_parsers.py` — **NUEVO**. 5 clases / 19 tests con `@tagged('BCA_Seguros')`: TestParserRegistry (4), TestParserBase (6), TestParserMetLifeVida (5), TestParserMetLifeGMM (3), TestParserQualitas (1). `setUpClass` arma fixture mínima (promotoría + agente + contratante + producto + póliza confirmada con 12 recibos + bitácora cabecera vía `sudo()`).
+- `BCA_Seguros/tests/__init__.py` — agregado `test_parsers` al import.
+
+### Decisiones de implementación
+- **`csv.DictReader` (stdlib)**: rechazado `pandas` (+ numpy) por ~30 MB de dependencia para iteración secuencial fila por fila. La firma `validar_estructura(df)` se cambió a `validar_estructura(fieldnames: list[str])` — retrocompatible porque solo el wizard E8 (aún no existe) la consumirá.
+- **`decimal.Decimal` interno → `float()` al recibo**: `bca.recibo.prima_neta` es Monetary (float interno); convertir a `float` justo antes de pasar a `action_registrar_pago` mantiene la precisión a 2 decimales sin tocar el modelo.
+- **R-COB-08 con savepoint por fila**: `with env.cr.savepoint(): recibo.action_registrar_pago(vals)`. Si `UserError`/`ValidationError`, el savepoint hace rollback y el wrapper convierte la excepción en `marca='error'` sin contaminar el resto del lote.
+- **R-COB-01 con side-effect en `filtrar_filas` (GMM)**: el parser es dueño de la regla de anulaciones; crear la línea bitácora directamente desde `filtrar_filas` mantiene el wizard E8 simple (no necesita conocer estatus de cada fila). Alternativa rechazada: retornar tuple `(filtradas, anuladas)` complica al consumer.
+- **`procesar_fila` NO atrapa `NotImplementedError`**: el wrapper deja propagar para que `ParserQualitas` aborte el flujo. Otros parsers no levantan ese error porque heredan `_procesar_fila_interna` concreto.
+- **Helpers en `ParserBase`** (`_buscar_poliza`, `_primer_recibo_pendiente`, `_resolver_conducto`): evitan duplicación entre LSP y GCAYE; ambos parsers comparten la misma lógica de búsqueda póliza+aseguradora y resolución de conducto vía `codigo_archivo`.
+- **`test.invalidate_recordset(['anulaciones_ignoradas'])`** en `test_metlife_gmm_anulacion_se_ignora` para forzar refresh del campo tras el write con `sudo()` desde `filtrar_filas` — sin esto el cache del recordset podía retornar el valor anterior.
+
+### Estado del checklist Etapa 6 (Plan §Etapa 6)
+- [x] `get_parser('METLIFE', 'vida')` retorna `ParserMetLifeVida` — test `test_get_parser_metlife_vida_returns_class`
+- [x] `get_parser('DESCONOCIDA', 'vida')` lanza `UserError` con "Parsers disponibles" — test `test_get_parser_desconocida_raises_usererror`
+- [x] `validar_estructura()` detecta columna faltante antes de procesar ninguna fila — test `test_validar_estructura_detecta_columnas_faltantes`
+- [x] Normalización de fechas DD/MM/YYYY → date funciona — test `test_normalizar_fecha_formato_metlife`
+- [x] Normalización de importes con coma como miles funciona — test `test_normalizar_monto_coma_miles`
+
+### Verificación en sandbox_bca1 (APROBADA — 2026-05-28 00:23 UTC)
+Deploy automático vía `deploy-sandbox.yml` tras push del commit `bb7843a` a `desarrollo`. Tests:
+```bash
+docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http
+```
+Resultado: **80 tests, 13.62s, 3314 queries, 0 failures, 0 errors** ✅. Los 19 tests nuevos de `test_parsers` corren limpios (4 TestParserRegistry + 6 TestParserBase + 5 TestParserMetLifeVida + 3 TestParserMetLifeGMM + 1 TestParserQualitas). Cero regresiones en `test_poliza`, `test_inmutabilidad`, `test_record_rules`, `test_crm_lead`, `test_hr_applicant`, `test_views_xml`.
+
+### Pendientes para próxima sesión
+- **Antes de Etapa 8**: confirmar con cliente los CSV reales de MetLife (LSP + GCAYE) para validar los 13/14 nombres de columnas tentativos en `metlife_lsp.py` y `metlife_gcaye.py`, y los 4 `codigo_archivo` del seed `data/conductos_metlife.xml`. Si difieren, actualizar en `data/conductos_metlife.xml` (con script de migración por el `noupdate="1"`) y en las constantes `COLUMNAS_LSP`/`COLUMNAS_GCAYE`.
+- **Etapa 7** (calculadores PCA reales): `CalculadorPCAMetLife.calcular()` hoy lanza `NotImplementedError` (atrapado por `recibo._calcular_pca` como stub temporal de E2). Implementar Vida (factor por producto + exclusiones por temporalidad/aportación adicional) y GMM (factor por coaseguro/deducible).
+- **Etapa 8** (wizards funcionales): `bca.wizard.cobranza.diaria.action_procesar_archivo()` consume `get_parser()`, llama `validar_estructura(reader.fieldnames)`, `filtrar_filas(list(reader))`, itera con `procesar_fila` y crea la `bca.bitacora.importacion` cabecera + líneas con el dict que devuelven los parsers. Encoding Latin-1 (R-GLOB-01) se gestiona acá.
+- **Etapa 9** (reportes SQL): completar query SQL de los 4 modelos report y crear vistas pivot/graph en `reportes_views.xml`.
+
+---
+
 ## Sesión 2026-05-27 (b) — Etapa 10: Vistas XML completas + menú navegable
 
 ### Qué se hizo
