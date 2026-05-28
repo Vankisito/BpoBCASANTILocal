@@ -12,6 +12,17 @@
                     <group>
                         <group name="bca_clasificacion" string="Clasificación">
                             <field name="bca_tipo"/>
+                            <!-- Parent jerárquico BCA: Holding para Promotoría,
+                                 Promotoría para Agente. El _check_jerarquia valida
+                                 el tipo final al guardar; el domain es solo guía
+                                 UX. Necesario en el tab porque la vista base oculta
+                                 parent_id cuando is_company=True. -->
+                            <field name="parent_id"
+                                   string="Pertenece a"
+                                   domain="[('bca_tipo', 'in', ['holding', 'promotoria'])]"
+                                   options="{'no_create': True}"
+                                   required="bca_tipo in ('promotoria', 'agente')"
+                                   invisible="bca_tipo not in ('promotoria', 'agente')"/>
                             <field name="bca_codigo_aseguradora"
                                    invisible="bca_tipo != 'aseguradora'"/>
                             <field name="bca_promotoria_id"

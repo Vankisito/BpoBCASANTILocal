@@ -4,6 +4,26 @@
 
 ---
 
+## Sesión 2026-05-27 (d) — Hotfix UI E10: `parent_id` visible en tab BCA
+
+### Qué se hizo
+Durante test manual de E10 el usuario reportó que al crear una Promotoría o Agente desde **BCA Seguros → Configuración → Promotorías/Agentes**, no aparecía el campo "Compañía relacionada / Parent" — la vista form base de Odoo 19 oculta `parent_id` cuando `is_company=True`, y el modelo BCA viola esa asunción (Promotorías son `is_company=True` Y tienen parent). Resultado: cualquier intento de guardar levantaba `ValidationError "Una Promotoría debe pertenecer a un Holding BCA"` sin input visible para corregir.
+
+### Archivo modificado
+- `BCA_Seguros/views/res_partner_views.xml` — agregado `<field name="parent_id" string="Pertenece a">` al grupo `bca_clasificacion` del tab "BCA Seguros". Domain `[('bca_tipo', 'in', ['holding', 'promotoria'])]`. `required="bca_tipo in ('promotoria', 'agente')"`. `invisible="bca_tipo not in ('promotoria', 'agente')"`. La constraint Python `_check_jerarquia` sigue activa y valida el tipo final (Holding para Promotoría, Promotoría para Agente).
+
+### Decisiones de implementación
+- **No tocar la vista base con xpath sobre `parent_id`**: confinar el cambio al tab BCA mantiene el comportamiento normal de `res.partner` para todos los demás contactos del sistema.
+- **No quitar `default_is_company=True` del context de `action_partner_promotorias`**: la Promotoría conceptualmente ES una empresa; pelearse con eso rompe integraciones futuras (Sales, Accounting).
+- **`<field name="parent_id">` duplicado en vista combinada**: aparece una vez en la vista base (oculto cuando `is_company`) y otra en el tab BCA (visible cuando `bca_tipo in (promotoria, agente)`). Odoo permite esto — cada `<field>` es una instancia independiente en el DOM final.
+
+### Verificación pendiente en sandbox_bca1
+Tras commit + push, el deploy automático corre `-u BCA_Seguros`. Esperar:
+- Tests automáticos: **80 tests verdes** (idéntico al baseline post-E6 — el hotfix no agrega tests).
+- Test manual UI: en **Configuración → Promotorías → Crear**, el campo "Pertenece a" debe aparecer en tab BCA Seguros con asterisco rojo y dropdown filtrado a Holdings.
+
+---
+
 ## Sesión 2026-05-27 (c) — Etapa 6: Parsers de cobranza MetLife + Qualitas placeholder
 
 ### Qué se hizo

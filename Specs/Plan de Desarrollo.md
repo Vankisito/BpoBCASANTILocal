@@ -709,6 +709,7 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 - [x] Skeleton wizards (E8) y reportes (E9) cargan sin error
 - [x] Menú raíz BCA con jerarquía Pólizas | Cobranza | Reportes | Configuración
 - [x] 12 tests nuevos validan parseo XML de todas las vistas + actions del menú
+- [x] Campo `parent_id` visible y editable cuando `bca_tipo in (promotoria, agente)` (hotfix 2026-05-27 d)
 
 ---
 
