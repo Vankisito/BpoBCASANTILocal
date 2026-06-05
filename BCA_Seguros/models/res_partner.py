@@ -11,10 +11,18 @@ TIPO_SELECTION = [
     ('contratante', 'Contratante'),
     ('asegurado', 'Asegurado'),
 ]
+# Nomenclatura de carrera del agente (BDD §"Agentes — identidad y nomenclatura").
+# Es el estado POR ASEGURADORA y vive en el modelo puente
+# res.partner.agente.aseguradora. En res.partner, bca_estado_agente es un
+# rollup computado de estos valores (ver _compute_bca_estado_agente).
+# Solo 'clave_definitiva' computa para PCA.
 ESTADO_AGENTE_SELECTION = [
     ('prospecto', 'Prospecto'),
-    ('con_licencia', 'Con Licencia'),
+    ('clave_arranque', 'Clave de Arranque'),
+    ('clave_definitiva', 'Clave Definitiva'),
 ]
+# Prioridad para el rollup: el "mejor" estado alcanzado en alguna aseguradora.
+_ESTADO_AGENTE_PRIORIDAD = ['clave_definitiva', 'clave_arranque', 'prospecto']
 ESTADO_CIVIL_SELECTION = [
     ('soltero', 'Soltero(a)'),
     ('casado', 'Casado(a)'),
@@ -37,12 +45,19 @@ class ResPartner(models.Model):
         string='Tipo BCA',
         index=True,
     )
+    # Rollup computado y almacenado del estado de carrera del agente: el "mejor"
+    # estado alcanzado en cualquiera de sus aseguradoras (Definitiva > Arranque >
+    # Prospecto; sin claves = Prospecto). NO se edita a mano: la fuente de verdad
+    # es el modelo puente, que Reclutamiento alimenta vía automated actions.
+    # Sirve solo para filtros/listas/visual; la PCA filtra por el estado del
+    # PUENTE (clave_definitiva) por aseguradora, no por este campo.
     bca_estado_agente: str = fields.Selection(
         ESTADO_AGENTE_SELECTION,
         string='Estado Agente',
+        compute='_compute_bca_estado_agente',
+        store=True,
         index=True,
     )
-    bca_fecha_licencia: fields.Date = fields.Date(string='Fecha de Licencia')
     bca_codigo_aseguradora: str = fields.Char(
         string='Código Aseguradora',
         index=True,
@@ -106,6 +121,23 @@ class ResPartner(models.Model):
         string='# Recibos',
         compute='_compute_bca_counts',
     )
+
+    @api.depends('bca_tipo', 'agente_aseguradora_ids.estado')
+    def _compute_bca_estado_agente(self) -> None:
+        """Rollup del estado de carrera: el mejor estado en cualquier aseguradora.
+
+        Sin claves (o no-agente) → 'prospecto'. La fuente de verdad es el puente
+        res.partner.agente.aseguradora; aquí solo se proyecta para filtros/listas.
+        """
+        for rec in self:
+            if rec.bca_tipo != 'agente':
+                rec.bca_estado_agente = False
+                continue
+            estados = set(rec.agente_aseguradora_ids.mapped('estado'))
+            rec.bca_estado_agente = next(
+                (e for e in _ESTADO_AGENTE_PRIORIDAD if e in estados),
+                'prospecto',
+            )
 
     @api.depends('bca_tipo', 'parent_id')
     def _compute_promotoria_id(self) -> None:

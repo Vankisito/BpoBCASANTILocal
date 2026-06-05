@@ -31,19 +31,27 @@ class TestPoliza(TransactionCase):
             'name': 'Agente A',
             'bca_tipo': 'agente',
             'parent_id': cls.promotoria_a.id,
-            'bca_estado_agente': 'con_licencia',
         })
         cls.agente_b = Partner.create({
             'name': 'Agente B',
             'bca_tipo': 'agente',
             'parent_id': cls.promotoria_b.id,
-            'bca_estado_agente': 'con_licencia',
         })
         cls.contratante = Partner.create({
             'name': 'Cliente Test',
             'bca_tipo': 'contratante',
         })
         cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
+        # bca_estado_agente es un rollup computed: para que los agentes "jueguen"
+        # se les da clave definitiva vía el modelo puente (fuente de verdad).
+        AgenteAseg = cls.env['res.partner.agente.aseguradora']
+        for idx, agente in enumerate((cls.agente_a, cls.agente_b)):
+            AgenteAseg.create({
+                'agente_id': agente.id,
+                'aseguradora_id': cls.aseguradora.id,
+                'clave_agente': 'CLV-%s' % idx,
+                'estado': 'clave_definitiva',
+            })
         cls.producto = cls.env['product.template'].create({
             'name': 'Vida LSP Test',
             'bca_es_producto_seguro': True,

@@ -31,8 +31,9 @@
                         </group>
                         <group name="bca_agente" string="Datos de Agente"
                                invisible="bca_tipo != 'agente'">
-                            <field name="bca_estado_agente"/>
-                            <field name="bca_fecha_licencia"/>
+                            <!-- Rollup readonly: se deriva de las claves por
+                                 aseguradora (abajo). No editable a mano. -->
+                            <field name="bca_estado_agente" readonly="1"/>
                         </group>
                     </group>
                     <group name="bca_claves" string="Claves por Aseguradora"
@@ -122,9 +123,12 @@
                 <filter name="filter_contratantes" string="Contratantes"
                         domain="[('bca_tipo', '=', 'contratante')]"/>
                 <separator/>
-                <filter name="filter_agente_con_licencia" string="Agentes con Licencia"
+                <filter name="filter_agente_definitiva" string="Agentes con Clave Definitiva"
                         domain="[('bca_tipo', '=', 'agente'),
-                                 ('bca_estado_agente', '=', 'con_licencia')]"/>
+                                 ('bca_estado_agente', '=', 'clave_definitiva')]"/>
+                <filter name="filter_agente_arranque" string="Agentes con Clave de Arranque"
+                        domain="[('bca_tipo', '=', 'agente'),
+                                 ('bca_estado_agente', '=', 'clave_arranque')]"/>
                 <filter name="filter_agente_prospecto" string="Agentes Prospecto"
                         domain="[('bca_tipo', '=', 'agente'),
                                  ('bca_estado_agente', '=', 'prospecto')]"/>

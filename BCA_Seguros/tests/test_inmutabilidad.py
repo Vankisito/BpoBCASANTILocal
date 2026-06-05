@@ -23,13 +23,19 @@ class TestInmutabilidad(TransactionCase):
             'name': 'Agente Test',
             'bca_tipo': 'agente',
             'parent_id': cls.promotoria.id,
-            'bca_estado_agente': 'con_licencia',
         })
         cls.contratante = Partner.create({
             'name': 'Cliente Test',
             'bca_tipo': 'contratante',
         })
         cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
+        # Rollup bca_estado_agente: clave definitiva vía puente (fuente de verdad).
+        cls.env['res.partner.agente.aseguradora'].create({
+            'agente_id': cls.agente.id,
+            'aseguradora_id': cls.aseguradora.id,
+            'clave_agente': 'CLV-INM',
+            'estado': 'clave_definitiva',
+        })
         cls.producto = cls.env['product.template'].create({
             'name': 'Vida LSP Test',
             'bca_es_producto_seguro': True,

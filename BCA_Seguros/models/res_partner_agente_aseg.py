@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from odoo import fields, models
 
+from .res_partner import ESTADO_AGENTE_SELECTION
+
 
 class ResPartnerAgenteAseguradora(models.Model):
     _name = 'res.partner.agente.aseguradora'
@@ -25,10 +27,14 @@ class ResPartnerAgenteAseguradora(models.Model):
         index=True,
     )
     clave_agente: str = fields.Char(string='Clave Agente', required=True)
+    # Estado de carrera del agente EN ESTA aseguradora (fuente de verdad).
+    # Solo 'clave_definitiva' computa para PCA. Reclutamiento lo alimenta vía
+    # automated actions; el rollup res.partner.bca_estado_agente se deriva de aquí.
     estado: str = fields.Selection(
-        [('prospecto', 'Prospecto'), ('con_licencia', 'Con Licencia')],
+        ESTADO_AGENTE_SELECTION,
         string='Estado',
         required=True,
+        default='prospecto',
     )
     fecha_licencia: fields.Date = fields.Date(string='Fecha de Licencia')
 

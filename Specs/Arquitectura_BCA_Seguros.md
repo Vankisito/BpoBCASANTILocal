@@ -104,13 +104,14 @@ crm.lead (pipeline venta de pólizas)
 | Campo nuevo | Tipo | Descripción |
 |---|---|---|
 | `bca_tipo` | Selection `index=True` | `holding`, `aseguradora`, `promotoria`, `agente`, `contratante` |
-| `bca_estado_agente` | Selection `index=True` | `prospecto`, `con_licencia`. Solo si `bca_tipo = 'agente'` |
-| `bca_fecha_licencia` | Date | Fecha en que pasó a "con licencia" |
+| `bca_estado_agente` | Selection **computed `store=True`** `index=True` | Rollup de carrera: `prospecto`, `clave_arranque`, `clave_definitiva`. Es el "mejor" estado alcanzado en cualquier aseguradora (Definitiva > Arranque > Prospecto; sin claves = Prospecto). **No editable a mano** — se deriva del modelo puente. Solo para filtros/listas/visual. **La PCA NO filtra por este campo** (ver corrección PCA). |
 | `bca_codigo_aseguradora` | Char `index=True` | Código corto interno (METLIFE, QUALITAS, INSURANCE) |
 | `bca_promotoria_id` | Many2one (computed, **sin store**) | Para agentes: retorna `parent_id` si es promotoría |
 | `agente_aseguradora_ids` | One2many → `res.partner.agente.aseguradora` | Asociaciones del agente con aseguradoras y sus claves |
 
 > **[CORRECCIÓN C3]** Los campos `bca_clave_agente` (Char) y `bca_aseguradoras_ids` (Many2many) fueron **eliminados** de `res.partner`. No es posible implementar un constraint SQL `UNIQUE(clave, aseguradora)` sobre una relación Many2many. Se reemplazan por el modelo puente `res.partner.agente.aseguradora` (sección 2.3.0) que sí soporta el constraint real.
+
+> **[NOMENCLATURA DE AGENTES — DECISIÓN D-07]** El estado de carrera del agente tiene **tres niveles** (`prospecto` → `clave_arranque` → `clave_definitiva`) y es **por aseguradora**: vive en el modelo puente `res.partner.agente.aseguradora.estado` (fuente de verdad). En `res.partner`, `bca_estado_agente` es un **rollup computado `store=True`** del puente (no se edita a mano). El campo redundante `bca_fecha_licencia` se **eliminó** de `res.partner` (la fecha es por aseguradora: `res.partner.agente.aseguradora.fecha_licencia`). Reclutamiento (`hr_recruitment`) maneja todo el ciclo y alimenta el puente vía automated actions; el contacto solo refleja el rollup + un smart button al registro de reclutamiento. Ver §2.2.3 (integración Reclutamiento) y `Decisiones.md` D-07. **Solo `clave_definitiva` computa para PCA.**
 
 > **[CORRECCIÓN A2]** Los campos `bca_tipo`, `bca_estado_agente` y `bca_codigo_aseguradora` deben declararse con `index=True`. `res.partner` es la tabla más consultada de Odoo; sin índices los filtros por tipo causan full table scan.
 
@@ -134,8 +135,8 @@ Este modelo reemplaza la antigua Many2many `bca_aseguradoras_ids` en `res.partne
 | `agente_id` | Many2one (`res.partner`) | Agente. `ondelete='cascade'`. Domain: `bca_tipo='agente'` |
 | `aseguradora_id` | Many2one (`res.partner`) | Aseguradora. `ondelete='restrict'`. Domain: `bca_tipo='aseguradora'` |
 | `clave_agente` | Char | Clave exacta que usa la aseguradora para identificar al agente |
-| `estado` | Selection | `prospecto`, `con_licencia` |
-| `fecha_licencia` | Date | Fecha en que la clave pasó a activa |
+| `estado` | Selection (default `prospecto`) | **Fuente de verdad** del estado de carrera EN ESTA aseguradora: `prospecto`, `clave_arranque`, `clave_definitiva`. **Solo `clave_definitiva` computa para PCA.** Alimentado por Reclutamiento vía automated actions |
+| `fecha_licencia` | Date | Fecha en que la clave pasó a definitiva |
 
 **Constraints SQL:**
 ```python
@@ -181,11 +182,23 @@ Se crean dos `hr.job` en `data/hr_jobs.xml`:
 
 Cada uno con su pipeline (`hr.recruitment.stage` filtrado por `job_ids`).
 
-**Automated action al cerrar "Contratado":**
-- Si `hr.job` = Captación de Promotoría → crear `res.partner` con `bca_tipo='promotoria'` y `parent_id=BCA`.
-- Si `hr.job` = Reclutamiento de Agente → crear `res.partner` con `bca_tipo='agente'`, `parent_id` = promotoría del recruiter (campo a agregar a `hr.applicant`: `bca_promotoria_destino_id`).
+**Reclutamiento es dueño del ciclo de carrera del agente (D-07).** El estado del agente se refleja en el contacto automáticamente, sin que nadie en el módulo de seguros lo actualice. Flujo (todo vía automated actions sobre `hr.applicant`):
 
-**Archivo:** `models/hr_applicant.py` (extensión mínima para el campo `bca_promotoria_destino_id` y el método de creación de partner).
+| Momento (Reclutamiento) | Acción automatizada | Estado resultante |
+|---|---|---|
+| Alta del prospecto | Crear `res.partner` con `bca_tipo='agente'`, `parent_id`=`bca_promotoria_destino_id`. Aún sin puente. | `bca_estado_agente` (rollup) = **Prospecto** |
+| Examen aprobado / la aseguradora asigna clave inicial | Crear registro puente `res.partner.agente.aseguradora` con `estado='clave_arranque'`, `clave_agente`, `aseguradora_id` | rollup → **Clave de Arranque** |
+| La aseguradora asigna la clave definitiva (meses) | Actualizar el puente a `estado='clave_definitiva'` | rollup → **Clave Definitiva** → empieza a computar PCA |
+
+- Si `hr.job` = Captación de Promotoría → crear `res.partner` con `bca_tipo='promotoria'` y `parent_id=BCA`.
+
+**Campos a agregar a `hr.applicant`:** `bca_promotoria_destino_id` (ya existe), `bca_aseguradora_destino_id` (Many2one aseguradora) y `bca_clave_arranque` (Char) — necesarios para que la automated action cree el registro puente al aprobar el examen.
+
+**En el contacto del agente:** smart button "Reclutamiento" que enlaza al `hr.applicant`. El detalle fino (asignación/aprobación de exámenes, etapas) vive en Reclutamiento, no se espeja en el contacto.
+
+> **[ESTADO DE IMPLEMENTACIÓN]** Hoy `models/hr_applicant.py` solo crea el `res.partner` al cerrar "Contratado" (un único momento). El ciclo completo de tres estados + alimentación del puente + smart button es **trabajo pendiente** de esta etapa de integración con Reclutamiento. El rollup `bca_estado_agente` y el modelo puente ya soportan los tres estados.
+
+**Archivo:** `models/hr_applicant.py` (extensión para los campos destino y los métodos de creación de partner / alimentación del puente).
 
 ---
 
@@ -651,9 +664,15 @@ class ReportePCAAgente(models.Model):
                     r.factor_aplicado AS factor
                 FROM bca_recibo r
                 JOIN bca_poliza p ON r.poliza_id = p.id
-                JOIN res_partner a ON r.agente_id = a.id
+                -- Solo computa el agente con CLAVE DEFINITIVA *en esa aseguradora*.
+                -- El estado es por aseguradora (modelo puente), NO el rollup del
+                -- partner: un agente puede ser Definitiva en MetLife y Arranque en
+                -- Qualitas. Filtrar por res_partner.bca_estado_agente sería un bug.
+                JOIN res_partner_agente_aseguradora aa
+                     ON aa.agente_id = r.agente_id
+                    AND aa.aseguradora_id = p.aseguradora_id
                 WHERE r.estado = 'pagado'
-                  AND a.bca_estado_agente = 'con_licencia'
+                  AND aa.estado = 'clave_definitiva'
             )
         """)
 ```

@@ -4,6 +4,110 @@
 
 ---
 
+## Sesión 2026-06-05 — Nomenclatura de agentes: 3 estados de carrera (rollup computed)
+
+### Qué se hizo
+Alineación de la nomenclatura de carrera del agente al modelo de **tres estados** del BDD: `prospecto` → `clave_arranque` → `clave_definitiva`. El estado es **por aseguradora** (vive en el modelo puente, fuente de verdad) y en el contacto se expone como un **rollup computed `store=True`**. Se corrigió de paso un bug latente del reporte de PCA (filtraba por el campo del partner en vez del estado por aseguradora).
+
+### Decisiones tomadas con el usuario (AskUserQuestion) → `Decisiones.md` D-07
+- **Transición Clave de Arranque → Clave Definitiva** → la **automatiza Reclutamiento** (no captura manual en Seguros).
+- **Reflejo en el contacto** → **solo el estado (rollup) + smart button** a `hr.applicant`; el detalle fino (exámenes/etapas) vive en Reclutamiento.
+- **`bca_estado_agente`** → deja de ser manual; es un rollup computed del puente (Definitiva > Arranque > Prospecto; sin claves = Prospecto). No editable a mano.
+- **`bca_fecha_licencia`** (partner) → **eliminado** (redundante; la fecha es por aseguradora en el puente).
+
+### Archivos (código módulo Seguros)
+- `BCA_Seguros/models/res_partner.py` — `ESTADO_AGENTE_SELECTION` a 3 valores + `_ESTADO_AGENTE_PRIORIDAD`; `bca_estado_agente` ahora `compute='_compute_bca_estado_agente'` `store=True` (depends `agente_aseguradora_ids.estado`, `bca_tipo`); **eliminado** `bca_fecha_licencia`.
+- `BCA_Seguros/models/res_partner_agente_aseg.py` — `estado` usa `ESTADO_AGENTE_SELECTION` (3 valores) con `default='prospecto'`. Es la **fuente de verdad** por aseguradora.
+- `BCA_Seguros/views/res_partner_views.xml` — `bca_estado_agente` readonly; filtros de búsqueda a "Clave Definitiva" / "Clave de Arranque" / "Prospecto"; quitado `bca_fecha_licencia` del form.
+- `BCA_Seguros/tests/` — fixtures de `test_poliza`, `test_poliza_vida`, `test_poliza_gmm`, `test_parsers`, `test_inmutabilidad`: ya no escriben `bca_estado_agente` (es computed); crean registro puente con `estado='clave_definitiva'` para que el agente "juegue".
+
+### Archivos (specs)
+- `Specs/Arquitectura_BCA_Seguros.md` — §2.2.1 (`bca_estado_agente` computed rollup + nota D-07; quitado `bca_fecha_licencia`), §2.2.1b (estado del puente a 3 valores), §2.2.3 (flujo Reclutamiento-driven + campos destino + smart button + estado de implementación), §6.1 (filtro PCA al estado del puente `clave_definitiva`, no al partner).
+- `Specs/Capacitacion_Usuario_BCA_Seguros.md` §4.3, `Specs/Plan de Desarrollo.md`, `Specs/Decisiones.md` (D-07).
+
+### Pendiente
+- **Integración Reclutamiento (trabajo nuevo, no implementado):** campos `bca_aseguradora_destino_id` y `bca_clave_arranque` en `hr.applicant`; automated actions del ciclo completo (crear partner en Prospecto, crear puente en Arranque, promover a Definitiva); smart button del contacto a `hr.applicant`. Hoy `hr_applicant.py` solo crea el partner al cerrar "Contratado".
+- **Verificación:** correr la suite de tests en el sandbox (no se pudo compilar localmente: no hay Python en el host).
+- **Riesgo de modelado a revisar:** si la clave **cambia de valor** entre arranque y definitiva, el único campo `clave_agente` del puente se sobrescribe al promover y el importador (BDD: "match por arranque o definitiva") no hallaría la clave vieja. Evaluar `clave_arranque`/`clave_definitiva` separadas o historial.
+
+---
+
+## Sesión 2026-05-28 — Campos del layout GMM (MetLife) en póliza y contacto
+
+### Qué se hizo
+Modelado de los campos del diccionario GMM (`Specs/diccionario-campos-gmm-bca-seguros-v1.md`) para **captura manual** de pólizas de Gastos Médicos Mayores: campos nuevos en `bca.poliza` y `res.partner`, reuso de `bca.poliza.beneficiario` para los asegurados adicionales (dependientes), y generalización de campos que estaban marcados como "solo Vida". La mayoría del layout ya existía en el modelo; esta entrega cerró el faltante. **El importador del layout (Etapa 8) queda fuera de alcance** — esto es solo modelado + UI.
+
+### Decisiones tomadas con el usuario (AskUserQuestion, antes de implementar)
+- **Asegurados adicionales (dependientes)** → **reusar** `bca.poliza.beneficiario` (no se crea modelo nuevo); la fecha de nacimiento vive en la línea (`fecha_nacimiento`); `porcentaje` no aplica en GMM.
+- **IVA, Recargo Fijo, Recargos (fraccionado)** → **informativos a nivel póliza**; NO alteran la generación de recibos (`_crear_recibos_anualidad` sigue usando `prima_anual`/`periodicidad`).
+- **Alcance** → solo modelo + vistas; el parseo del archivo se difiere a Etapa 8.
+- **Ramo / Sub-ramo** → se guarda el código numérico como dato informativo (`bca_sub_ramo_codigo`); el ramo operativo sigue derivándose del producto.
+- **Conducto de Cobro** → reusa el `conducto_id` existente (mismo catálogo `bca.conducto` que el recibo), sin cambios de esquema.
+
+### Archivos
+- `BCA_Seguros/models/poliza.py` — campos nuevos `iva` (Monetary, GMM), `recargo_fijo` (Monetary), `bca_sub_ramo_codigo` (Char). Help de `asegurado_id` y `coberturas_adicionales` generalizado a Vida+GMM. **`_validar_porcentaje_beneficiarios` acotado a `ramo == 'vida'`** (return temprano si no es Vida) — clave del reuso: en GMM los dependientes no tienen % y la regla del 100% no corresponde.
+- `BCA_Seguros/models/poliza_beneficiario.py` — campo `fecha_nacimiento` (Date, opcional). Vacío para beneficiarios Vida; fecha de nacimiento del dependiente en GMM.
+- `BCA_Seguros/models/res_partner.py` — `bca_ref_prima_medica` (Char), referencia de cobro de la prima médica (GMM), junto a las refs Vida.
+- `BCA_Seguros/views/poliza_views.xml` — `asegurado_id` visible en Vida y GMM; `recargo_fijo` en grupo Importes; tab **Atributos GMM** ampliado (IVA, sub-ramo, coberturas adicionales) + sub-lista **Asegurados Adicionales** que reúsa `beneficiario_ids` con `fecha_nacimiento` y **sin** `porcentaje`.
+- `BCA_Seguros/views/res_partner_views.xml` — `bca_ref_prima_medica` en grupo "Referencias de Pago".
+- `BCA_Seguros/tests/test_poliza_gmm.py` — **NUEVO**. 6 tests (ramo derivado a gmm, confirmación con asegurados adicionales sin %, persistencia de `fecha_nacimiento`, persistencia de campos GMM, propagación de conducto, ref. prima médica). Registrado en `tests/__init__.py`.
+- `Specs/diccionario-campos-gmm-bca-seguros-v1.md` — diccionario fuente del layout GMM.
+
+### Decisiones de implementación e implicaciones
+- **Reuso de `beneficiario_ids` para dependientes (deuda semántica)**: el modelo se llama "Beneficiario" pero en GMM representa al asegurado adicional cubierto (sin reparto). Cualquier reporte/búsqueda que asuma "beneficiario = reparto de pago" debe filtrar por `poliza_id.ramo == 'vida'`.
+- **`fecha_nacimiento` en la línea, no en el contacto**: para no mutar el `res.partner` compartido; el contacto igual tiene `bca_fecha_nacimiento`. La fuente para el layout es la línea.
+- **`beneficiario_ids` y `coberturas_adicionales` duplicados en dos pestañas** (Vida y GMM, mutuamente excluyentes por `invisible`): Odoo lo permite (precedente `parent_id`); validado sin `ParseError` por `test_poliza_views`/`test_herencia_partner`.
+- **IVA no entra en PCA ni en el recibo generado**: la cobranza real (CSV GCAYE) trae `prima_total` con impuestos al conciliar.
+
+### Verificación en sandbox_bca1 (APROBADA — 2026-05-28 14:33 UTC)
+Commit `657bd67` pusheado a `desarrollo` → deploy automático vía `deploy-sandbox.yml`.
+```bash
+docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http
+```
+Resultado: **104 tests, 19.52s, 4360 queries, 0 failures, 0 errors** ✅. Los 6 tests de `test_poliza_gmm` corren limpios; regresión Vida intacta (`test_confirmar_beneficiarios_no_suman_100` sigue exigiendo 100%); vistas heredadas validan sin `ParseError`.
+
+### Pendientes
+- **Reconciliar "Recargo Fijo" entre ramos**: VIDA lo mapeó a `recargo_fraccionamiento`; GMM separa `recargo_fijo` + `recargo_fraccionamiento`. Inconsistencia a resolver en una pasada futura.
+- **Importador del layout (Etapa 8)**: mapeo texto→selection de "Estatus de Póliza"/"Estatus de Pago", resolución de "Póliza Original" (número→M2o) y "Clave de Agente" (vía modelo puente), creación de contactos/dependientes.
+- **Confirmar catálogos con el cliente** (heredado de la sesión VIDA): parentesco, estatus, etc.
+
+---
+
+## Sesión 2026-05-28 — Campos del layout VIDA (MetLife) en póliza y contacto
+
+### Qué se hizo
+Modelado de los campos del diccionario VIDA (`Specs/diccionario-campos-vida-bca-seguros-v1.md`) para **captura manual** de pólizas de Vida: nuevo modelo de beneficiarios ligado a contactos, campos nuevos en `bca.poliza` y `res.partner`, validación de suma de porcentajes al confirmar y propagación del conducto por defecto a los recibos. **El importador Excel (Etapa 8) queda fuera de alcance** — esto es solo modelado + UI.
+
+### Decisiones tomadas con el usuario (AskUserQuestion, antes de implementar)
+- **Asegurado** → `res.partner` con nuevo `bca_tipo='asegurado'` (ver D-04 en `Decisiones.md`).
+- **Beneficiarios** → modelo nuevo ligado a `res.partner`; suma 100% validada al confirmar (ver D-05).
+- **Datos de contacto** → reusar campos estándar de Odoo (RFC→`vat`, domicilio→`street/street2/city/zip/state_id`, `phone/mobile/email`); crear solo los faltantes.
+- **Estatus de Pago** → `Selection` capturable, declarativo (ver D-06).
+- **Referencias de pago (fondos)** → en `res.partner` (contratante).
+
+### Archivos
+- `BCA_Seguros/models/poliza_beneficiario.py` — **NUEVO**. `bca.poliza.beneficiario`: `poliza_id` (cascade), `beneficiario_id` (res.partner, restrict, sin forzar `bca_tipo`), `parentesco` (Selection), `porcentaje` (Float 5,2).
+- `BCA_Seguros/models/poliza.py` — campos `plan`, `fecha_emision`, `conducto_id` (domain por aseguradora+activo, propagado a recibos en `_crear_recibos_anualidad`), `estatus_pago`, `coberturas_adicionales`, `asegurado_id` (domain permisivo), `beneficiario_ids`, `beneficiarios_porcentaje_total` (computed). `action_confirmar` valida 100% vía `_validar_porcentaje_beneficiarios` con `float_compare`.
+- `BCA_Seguros/models/res_partner.py` — `bca_tipo` + `asegurado`; demográficos `bca_fecha_nacimiento`/`bca_estado_civil`/`bca_genero`; referencias de pago (`bca_ref_prima_basica_trad`, fondos variable/fijo + PPR + CPEA).
+- `BCA_Seguros/security/ir.model.access.csv` — 5 ACL para `bca.poliza.beneficiario` (espejo de `bca.poliza`).
+- `BCA_Seguros/security/record_rules.xml` — 5 `ir.rule` para `bca.poliza.beneficiario` (agente solo de sus pólizas vía `poliza_id.agente_id.user_ids`; resto `[(1,'=',1)]` por regla A3 de `implied_ids`).
+- `BCA_Seguros/views/poliza_views.xml` — campos nuevos en el form + pestaña **Beneficiarios** (solo Vida).
+- `BCA_Seguros/views/res_partner_views.xml` — grupos "Datos Demográficos" y "Referencias de Pago" visibles solo para contratantes.
+- `BCA_Seguros/tests/test_poliza_vida.py` — **NUEVO**. 7 tests (suma 100% / ≠100% / sin beneficiarios, propagación de conducto, asegurado, contratante como asegurado, persistencia en contacto). Registrado en `tests/__init__.py`.
+
+### Verificación en sandbox_bca1 (APROBADA — 2026-05-28 14:01 UTC)
+Commit `293051d` pusheado a `desarrollo` → deploy automático.
+```bash
+docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http
+```
+Resultado: **96 tests, 16.64s, 4158 queries, 0 failures, 0 errors** ✅. Los 7 tests de `test_poliza_vida` corren limpios; cero regresiones; las vistas heredadas de póliza y contacto validan sin `ParseError`.
+
+### Pendientes
+- **Confirmar catálogos con el cliente** (hoy valores tentativos): Estatus de Pago, parentesco, estado civil, género; semántica de "Recargo Fijo" vs `recargo_fraccionamiento`; si hace falta validar formato RFC sobre `vat`.
+- **GMM en curso** (working tree, sin commitear al cierre de esta entrada): diccionario GMM, `test_poliza_gmm.py`, reuso de `bca.poliza.beneficiario` para asegurados adicionales/dependientes (campo `fecha_nacimiento`) y `bca_ref_prima_medica`. Pendiente de cerrar, commitear y verificar.
+
+---
+
 ## Sesión 2026-05-27 (d) — Hotfix UI E10: `parent_id` visible en tab BCA
 
 ### Qué se hizo

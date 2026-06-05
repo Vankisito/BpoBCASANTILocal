@@ -26,7 +26,13 @@ class TestPolizaGMM(TransactionCase):
             'name': 'Agente G',
             'bca_tipo': 'agente',
             'parent_id': cls.promotoria.id,
-            'bca_estado_agente': 'con_licencia',
+        })
+        # Rollup bca_estado_agente: clave definitiva vía puente (fuente de verdad).
+        cls.env['res.partner.agente.aseguradora'].create({
+            'agente_id': cls.agente.id,
+            'aseguradora_id': cls.aseguradora.id,
+            'clave_agente': 'CLV-G',
+            'estado': 'clave_definitiva',
         })
         cls.contratante = Partner.create({
             'name': 'Contratante G',

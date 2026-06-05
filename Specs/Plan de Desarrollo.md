@@ -386,8 +386,7 @@ def post_init_hook_bca_seguros(env):
 #### `models/res_partner.py`
 Extiende `res.partner`. Campos nuevos (todos con `index=True` donde aplica):
 - `bca_tipo`: Selection `[('holding','Holding BCA'),('aseguradora','Aseguradora'),('promotoria','Promotoría Afiliada'),('agente','Agente'),('contratante','Contratante')]`, `index=True`
-- `bca_estado_agente`: Selection `[('prospecto','Prospecto'),('con_licencia','Con Licencia')]`, `index=True`
-- `bca_fecha_licencia`: Date
+- `bca_estado_agente`: Selection `[('prospecto','Prospecto'),('clave_arranque','Clave de Arranque'),('clave_definitiva','Clave Definitiva')]`, **computed `store=True`** + `index=True` — rollup del estado de carrera (mejor estado en cualquier aseguradora) derivado del modelo puente. No editable a mano. Solo `clave_definitiva` computa PCA. Ver `Decisiones.md` D-07.
 - `bca_codigo_aseguradora`: Char, `index=True` — Ej: METLIFE, QUALITAS
 - `bca_promotoria_id`: Many2one computed **sin store** → retorna `parent_id` si `bca_tipo='agente'`
 - `agente_aseguradora_ids`: One2many → `res.partner.agente.aseguradora`
@@ -408,7 +407,7 @@ _sql_constraints = [
      'Un agente solo puede registrarse una vez por aseguradora'),
 ]
 ```
-Campos: `agente_id` (M2o, cascade), `aseguradora_id` (M2o, restrict), `clave_agente` (Char), `estado` (Selection), `fecha_licencia` (Date).
+Campos: `agente_id` (M2o, cascade), `aseguradora_id` (M2o, restrict), `clave_agente` (Char), `estado` (Selection `[('prospecto','Prospecto'),('clave_arranque','Clave de Arranque'),('clave_definitiva','Clave Definitiva')]`, default `prospecto` — **fuente de verdad** del estado de carrera por aseguradora; solo `clave_definitiva` computa PCA), `fecha_licencia` (Date).
 
 #### `models/product_template.py`
 Extiende `product.template`. Campos nuevos:
