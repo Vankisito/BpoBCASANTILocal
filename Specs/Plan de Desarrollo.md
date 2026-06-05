@@ -636,11 +636,12 @@ class CalculadorPCABase:
 
 ### Etapa 8 — Wizards
 **Tiempo estimado:** 4–5 horas
-**Estado:** 🟡 Parcial — **Carga de Portafolio implementada y verificada** (2026-06-05,
-versión `19.0.1.3.0`, sandbox `sandbox_bca1`: **135 tests, 0 failures**). Cobranza Diaria
-pendiente (siguiente sub-etapa). Decisión asociada: **D-09** (`estatus_pago` computed).
-El deploy destapó **BUG-016** (PCA congelada en 0 por `fecha_pago=False` al calcular),
-corregido en `recibo.py` (commit `38736b7`). Ver `Changelog.md` y `Bugs.md`.
+**Estado:** ✅ Completada — **Carga de Portafolio** (2026-06-05, v`19.0.1.3.0`) +
+**Cobranza Diaria** (2026-06-05, v`19.0.1.4.0`). Decisión asociada: **D-09**
+(`estatus_pago` computed). El deploy de portafolio destapó **BUG-016** (PCA congelada en 0
+por `fecha_pago=False` al calcular), corregido en `recibo.py` (commit `38736b7`).
+Cobranza Diaria: flujo de **una sola fase** (la bitácora es el reporte auditable),
+selector de ramo limitado a **Vida/GMM** (Autos/Qualitas placeholder). Ver `Changelog.md`.
 
 #### `wizards/carga_portafolio.py`
 `bca.wizard.carga.portafolio` (TransientModel):
@@ -649,27 +650,26 @@ corregido en `recibo.py` (commit `38736b7`). Ver `Changelog.md` y `Bugs.md`.
   1. `action_validar()`: lee Excel con `openpyxl`, verifica hojas `VIDA`/`GMM`/`AUTOS`, columnas, formatos. Si errores → mostrar reporte. Sin tocar BD.
   2. `action_grabar()`: por cada póliza en savepoint independiente. Al terminar, retorna action con reporte.
 
-#### `wizards/cobranza_diaria.py`
+#### `wizards/cobranza_diaria.py` ✅ implementado
 `bca.wizard.cobranza.diaria` (TransientModel):
-- Campos: `archivo` (Binary), `nombre_archivo`, `aseguradora_id`, `ramo`
-- Flujo:
-  1. Obtener parser con `get_parser(aseguradora_codigo, ramo)`
-  2. Llamar `parser.validar_estructura(df)` — si falla, `UserError` sin crear bitácora (R-COB-09)
-  3. Crear `bca.bitacora.importacion`
-  4. Loop de filas con patrón de savepoint (C4):
-     ```python
-     with self.env.cr.savepoint():
-         # Mantener el context original (C4)
-         resultado = parser.procesar_fila(self.env, fila)
-     ```
-  5. Cerrar bitácora con totales
-  6. Retornar action → vista de la bitácora generada
+- Campos: `archivo` (Binary), `nombre_archivo`, `aseguradora_id`, `ramo` (Vida/GMM — sin Autos)
+- Flujo de **una sola fase** (`action_procesar`):
+  1. Decodificar CSV (Latin-1, R-GLOB-01) → `csv.DictReader` (sniff de delimitador)
+  2. `get_parser(aseguradora.bca_codigo_aseguradora, ramo)`
+  3. `parser_cls.validar_estructura(fieldnames)` (ahora `@classmethod`) — si falla, `UserError`
+     **antes** de crear la bitácora (R-COB-09)
+  4. Crear `bca.bitacora.importacion`; `parser.filtrar_filas()` (GMM omite anulados, R-COB-01)
+  5. Loop `parser.procesar_fila()` (savepoint por fila vive en el parser, R-COB-08) → crea
+     `bca.bitacora.linea` y acumula contadores + PCA
+  6. Escribir totales y retornar action → form de la bitácora generada
 
 **Checklist Etapa 8:**
-- [ ] CSV de MetLife Vida con 5 filas: 4 válidas + 1 póliza no encontrada → bitácora con 5 líneas *(cobranza — pendiente)*
-- [ ] Error en fila 3 no detiene proceso (filas 4 y 5 se procesan) *(cobranza — pendiente)*
-- [ ] Fila con póliza ya pagada → "Sin recibo disponible" en bitácora *(cobranza — pendiente)*
-- [ ] Archivo sin columna crítica → UserError antes de crear bitácora *(cobranza — pendiente)*
+- [x] CSV de MetLife Vida con 5 filas: 4 válidas + 1 póliza no encontrada → bitácora con 5 líneas — test `test_cinco_filas_cuatro_validas_una_no_encontrada`
+- [x] Error en fila 3 no detiene proceso (filas 4 y 5 se procesan) — test `test_error_en_fila_no_detiene_proceso`
+- [x] Fila con póliza ya pagada → "Sin recibo disponible" en bitácora — test `test_poliza_sin_recibo_pendiente`
+- [x] Archivo sin columna crítica → UserError antes de crear bitácora — test `test_columna_faltante_no_crea_bitacora`
+- [x] FIFO: pagos consecutivos aplican recibos en orden ascendente — test `test_fifo_aplica_en_orden`
+- [x] GMM: fila anulada se omite y suma a `anulaciones_ignoradas` (R-COB-01) — test `test_gmm_anulado_se_omite`
 - [x] Portafolio Excel: validar detecta hoja faltante sin tocar BD — test `test_validar_sin_hoja_soportada`
 - [x] Portafolio: validar detecta columna crítica faltante (fail-fast, 0 pólizas) — test `test_validar_columna_faltante`
 - [x] Portafolio: grabar crea pólizas VIDA + GMM con agente/contratante/producto resueltos — test `test_crea_vida_y_gmm`

@@ -40,12 +40,19 @@
               groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="30"/>
 
-    <!-- Cobranza (Operador+) — items poblados en Etapa 8 -->
+    <!-- Cobranza (Operador+) -->
     <menuitem id="menu_bca_cobranza"
               name="Cobranza"
               parent="menu_bca_root"
               groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="20"/>
+
+    <menuitem id="menu_bca_importar_cobranza"
+              name="Importar Cobranza"
+              parent="menu_bca_cobranza"
+              action="BCA_Seguros.action_wizard_cobranza_diaria"
+              groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              sequence="5"/>
 
     <menuitem id="menu_bca_bitacoras"
               name="Bitácoras de Importación"

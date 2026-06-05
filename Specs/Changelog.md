@@ -4,6 +4,50 @@
 
 ---
 
+## Sesión 2026-06-05 — Etapa 8 (cierre): Wizard de Cobranza Diaria
+
+### Qué se hizo
+Implementación del **wizard de cobranza diaria** (`bca.wizard.cobranza.diaria`), que era un
+stub. Cierra la Etapa 8. Lee el CSV de cobranza de MetLife (LSP=Vida / GCAYE=GMM), aplica los
+pagos a los recibos pendientes **FIFO** vía `recibo.action_registrar_pago` (que congela la PCA),
+y genera una **bitácora de importación inmutable** con el detalle por fila como reporte auditable.
+
+Decisiones de diseño (confirmadas con el usuario):
+- **Una sola fase** (`action_procesar`, sin dry-run): la bitácora ES el reporte. Un dry-run de
+  cobranza sería frágil (aplicar pagos muta recibos y congela PCA). La seguridad ya está cubierta
+  sin segunda fase: `validar_estructura` falla *fail-fast* antes de crear la bitácora (R-COB-09)
+  y el savepoint por fila evita que un error detenga el lote (R-COB-08).
+- **Selector de ramo limitado a Vida/GMM.** Autos/Qualitas (parser placeholder) queda fuera.
+
+Todo el backend ya existía y estaba probado (parsers E6, bitácora, `action_registrar_pago` con
+el fix de BUG-016). El wizard es el *glue* que orquesta: decodifica (Latin-1, R-GLOB-01),
+resuelve el parser por `res.partner.bca_codigo_aseguradora`, valida estructura, crea la bitácora,
+`filtrar_filas` (GMM omite anulados, R-COB-01), itera `procesar_fila`, crea líneas y totaliza.
+
+### Archivos (código)
+- `BCA_Seguros/wizards/cobranza_diaria.py` — **implementado** completo (era stub de 7 líneas).
+- `BCA_Seguros/parsers/base.py` — `validar_estructura` ahora `@classmethod` (retrocompatible)
+  para poder validar la estructura **antes** de instanciar el parser / crear la bitácora.
+- `BCA_Seguros/views/wizard_cobranza_diaria_views.xml` — form real (era skeleton "pendiente") +
+  `action_wizard_cobranza_diaria`.
+- `BCA_Seguros/views/menu.xml` — ítem **Cobranza → Importar Cobranza** (operador+).
+- `BCA_Seguros/__manifest__.py` — `version` `19.0.1.3.0` → **`19.0.1.4.0`**.
+
+### Archivos (tests)
+- `BCA_Seguros/tests/test_cobranza_fifo.py` — **implementado** (`@tagged('BCA_Seguros')`, era
+  `pass`): 5+1, error que no detiene el lote, sin recibo pendiente, columna faltante sin
+  bitácora, FIFO en orden, y GMM anulado omitido. Usa los encabezados canónicos
+  `COLUMNAS_LSP`/`COLUMNAS_GCAYE`.
+
+### Pendiente / follow-ups
+- **Verificar en sandbox** (`-u BCA_Seguros --test-enable --test-tags BCA_Seguros`): esperado
+  ≥ 135 + 6 tests de cobranza, 0 failures.
+- Confirmar nombres de columnas de `COLUMNAS_LSP`/`COLUMNAS_GCAYE` contra un **CSV real** de
+  MetLife (TODO E8 vigente en los parsers). Si difieren, ajustar las constantes (no el wizard).
+- **Etapa 9 (reportes SQL)** es lo siguiente del plan.
+
+---
+
 ## Sesión 2026-06-05 — Etapa 8 (parcial): Wizard de Carga Masiva de Portafolio + `estatus_pago` computed
 
 ### Qué se hizo

@@ -27,14 +27,17 @@ class ParserBase:
         self.bitacora = bitacora
         self.aseguradora_id: int = bitacora.aseguradora_id.id
 
-    def validar_estructura(self, fieldnames: list[str]) -> None:
+    @classmethod
+    def validar_estructura(cls, fieldnames: list[str]) -> None:
         """R-COB-09: valida columnas requeridas antes del loop.
 
-        El wizard E8 llama esto con los encabezados del CSV antes de iterar.
-        Lanza ``UserError`` fail-fast — no se crea la bitácora si falta una
-        columna crítica.
+        El wizard E8 llama esto con los encabezados del CSV antes de iterar
+        (y antes de crear la bitácora), por eso es ``classmethod``: no necesita
+        instancia ni bitácora. Lanza ``UserError`` fail-fast — no se crea la
+        bitácora si falta una columna crítica. Las llamadas previas sobre
+        instancia (``parser.validar_estructura(...)``) siguen funcionando.
         """
-        faltantes = [c for c in self.columnas_requeridas if c not in fieldnames]
+        faltantes = [c for c in cls.columnas_requeridas if c not in fieldnames]
         if faltantes:
             raise UserError(
                 "El archivo no tiene las columnas requeridas: %s" % faltantes

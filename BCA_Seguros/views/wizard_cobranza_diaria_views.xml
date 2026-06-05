@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Skeleton no-op: implementación completa en Etapa 8 (wizards). -->
 
     <record id="view_wizard_cobranza_diaria_form" model="ir.ui.view">
         <field name="name">bca.wizard.cobranza.diaria.form</field>
@@ -8,22 +7,44 @@
         <field name="arch" type="xml">
             <form string="Cobranza Diaria">
                 <sheet>
-                    <div class="alert alert-warning" role="alert">
-                        <h3>Funcionalidad pendiente</h3>
+                    <div class="oe_title">
+                        <h1>Importar Cobranza Diaria</h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="aseguradora_id"
+                                   options="{'no_create': True}"/>
+                            <field name="ramo"/>
+                        </group>
+                        <group>
+                            <field name="archivo" filename="nombre_archivo"/>
+                            <field name="nombre_archivo" invisible="1"/>
+                        </group>
+                    </group>
+                    <div class="text-muted">
                         <p>
-                            La cobranza diaria desde CSV se implementa en la
-                            <strong>Etapa 8</strong> del plan de desarrollo.
-                            Requiere los parsers de la Etapa 6 y los
-                            calculadores de PCA de la Etapa 7.
+                            El archivo se procesa en una sola fase: se valida la
+                            estructura, se aplican los pagos a los recibos pendientes
+                            (FIFO) y se genera una <strong>bitácora de importación</strong>
+                            con el detalle por fila.
                         </p>
                     </div>
                 </sheet>
                 <footer>
-                    <button string="Cerrar" class="btn-secondary"
-                            special="cancel"/>
+                    <button name="action_procesar" type="object"
+                            string="Procesar" class="btn-primary"
+                            confirm="¿Confirmas el procesamiento del archivo de cobranza? Los pagos se aplicarán a los recibos pendientes."/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
+    </record>
+
+    <record id="action_wizard_cobranza_diaria" model="ir.actions.act_window">
+        <field name="name">Importar Cobranza</field>
+        <field name="res_model">bca.wizard.cobranza.diaria</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
     </record>
 
 </odoo>
