@@ -258,6 +258,13 @@ class BcaRecibo(models.Model):
                     % (fifo.name, rec.name)
                 )
 
+            # La PCA depende de la fecha de pago: vigencia del factor en el
+            # catálogo y, en multimoneda, la tasa de conversión a esa fecha.
+            # El cálculo corre ANTES del write principal (para usar la prima del
+            # plan), así que fijamos fecha_pago primero — de lo contrario el
+            # calculador lee recibo.fecha_pago=False y `vigencia_desde <= False`
+            # no encuentra el factor vigente (PCA quedaría en 0).
+            rec.fecha_pago = vals['fecha_pago']
             pca, factor, motivo = rec._calcular_pca()
             # Usa super().write para esquivar nuestro propio bloqueo de write()
             # (el recibo aún no está 'pagado' cuando entra aquí, pero el
