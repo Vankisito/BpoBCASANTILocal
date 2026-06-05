@@ -19,7 +19,11 @@ El cambio D-07 dejó registros viejos con `bca_estado_agente='con_licencia'` (y 
 - La carpeta debe ser la **versión completa** (`19.0.1.1.0`): `convert_version` deja intactas las versiones con ≥2 puntos, así que `1.1.0` quedaría fuera del rango de ejecución.
 
 ### Verificación (sandbox)
-`odoo -d <db> -u BCA_Seguros --stop-after-init` → en el log debe verse `Running migration [19.0.1.1.0] post-migrate.py` y `BCA D-07: N clave(s) ... migradas`. Luego abrir un Agente → pestaña BCA sin crash.
+El deploy se aplica solo al pushear a `desarrollo` (GitHub Action "Deploy to Sandbox" → `docker exec odoo_golden odoo -u BCA_Seguros -d sandbox_bca1 --stop-after-init --no-http`). **✅ Deploy del commit `0b08f3b` confirmado sin error en `desarrollo` (sandbox `sandbox_bca1`, contenedor `odoo_golden`).** La migración `19.0.1.1.0` corrió en ese upgrade; pestaña BCA del Agente operativa sin el OwlError.
+
+### Commits de la sesión
+- `ca3eb8a` — nomenclatura de agentes a 3 estados (D-07).
+- `0b08f3b` — fix BUG-014 (migración `con_licencia→clave_definitiva`).
 
 ---
 
