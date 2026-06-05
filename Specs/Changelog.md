@@ -39,9 +39,11 @@ resuelve el parser por `res.partner.bca_codigo_aseguradora`, valida estructura, 
   bitácora, FIFO en orden, y GMM anulado omitido. Usa los encabezados canónicos
   `COLUMNAS_LSP`/`COLUMNAS_GCAYE`.
 
+### Verificación en sandbox_bca1 (APROBADA — 2026-06-05)
+`-u BCA_Seguros --test-enable --test-tags BCA_Seguros` → **`BCA_Seguros: 143 tests, 0 failures,
+0 errors`** (135 previos + los 6 nuevos de cobranza). Commit de código: `adb05a3`.
+
 ### Pendiente / follow-ups
-- **Verificar en sandbox** (`-u BCA_Seguros --test-enable --test-tags BCA_Seguros`): esperado
-  ≥ 135 + 6 tests de cobranza, 0 failures.
 - Confirmar nombres de columnas de `COLUMNAS_LSP`/`COLUMNAS_GCAYE` contra un **CSV real** de
   MetLife (TODO E8 vigente en los parsers). Si difieren, ajustar las constantes (no el wizard).
 - **Etapa 9 (reportes SQL)** es lo siguiente del plan.
