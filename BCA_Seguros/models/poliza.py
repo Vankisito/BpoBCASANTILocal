@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
@@ -17,7 +19,10 @@ PERIODICIDAD_SELECTION = [
 ESTADO_SELECTION = [
     ('borrador', 'Borrador'),
     ('activa', 'Activa'),
-    ('vencida', 'Vencida'),
+    # 'Expirada': el PLAZO contractual de la póliza terminó (llegó fecha_fin).
+    # Distinto de estatus_pago='vencido' (la PRIMA está en mora). La clave
+    # 'vencida' se conserva para no requerir migración de datos.
+    ('vencida', 'Expirada'),
     ('cancelada', 'Cancelada'),
 ]
 TIPO_COBERTURA_SELECTION = [
@@ -143,11 +148,36 @@ class BcaPoliza(models.Model):
         ondelete='restrict',
         domain="[('aseguradora_id', '=', aseguradora_id), ('activo', '=', True)]",
     )
+    # Salud de pago DERIVADA (no editable): se calcula desde la fecha de pago
+    # efectiva (pagado_hasta, o pagado_hasta_inicial durante el arranque) vs hoy
+    # más un período de gracia configurable. Es un eje distinto de `estado`
+    # (ciclo de vida contractual). 'suspendido' es el único valor no derivable,
+    # se fuerza con el override pago_suspendido. store=True para filtrar/agrupar;
+    # un cron diario lo refresca por el paso del tiempo (ver data/cron_estatus_pago.xml).
     estatus_pago: str = fields.Selection(
         ESTATUS_PAGO_SELECTION,
         string='Estatus de Pago',
-        help='Dato declarativo del portafolio. La vigencia de pago operativa '
-             'la determina "Pagado Hasta" a partir de los recibos.',
+        compute='_compute_estatus_pago',
+        store=True,
+        readonly=True,
+        help='Salud de pago derivada de "Pagado Hasta" y el período de gracia. '
+             'No es editable; "Suspendido" se controla con el campo "Pago suspendido".',
+    )
+    pago_suspendido: bool = fields.Boolean(
+        string='Pago Suspendido',
+        help='Override manual: marca la póliza con estatus de pago "Suspendido" '
+             'independientemente de la fecha pagada (p. ej. suspensión administrativa).',
+    )
+    # Dato declarativo del layout de portafolio: hasta dónde declaró pagada la
+    # póliza la aseguradora al momento de la carga inicial. pagado_hasta (computed
+    # desde recibos pagados) es la verdad operativa; este campo solo siembra el
+    # arranque cuando aún no hay recibos pagados en el sistema.
+    pagado_hasta_inicial: fields.Date = fields.Date(
+        string='Pagado Hasta (Importado)',
+        help='Fecha declarada en la carga de portafolio. Ancla la generación del '
+             'plan de recibos (solo se generan recibos posteriores a esta fecha) '
+             'y respalda el cálculo de "Estatus de Pago" hasta que la cobranza '
+             'registre el primer pago real.',
     )
 
     prima_anual: float = fields.Monetary(
@@ -376,6 +406,42 @@ class BcaPoliza(models.Model):
             ).sorted('fecha_hasta', reverse=True)[:1]
             pol.pagado_hasta = ultimo.fecha_hasta if ultimo else False
 
+    @api.depends('pagado_hasta', 'pagado_hasta_inicial', 'pago_suspendido', 'estado')
+    def _compute_estatus_pago(self) -> None:
+        """Salud de pago derivada (un solo eje de verdad).
+
+        Prioridad: override manual 'suspendido' → estados sin pago aplicable
+        (borrador/cancelada) → comparación de la fecha de pago efectiva contra
+        hoy + período de gracia. La fecha efectiva es pagado_hasta (recibos
+        reales) y, en su defecto, pagado_hasta_inicial (declarado en la carga).
+
+        Nota: depende de "hoy", por lo que un cron diario fuerza el recálculo
+        de las pólizas activas para que el estatus envejezca con el tiempo.
+        """
+        hoy = fields.Date.context_today(self)
+        gracia = int(self.env['ir.config_parameter'].sudo().get_param(
+            'bca_seguros.dias_gracia_pago', 30))
+        for pol in self:
+            if pol.pago_suspendido:
+                pol.estatus_pago = 'suspendido'
+            elif pol.estado in ('borrador', 'cancelada'):
+                pol.estatus_pago = False
+            else:
+                ref = pol.pagado_hasta or pol.pagado_hasta_inicial
+                al_corriente = bool(ref) and (ref + timedelta(days=gracia)) >= hoy
+                pol.estatus_pago = 'al_corriente' if al_corriente else 'vencido'
+
+    def _cron_refrescar_estatus_pago(self) -> None:
+        """Recalcula estatus_pago de las pólizas activas (aging diario).
+
+        Llamado por ir.cron: como el computed depende de la fecha actual, sin
+        este refresco una póliza activa nunca pasaría de 'al_corriente' a
+        'vencido' por el solo paso del tiempo.
+        """
+        activas = self.search([('estado', '=', 'activa')])
+        activas._compute_estatus_pago()
+        activas.flush_recordset(['estatus_pago'])
+
     @api.constrains('fecha_inicio', 'fecha_fin')
     def _check_fechas(self) -> None:
         for pol in self:
@@ -444,12 +510,18 @@ class BcaPoliza(models.Model):
             numero += 1
         return creados
 
-    def _generar_plan_pagos(self) -> list[int]:
+    def _generar_plan_pagos(self, desde=None) -> list[int]:
         """Genera los recibos del PRIMER año-póliza (anualidad vigente).
 
         El resto del término se materializa anualidad por anualidad vía
         _generar_siguiente_anualidad (avance automático al pagar o botón
         manual), para no crear cientos de recibos de golpe en pólizas largas.
+
+        `desde` (opcional, default fecha_inicio) ancla el inicio del plan. La
+        carga de portafolio lo usa con pagado_hasta_inicial para generar SOLO
+        los recibos posteriores al corte declarado (no se crean recibos
+        históricos pagados). Se topa a fecha_inicio para no anclar antes del
+        inicio de vigencia.
 
         R-POL-05: No se ejecuta si ya hay recibos pagados — protege contra
         regeneración accidental que destruiría el historial de pagos.
@@ -462,7 +534,8 @@ class BcaPoliza(models.Model):
 
         # Si había recibos solo pendientes (de un intento previo), descartarlos.
         self.recibo_ids.filtered(lambda r: r.estado == 'pendiente').unlink()
-        return self._crear_recibos_anualidad(self.fecha_inicio, 1).ids
+        inicio = max(desde, self.fecha_inicio) if desde else self.fecha_inicio
+        return self._crear_recibos_anualidad(inicio, 1).ids
 
     def _generar_siguiente_anualidad(self) -> list[int]:
         """Genera la siguiente anualidad si aún queda término por cubrir.

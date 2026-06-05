@@ -33,6 +33,13 @@
               action="BCA_Seguros.action_recibo"
               sequence="20"/>
 
+    <menuitem id="menu_bca_cargar_portafolio"
+              name="Cargar Portafolio"
+              parent="menu_bca_polizas"
+              action="BCA_Seguros.action_wizard_carga_portafolio"
+              groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              sequence="30"/>
+
     <!-- Cobranza (Operador+) — items poblados en Etapa 8 -->
     <menuitem id="menu_bca_cobranza"
               name="Cobranza"

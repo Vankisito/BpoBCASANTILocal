@@ -4,6 +4,59 @@
 
 ---
 
+## Sesión 2026-06-05 — Etapa 8 (parcial): Wizard de Carga Masiva de Portafolio + `estatus_pago` computed
+
+### Qué se hizo
+Implementación del **wizard de carga masiva de portafolio** (`bca.wizard.carga.portafolio`),
+que era un stub. Lee el Excel `LAY_OUT_-_Portafolio_BCA` (hojas `VIDA`/`GMM`, encabezados en
+fila 2, datos desde fila 4) en dos fases M1: **validar** (dry-run, sin tocar BD) → **grabar**
+(savepoint por póliza). Resuelve agente (puente `res.partner.agente.aseguradora`), producto,
+contratante/asegurado (find-or-create con demográficos y referencias de pago que ya existían
+en `res.partner`), conducto, moneda y periodicidad; crea beneficiarios VIDA y dependientes
+GMM en `bca.poliza.beneficiario`; y confirma generando **solo los recibos posteriores al
+"Pagado Hasta"** declarado. El alcance de E8 acordado en esta sesión fue **solo portafolio**
+(el wizard de cobranza diaria queda para la siguiente sub-etapa).
+
+### Decisiones tomadas con el usuario (AskUserQuestion) → `Decisiones.md`
+- **Alcance E8:** solo carga de portafolio.
+- **Estado al grabar:** almacenar "Pagado Hasta" y confirmar generando solo recibos
+  posteriores a esa fecha (no se crean recibos históricos pagados).
+- **Beneficiarios/dependientes:** reusar `bca.poliza.beneficiario` (ya soportaba ambos).
+- **D-09 (supera D-06):** `estatus_pago` deja de ser editable y pasa a **computed `store=True`**
+  derivado de la fecha pagada vs hoy + gracia; `suspendido` por override `pago_suspendido`.
+
+### Archivos (código)
+- `BCA_Seguros/wizards/carga_portafolio.py` — **implementado** completo (era stub): dos fases,
+  resolvers, mapeo VIDA/GMM, beneficiarios/dependientes, reporte HTML, corte por Pagado Hasta.
+- `BCA_Seguros/models/poliza.py` — `estatus_pago` ahora computed (`_compute_estatus_pago`);
+  nuevos `pago_suspendido` (Boolean) y `pagado_hasta_inicial` (Date); `_generar_plan_pagos`
+  acepta `desde=` opcional; `_cron_refrescar_estatus_pago` (aging); etiqueta `vencida`→"Expirada".
+- `BCA_Seguros/data/config_parameters.xml` — **NUEVO** (`bca_seguros.dias_gracia_pago=30`).
+- `BCA_Seguros/data/cron_estatus_pago.xml` — **NUEVO** (cron diario de aging del estatus de pago).
+- `BCA_Seguros/views/wizard_carga_portafolio_views.xml` — form real + `action_wizard_carga_portafolio`.
+- `BCA_Seguros/views/menu.xml` — ítem **Pólizas → Cargar Portafolio** (operador+).
+- `BCA_Seguros/views/poliza_views.xml` — `estatus_pago` badge readonly + `pago_suspendido` + `pagado_hasta_inicial`.
+- `BCA_Seguros/__manifest__.py` — `version` `19.0.1.2.0` → **`19.0.1.3.0`** + data files nuevos.
+
+### Archivos (tests)
+- `BCA_Seguros/tests/test_carga_portafolio.py` — **NUEVO** (`@tagged('BCA_Seguros')`): validación
+  (hoja/columna faltante, dry-run no crea, agente inexistente), grabado VIDA+GMM, corte por
+  Pagado Hasta, beneficiarios/dependientes, duplicado `solo_crear`, fila con error no detiene
+  el proceso, y los 4 casos de `estatus_pago` computed. Registrado en `tests/__init__.py`.
+- `BCA_Seguros/tests/test_poliza_vida.py` — ajustado: ya no asigna `estatus_pago` (ahora computed).
+
+### Archivos (specs)
+- `Specs/Decisiones.md` — **D-09** (supera **D-06**, marcada como superada).
+
+### Pendiente
+- **Verificación en sandbox** (deploy `-u BCA_Seguros` + tests). No hay Python local; XML validado.
+- Confirmar nombres de columnas contra el **Excel real de muestra**; el validador falla
+  fail-fast si difieren → ajustar `COLUMNAS_REQUERIDAS`/mapeo en el wizard.
+- **Etapa 8 (cobranza diaria)** y **Etapa 9 (reportes SQL)** siguen pendientes.
+- Follow-ups: ramo AUTOS/Qualitas (omitido con reporte), clave de agente provisional (§2.4.6).
+
+---
+
 ## Sesión 2026-06-05 — Etapa 7: Calculadores de PCA reales (MetLife Vida + GMM)
 
 ### Qué se hizo
@@ -21,7 +74,7 @@ Implementación del calculador de PCA MetLife real (patrón Strategy ya cableado
 - `BCA_Seguros/migrations/19.0.1.2.0/post-migrate.py` — **NUEVO**. Setea `pca_currency_id = MXN` en los `bca.recibo` existentes (todos con PCA 0 hoy).
 
 ### Archivos (tests)
-- `BCA_Seguros/tests/test_pca_metlife.py` — **implementado** (era stub vacío). 11 tests `@tagged('BCA_Seguros')`: Vida MXN (factor 1.0), Vida USD (0.8 + conversión a MXN), exclusiones (aportación adicional, temporalidad <10, temporalidad ≥10 no excluye), sin factor vigente, GMM (coaseguro 10%+ded≥29k→1.2, +ded<29k→1.0, ≤5%→exclusión) y congelamiento R-PCA-01. Reusa el patrón de fixtures de `test_poliza_vida/gmm` (puente `clave_definitiva`). Ya estaba importado en `tests/__init__.py`.
+- `BCA_Seguros/tests/test_pca_metlife.py` — **implementado** (era stub vacío). 10 tests `@tagged('BCA_Seguros')`: Vida MXN (factor 1.0), Vida USD (0.8 + conversión a MXN), exclusiones (aportación adicional, temporalidad <10, temporalidad ≥10 no excluye), sin factor vigente, GMM (coaseguro 10%+ded≥29k→1.2, +ded<29k→1.0, ≤5%→exclusión) y congelamiento R-PCA-01. Reusa el patrón de fixtures de `test_poliza_vida/gmm` (puente `clave_definitiva`). Ya estaba importado en `tests/__init__.py`.
 
 ### Archivos (specs)
 - `Specs/Decisiones.md` — **D-08**. `Specs/Arquitectura_BCA_Seguros.md` §5.2 (resolución M3 + `pca_currency_id` + nota de unidades). `Specs/Bugs.md` — **BUG-015** (desajuste de unidades de coaseguro, mitigado en el calculador).
@@ -31,9 +84,19 @@ Implementación del calculador de PCA MetLife real (patrón Strategy ya cableado
 - **PCA se calcula sobre `recibo.prima_neta` ANTES del write del pago** (orden en `action_registrar_pago`): el cálculo usa la prima del plan, no `vals['prima_neta']`. Los tests capturan `prima` antes de pagar para validar.
 - **"Sin factor vigente" no aborta la cobranza:** retorna PCA 0 + motivo auditable; el lote de E8 procesa sin romperse.
 
+### Verificación en sandbox_bca1 (APROBADA — 2026-06-05)
+Commit `b187215` pusheado a `desarrollo` → deploy automático vía `deploy-sandbox.yml`
+(corre `-u BCA_Seguros`, aplica la migración `19.0.1.2.0`). Tests:
+```bash
+docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http
+```
+Resultado: **116 tests, 22.19s, 5099 queries, 0 failures, 0 errors** ✅. Los 10 tests de
+`test_pca_metlife` corren limpios; cero regresiones (las fixtures que pagan recibos usan
+producto custom sin factor → calculador retorna `'Sin factor PCA vigente'`, PCA 0, igual
+que antes). Los 2 warnings de docutils en el log (`Unexpected indentation`) provienen de la
+descripción RST del módulo estándar `hr_recruitment` (dependencia), **no** de `BCA_Seguros`.
+
 ### Pendiente
-- **Verificación en sandbox** (no se pudo compilar local: sin Python en el host). El deploy a `desarrollo` corre la migración `19.0.1.2.0`. Comando de tests para el usuario:
-  `docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http`. Esperado: baseline 104 + 11 nuevos, 0 failures.
 - **BUG-015**: unificar la escala de `coaseguro` (póliza vs factor) en una pasada futura con migración.
 - **Etapa 8** (wizards) y **Etapa 9** (reportes SQL) siguen pendientes; E9 ya puede consumir `pca_aplicada`/`pca_currency_id` reales.
 

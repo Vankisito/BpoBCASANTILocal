@@ -595,8 +595,13 @@ Función `get_parser(aseguradora_codigo, ramo)` con mensaje de error descriptivo
 
 ---
 
-### Etapa 7 — Calculadores de PCA
+### Etapa 7 — Calculadores de PCA  ✅ COMPLETADA (2026-06-05, commit `b187215`)
 **Tiempo estimado:** 2–3 horas
+
+> **Cierre:** calculador MetLife Vida + GMM implementado. Verificado en `sandbox_bca1`:
+> **116 tests, 0 failures, 0 errors**. Migración `19.0.1.2.0` aplicada en el deploy.
+> Decisiones de multimoneda y alcance de exclusiones en `Decisiones.md` D-08. Ver
+> también `Changelog.md` (sesión 2026-06-05 Etapa 7).
 
 #### `calculadores_pca/base.py`
 ```python
@@ -616,17 +621,24 @@ class CalculadorPCABase:
 5. PCA = prima_neta_mxn × factor
 6. Retornar `(pca, factor, motivo_exclusion)`
 
+> **Nota D-08:** el paso 4 se resolvió como "factor por moneda de la póliza → resultado
+> convertido a MXN" (conserva el haircut USD). La exclusión "cobertura individual de
+> accidentes/invalidez" del paso 1 quedó **fuera de alcance** (sin campo estructurado).
+
 **Checklist Etapa 7:**
-- [ ] Póliza Vida MXN TempoLife → factor 1.0 aplicado
-- [ ] Póliza Vida USD TempoLife → factor 0.8 aplicado + conversión a MXN
-- [ ] Póliza Vida capitalizable con aportación adicional → PCA = 0 con motivo
-- [ ] Póliza GMM coaseguro ≤ 5% → PCA = 0 con motivo
-- [ ] Póliza GMM coaseguro ≥ 10% + deducible ≥ 29,000 → factor 1.2
+- [x] Póliza Vida MXN TempoLife → factor 1.0 aplicado — test `test_vida_mxn_factor_1`
+- [x] Póliza Vida USD TempoLife → factor 0.8 aplicado + conversión a MXN — test `test_vida_usd_factor_080_convertido_a_mxn`
+- [x] Póliza Vida capitalizable con aportación adicional → PCA = 0 con motivo — test `test_vida_excluye_aportacion_adicional`
+- [x] Póliza GMM coaseguro ≤ 5% → PCA = 0 con motivo — test `test_gmm_excluye_coaseguro_5`
+- [x] Póliza GMM coaseguro ≥ 10% + deducible ≥ 29,000 → factor 1.2 — test `test_gmm_coaseguro10_deducible_alto_factor_120`
 
 ---
 
 ### Etapa 8 — Wizards
 **Tiempo estimado:** 4–5 horas
+**Estado:** 🟡 Parcial — **Carga de Portafolio implementada** (2026-06-05, versión `19.0.1.3.0`,
+verificación sandbox pendiente). Cobranza Diaria pendiente (siguiente sub-etapa).
+Decisión asociada: **D-09** (`estatus_pago` computed). Ver `Changelog.md` (sesión Etapa 8 parcial).
 
 #### `wizards/carga_portafolio.py`
 `bca.wizard.carga.portafolio` (TransientModel):
@@ -652,11 +664,16 @@ class CalculadorPCABase:
   6. Retornar action → vista de la bitácora generada
 
 **Checklist Etapa 8:**
-- [ ] CSV de MetLife Vida con 5 filas: 4 válidas + 1 póliza no encontrada → bitácora con 5 líneas
-- [ ] Error en fila 3 no detiene proceso (filas 4 y 5 se procesan)
-- [ ] Fila con póliza ya pagada → "Sin recibo disponible" en bitácora
-- [ ] Archivo sin columna crítica → UserError antes de crear bitácora
-- [ ] Portafolio Excel: validar detecta hoja faltante sin tocar BD
+- [ ] CSV de MetLife Vida con 5 filas: 4 válidas + 1 póliza no encontrada → bitácora con 5 líneas *(cobranza — pendiente)*
+- [ ] Error en fila 3 no detiene proceso (filas 4 y 5 se procesan) *(cobranza — pendiente)*
+- [ ] Fila con póliza ya pagada → "Sin recibo disponible" en bitácora *(cobranza — pendiente)*
+- [ ] Archivo sin columna crítica → UserError antes de crear bitácora *(cobranza — pendiente)*
+- [x] Portafolio Excel: validar detecta hoja faltante sin tocar BD — test `test_validar_sin_hoja_soportada`
+- [x] Portafolio: validar detecta columna crítica faltante (fail-fast, 0 pólizas) — test `test_validar_columna_faltante`
+- [x] Portafolio: grabar crea pólizas VIDA + GMM con agente/contratante/producto resueltos — test `test_crea_vida_y_gmm`
+- [x] Portafolio: "Pagado Hasta" genera solo recibos posteriores al corte — test `test_pagado_hasta_genera_solo_recibos_posteriores`
+- [x] Portafolio: beneficiarios VIDA + dependientes GMM en `bca.poliza.beneficiario` — test `test_beneficiarios_vida_y_dependientes_gmm`
+- [x] Portafolio: fila con error no detiene el proceso (savepoint por póliza) — test `test_fila_con_error_no_detiene_proceso`
 
 ---
 

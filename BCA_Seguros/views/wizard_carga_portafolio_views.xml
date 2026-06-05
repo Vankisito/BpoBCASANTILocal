@@ -1,33 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Skeleton no-op: la implementación completa (campos, action_validar,
-         action_grabar) corresponde a la Etapa 8 del Plan de Desarrollo.
-         El form vacío permite que el TransientModel cargue sin error y
-         deja el archivo listo para reemplazo. -->
 
     <record id="view_wizard_carga_portafolio_form" model="ir.ui.view">
         <field name="name">bca.wizard.carga.portafolio.form</field>
         <field name="model">bca.wizard.carga.portafolio</field>
         <field name="arch" type="xml">
-            <form string="Carga de Portafolio">
+            <form string="Cargar Portafolio">
                 <sheet>
-                    <div class="alert alert-warning" role="alert">
-                        <h3>Funcionalidad pendiente</h3>
-                        <p>
-                            La carga masiva de portafolio se implementa en la
-                            <strong>Etapa 8</strong> del plan de desarrollo del
-                            módulo. Este wizard quedará disponible cuando se
-                            entreguen los parsers (Etapa 6), los calculadores
-                            de PCA (Etapa 7) y la lógica de wizards (Etapa 8).
-                        </p>
+                    <div class="oe_title">
+                        <h1>Carga Masiva de Portafolio</h1>
                     </div>
+                    <group>
+                        <group>
+                            <field name="aseguradora_id"
+                                   options="{'no_create': True}"
+                                   readonly="state == 'validado'"/>
+                            <field name="modo" readonly="state == 'validado'"/>
+                        </group>
+                        <group>
+                            <field name="archivo" filename="nombre_archivo"
+                                   readonly="state == 'validado'"/>
+                            <field name="nombre_archivo" invisible="1"/>
+                            <field name="state" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Resumen" invisible="state != 'validado'">
+                        <group>
+                            <field name="total_filas"/>
+                            <field name="rechazadas"/>
+                        </group>
+                        <group>
+                            <field name="creadas"/>
+                            <field name="actualizadas"/>
+                        </group>
+                    </group>
+                    <field name="reporte_html" invisible="not reporte_html"/>
                 </sheet>
                 <footer>
-                    <button string="Cerrar" class="btn-secondary"
-                            special="cancel"/>
+                    <button name="action_validar" type="object"
+                            string="Validar" class="btn-primary"
+                            invisible="state == 'validado'"/>
+                    <button name="action_grabar" type="object"
+                            string="Grabar" class="btn-primary"
+                            invisible="state != 'validado'"
+                            confirm="¿Confirmas la creación/actualización de las pólizas validadas?"/>
+                    <button name="action_validar" type="object"
+                            string="Re-validar" class="btn-secondary"
+                            invisible="state != 'validado'"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
+    </record>
+
+    <record id="action_wizard_carga_portafolio" model="ir.actions.act_window">
+        <field name="name">Cargar Portafolio</field>
+        <field name="res_model">bca.wizard.carga.portafolio</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
     </record>
 
 </odoo>

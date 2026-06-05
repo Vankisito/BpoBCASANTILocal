@@ -1,6 +1,6 @@
 {
     'name': 'BCA Seguros — Gestión de Pólizas y Cobranza',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
     'category': 'Insurance',
     'summary': 'Módulo vertical BCA para pólizas, cobranza, PCA y comisiones',
     'author': 'Hábitat Digital',
@@ -20,6 +20,8 @@
         'data/productos_metlife.xml',
         'data/conductos_metlife.xml',
         'data/factores_metlife_2026.xml',
+        'data/config_parameters.xml',
+        'data/cron_estatus_pago.xml',
         # Vistas (orden: definir actions y views antes que el menú que las referencia)
         'views/res_partner_views.xml',
         'views/product_template_views.xml',

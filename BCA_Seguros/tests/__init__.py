@@ -10,4 +10,5 @@ from . import (
     test_crm_lead,
     test_views_xml,
     test_parsers,
+    test_carga_portafolio,
 )

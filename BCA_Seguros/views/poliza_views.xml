@@ -127,7 +127,14 @@
                                    options="{'no_create': True}"
                                    readonly="estado != 'borrador'"/>
                             <field name="pagado_hasta" readonly="1"/>
-                            <field name="estatus_pago"/>
+                            <field name="pagado_hasta_inicial"
+                                   readonly="estado != 'borrador'"/>
+                            <field name="estatus_pago" widget="badge"
+                                   decoration-success="estatus_pago == 'al_corriente'"
+                                   decoration-danger="estatus_pago == 'vencido'"
+                                   decoration-warning="estatus_pago == 'suspendido'"
+                                   readonly="1"/>
+                            <field name="pago_suspendido"/>
                         </group>
                         <group string="Importes">
                             <field name="currency_id"

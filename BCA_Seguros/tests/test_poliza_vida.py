@@ -119,13 +119,11 @@ class TestPolizaVida(TransactionCase):
             asegurado_id=self.asegurado.id,
             plan='Plan Protección',
             fecha_emision=date(2025, 12, 15),
-            estatus_pago='al_corriente',
             coberturas_adicionales='Invalidez total y permanente',
         )
         self.assertEqual(poliza.asegurado_id, self.asegurado)
         self.assertEqual(poliza.plan, 'Plan Protección')
         self.assertEqual(poliza.fecha_emision, date(2025, 12, 15))
-        self.assertEqual(poliza.estatus_pago, 'al_corriente')
         self.assertEqual(poliza.coberturas_adicionales, 'Invalidez total y permanente')
 
     def test_contratante_puede_ser_su_propio_asegurado(self) -> None:

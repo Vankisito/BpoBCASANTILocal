@@ -74,10 +74,13 @@
 
 ---
 
-## D-06 — `estatus_pago` es declarativo, no fuente de verdad operativa
+## D-06 — `estatus_pago` es declarativo, no fuente de verdad operativa  ⚠️ SUPERADA por D-09
 
 **Fecha:** 2026-05-28
 **Decidido por:** Rafael Viera (usuario) vía AskUserQuestion
+**Estado:** Superada por **D-09** (Etapa 8): `estatus_pago` deja de ser un campo capturable
+y pasa a **computed** derivado de la fecha pagada. El espíritu de D-06 (que la verdad
+operativa la da `pagado_hasta`) se mantiene y se refuerza.
 
 **Decisión:** Se agrega `bca.poliza.estatus_pago` (Selection capturable) para reflejar el "Estatus de Pago" del layout. NO reemplaza ni alimenta la lógica de vigencia de pago: esa la determina el computed `pagado_hasta` a partir de los recibos.
 
@@ -125,3 +128,28 @@
 - La exclusión por coberturas individuales no es auto-evaluable desde texto libre; forzarla sería adivinar. Mejor dejarla explícita como pendiente que producir PCA incorrecta.
 
 **Hallazgo asociado (deuda de datos):** `bca.poliza.coaseguro` se guarda como **fracción** (0.10 = 10%) mientras que `bca.factor.pca.coaseguro_min` del seed GMM usa **puntos porcentuales** (10.0). El calculador normaliza (`coaseguro_pct = poliza.coaseguro × 100`) antes de comparar. Registrado en `Bugs.md`.
+
+---
+
+## D-09 — `estatus_pago` computed: una sola fuente de verdad para la salud de pago (supera D-06)
+
+**Fecha:** 2026-06-05
+**Decidido por:** Rafael Viera (usuario) vía AskUserQuestion (Etapa 8)
+
+**Contexto:** `bca.poliza` tenía dos ejes que parecían redundantes y colisionaban en la palabra "vencida/vencido": `estado` (ciclo de vida contractual: borrador/activa/vencida/cancelada) y `estatus_pago` (salud de pago: al_corriente/vencido/suspendido, editable a mano por D-06). Además `estatus_pago` podía contradecir a `pagado_hasta`, que el propio modelo declara como la verdad operativa.
+
+**Decisión:** `estatus_pago` deja de ser capturable y pasa a **computed `store=True`** (`_compute_estatus_pago`):
+
+- **Derivación:** la fecha de pago efectiva = `pagado_hasta` (recibos pagados) y, en su defecto, `pagado_hasta_inicial` (declarado en la carga de portafolio). Si `fecha + gracia >= hoy` → `al_corriente`, si no → `vencido`. Estados `borrador`/`cancelada` → vacío.
+- **`pago_suspendido`** (Boolean, nuevo): único override manual, ya que `suspendido` no es derivable de una fecha.
+- **Período de gracia** configurable: `ir.config_parameter` `bca_seguros.dias_gracia_pago` (default 30), semilla en `data/config_parameters.xml`.
+- **Aging por tiempo:** como el cómputo depende de "hoy" y es `store=True`, un `ir.cron` diario (`data/cron_estatus_pago.xml` → `_cron_refrescar_estatus_pago`) recalcula las pólizas activas. Deja lista la clasificación de cartera de la Etapa 9.
+- **`pagado_hasta_inicial`** (Date, nuevo): dato declarado del layout. `pagado_hasta` (computed desde recibos) sigue siendo la verdad operativa; este campo solo siembra el arranque mientras no haya recibos pagados, y ancla la generación del plan (solo recibos posteriores al corte).
+- **Colisión de etiqueta:** la etiqueta de `estado='vencida'` se renombró a **"Expirada"** (la clave `vencida` no cambia → sin migración).
+
+**Razón:**
+- Un solo eje de verdad para el pago elimina el riesgo de desincronización que D-06 aceptaba como "informativo". El estatus nunca contradice a los recibos.
+- `estado` (lifecycle) y `estatus_pago` (pago) son ejes ortogonales legítimos; el problema era solo el solapamiento semántico y la doble fuente, no la existencia de ambos.
+- El `pagado_hasta_inicial` permite cargar pólizas en vigor sin inventar recibos históricos pagados (decisión del usuario en Etapa 8: generar solo recibos posteriores al corte).
+
+**Impacto:** `bca.poliza.estatus_pago` ahora `readonly` en la vista (badge). El layout "Estatus de Pago" ya no se almacena verbatim: "suspendido" → `pago_suspendido=True`; al_corriente/vencido los deriva el computed desde `pagado_hasta_inicial`. Tests que asignaban `estatus_pago` a mano se ajustaron.
