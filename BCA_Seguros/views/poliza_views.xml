@@ -213,6 +213,7 @@
                                     <field name="prima_neta"
                                            widget="monetary" sum="Total"/>
                                     <field name="currency_id" column_invisible="True"/>
+                                    <field name="pca_currency_id" column_invisible="True"/>
                                     <field name="fecha_pago"/>
                                     <field name="pca_aplicada"
                                            widget="monetary" sum="PCA"/>

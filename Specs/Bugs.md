@@ -31,6 +31,14 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 |----|-------|----------------|-------------|------|-----------|--------|
 | BUG-012 | 2026-05-27 | Recibo (form), Póliza (pestaña Recibos), Contactos | Las fechas (Cobertura Desde/Hasta, Fecha de Pago) no se muestran en formato día/mes/año. | Config | ⚪ Baja | Pendiente-config |
 | BUG-013 | 2026-05-27 | Póliza → form → pestaña "Recibos" | Al abrir un recibo desde la pestaña se muestra un popup con botón "Registrar Pago", pero la sección "Datos del Pago" no es editable en ese diálogo, por lo que el botón no tiene funcionalidad real. | UI/UX | 🟡 Media | Abierto |
+| BUG-015 | 2026-06-05 | Datos: `bca.poliza.coaseguro` vs `bca.factor.pca.coaseguro_min` | Desajuste de unidades de coaseguro: la póliza lo guarda como fracción (`0.10`=10%) y el seed de factores GMM como puntos porcentuales (`coaseguro_min=10.0`). El calculador de PCA (E7) lo normaliza, pero la inconsistencia de esquema persiste y puede confundir captura/reportes. | Datos | 🟡 Media | Abierto |
+
+### Detalle de bugs abiertos (cont.)
+
+**BUG-015 — Unidades inconsistentes de `coaseguro`**
+- *Causa:* `bca.poliza.coaseguro` (Float) documenta "0.05 = 5%" (fracción), pero los registros de `bca.factor.pca` (campos `coaseguro_min`/`coaseguro_max`) se sembraron en puntos porcentuales (`10.0` = 10%).
+- *Mitigación actual (E7):* `CalculadorPCAMetLife._evaluar_exclusiones` / `_buscar_factor` normalizan con `coaseguro_pct = poliza.coaseguro * 100` antes de comparar contra el factor.
+- *Solución propuesta (a futuro):* unificar a una sola escala — preferible que ambos usen fracción (`0.10`) o ambos puntos (`10.0`), ajustando seed + help + UI + el calculador en una sola pasada, con migración de datos para los factores existentes (`noupdate="1"`).
 
 ### Detalle de bugs abiertos
 

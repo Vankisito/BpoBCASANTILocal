@@ -609,15 +609,33 @@ class CalculadorPCABase:
         """
 ```
 
-### 5.2 Implementación MetLife
+### 5.2 Implementación MetLife — IMPLEMENTADO (Etapa 7)
 
 **Archivo:** `calculadores_pca/metlife.py`
 
-Lógica:
-1. Evaluar exclusiones (R-PCA Vida y GMM). Si excluido → retornar `(0, 0, motivo)`.
-2. Buscar factor en `bca.factor.pca` con domain según ramo, producto, moneda, coaseguro, deducible.
-3. PCA = prima_neta × factor.
-4. Retornar `(pca, factor, '')`.
+Lógica (`calcular(recibo) → (pca, factor_aplicado, motivo_exclusion)`, **pca en MXN**):
+1. Resolver `ramo` de la póliza (solo `vida`/`gmm`; otro → `(0,0,'Ramo no soportado…')`).
+2. Evaluar exclusiones **antes del factor** (D-08). Si excluido → `(0, 0, motivo)`:
+   - Vida: `es_aportacion_adicional`; `0 < temporalidad_anios < 10`.
+   - GMM: `coaseguro ≤ 5%` (normalizado a puntos porcentuales — ver nota de unidades).
+   - *(La exclusión "coberturas individuales de accidentes/invalidez" queda fuera de
+     alcance: no hay campo estructurado. Ver D-08.)*
+3. Buscar factor vigente en `bca.factor.pca` (aseguradora, ramo, `activo`, vigencia ⊇ `fecha_pago`).
+   - Vida: además por `producto_ids` y `currency_id == poliza.currency_id`.
+   - GMM: por umbrales `coaseguro_min`/`deducible_min`, tomando la regla más específica
+     (mayor `deducible_min`, luego mayor `coaseguro_min`).
+   - Sin factor → `(0, 0, 'Sin factor PCA vigente')` (no aborta la cobranza).
+4. `pca_ccy = prima_neta × factor`; convertir a MXN vía `res.currency._convert()` a `fecha_pago`.
+   Retornar `(pca_mxn, factor, '')`.
+
+> **[RESOLUCIÓN M3 / D-08]** La PCA se expresa **siempre en MXN**. El factor se
+> selecciona por la **moneda de la póliza** (conserva el ajuste USD, ej. Vida 80%) y el
+> monto resultante se convierte a MXN. El recibo guarda la PCA en `pca_currency_id`
+> (= MXN, default), no en `currency_id` (moneda de la póliza, que puede ser USD).
+>
+> **Nota de unidades (deuda de datos, ver `Bugs.md`):** `bca.poliza.coaseguro` es fracción
+> (`0.10`=10%) y `bca.factor.pca.coaseguro_min` del seed es puntos porcentuales (`10.0`).
+> El calculador normaliza (`coaseguro × 100`) antes de comparar.
 
 ### 5.3 Registry
 

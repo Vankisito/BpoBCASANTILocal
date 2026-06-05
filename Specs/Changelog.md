@@ -4,6 +4,41 @@
 
 ---
 
+## Sesión 2026-06-05 — Etapa 7: Calculadores de PCA reales (MetLife Vida + GMM)
+
+### Qué se hizo
+Implementación del calculador de PCA MetLife real (patrón Strategy ya cableado en `CALCULADOR_REGISTRY`), reemplazando el stub que congelaba **PCA = 0** en todo recibo pagado. Cubre Vida (factor por producto + moneda, con exclusiones por aportación adicional y temporalidad < 10) y GMM (factor por coaseguro/deducible, exclusión coaseguro ≤ 5%). La PCA se expresa **siempre en MXN** (D-08): el factor se elige por la moneda de la póliza y el resultado se convierte a MXN. Qualitas/Autos sigue fuera de alcance (su pago levanta `UserError` por falta de calculador, igual que en E6).
+
+### Decisiones tomadas con el usuario (AskUserQuestion) → `Decisiones.md` D-08
+- **Multimoneda:** factor por moneda de la póliza (conserva el haircut USD 80%), resultado convertido a MXN vía `res.currency._convert()`. Resuelve la corrección M3 de Arquitectura §5.2.
+- **Exclusión "coberturas individuales de accidentes/invalidez":** fuera de alcance E7 (no hay campo estructurado; queda manual).
+
+### Archivos (código)
+- `BCA_Seguros/calculadores_pca/metlife.py` — **implementado** `calcular()` + helpers `_evaluar_exclusiones` y `_buscar_factor`. Normaliza el desajuste de unidades de `coaseguro` (fracción en póliza vs puntos porcentuales en el seed).
+- `BCA_Seguros/models/recibo.py` — campo nuevo `pca_currency_id` (default MXN); `pca_aplicada` repuntada a `currency_field='pca_currency_id'`; `pca_currency_id` agregado a `CAMPOS_PCA_PROTEGIDOS` y al write del pago; **eliminado** el stub `try/except NotImplementedError` de `_calcular_pca`.
+- `BCA_Seguros/views/recibo_views.xml` y `views/poliza_views.xml` — `pca_currency_id` (invisible) junto a cada render de `pca_aplicada` (lista de recibos, form de recibo, pestaña Recibos de la póliza) para el widget monetary.
+- `BCA_Seguros/__manifest__.py` — `version` `19.0.1.1.0` → **`19.0.1.2.0`**.
+- `BCA_Seguros/migrations/19.0.1.2.0/post-migrate.py` — **NUEVO**. Setea `pca_currency_id = MXN` en los `bca.recibo` existentes (todos con PCA 0 hoy).
+
+### Archivos (tests)
+- `BCA_Seguros/tests/test_pca_metlife.py` — **implementado** (era stub vacío). 11 tests `@tagged('BCA_Seguros')`: Vida MXN (factor 1.0), Vida USD (0.8 + conversión a MXN), exclusiones (aportación adicional, temporalidad <10, temporalidad ≥10 no excluye), sin factor vigente, GMM (coaseguro 10%+ded≥29k→1.2, +ded<29k→1.0, ≤5%→exclusión) y congelamiento R-PCA-01. Reusa el patrón de fixtures de `test_poliza_vida/gmm` (puente `clave_definitiva`). Ya estaba importado en `tests/__init__.py`.
+
+### Archivos (specs)
+- `Specs/Decisiones.md` — **D-08**. `Specs/Arquitectura_BCA_Seguros.md` §5.2 (resolución M3 + `pca_currency_id` + nota de unidades). `Specs/Bugs.md` — **BUG-015** (desajuste de unidades de coaseguro, mitigado en el calculador).
+
+### Decisiones de implementación e implicaciones
+- **`pca_aplicada` en `pca_currency_id` (MXN), no en `currency_id`:** la moneda de la póliza puede ser USD; la PCA siempre MXN. Cualquier suma de PCA en vistas/reportes ahora es homogénea en MXN.
+- **PCA se calcula sobre `recibo.prima_neta` ANTES del write del pago** (orden en `action_registrar_pago`): el cálculo usa la prima del plan, no `vals['prima_neta']`. Los tests capturan `prima` antes de pagar para validar.
+- **"Sin factor vigente" no aborta la cobranza:** retorna PCA 0 + motivo auditable; el lote de E8 procesa sin romperse.
+
+### Pendiente
+- **Verificación en sandbox** (no se pudo compilar local: sin Python en el host). El deploy a `desarrollo` corre la migración `19.0.1.2.0`. Comando de tests para el usuario:
+  `docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http`. Esperado: baseline 104 + 11 nuevos, 0 failures.
+- **BUG-015**: unificar la escala de `coaseguro` (póliza vs factor) en una pasada futura con migración.
+- **Etapa 8** (wizards) y **Etapa 9** (reportes SQL) siguen pendientes; E9 ya puede consumir `pca_aplicada`/`pca_currency_id` reales.
+
+---
+
 ## Sesión 2026-06-05 (cont.) — Fix BUG-014: crash OwlError en pestaña BCA de Agentes (migración D-07)
 
 ### Qué se hizo

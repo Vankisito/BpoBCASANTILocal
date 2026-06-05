@@ -18,6 +18,7 @@
                 <field name="prima_total" widget="monetary"
                        sum="Prima Total" optional="hide"/>
                 <field name="currency_id" column_invisible="True"/>
+                <field name="pca_currency_id" column_invisible="True"/>
                 <field name="fecha_pago" optional="show"/>
                 <field name="conducto_id" optional="hide"/>
                 <field name="agente_poliza_id" optional="show"/>
@@ -110,6 +111,7 @@
                         </group>
                         <group string="PCA congelada"
                                invisible="estado != 'pagado'">
+                            <field name="pca_currency_id" invisible="1"/>
                             <field name="pca_aplicada" readonly="1"/>
                             <field name="factor_aplicado" readonly="1"/>
                             <field name="motivo_exclusion_pca" readonly="1"

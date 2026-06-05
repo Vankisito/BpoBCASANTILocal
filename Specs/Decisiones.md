@@ -104,3 +104,24 @@
 - Reclutamiento ya lleva la prospección/exámenes; automatizar la alimentación del puente evita que Operaciones de Seguros tenga que mover estados a mano.
 
 **Pendiente de implementación:** campos destino en `hr.applicant` (`bca_aseguradora_destino_id`, `bca_clave_arranque`), las automated actions del ciclo completo y el smart button. Hoy `hr_applicant.py` solo crea el partner al cerrar "Contratado". El rollup y el puente ya soportan los tres estados.
+
+---
+
+## D-08 — PCA multimoneda: factor por moneda de la póliza, resultado convertido a MXN
+
+**Fecha:** 2026-06-05
+**Decidido por:** Rafael Viera (usuario) vía AskUserQuestion (Etapa 7)
+
+**Decisión:** El cálculo de PCA (`calculadores_pca/metlife.py`) expresa la PCA **siempre en MXN**.
+
+- **Selección de factor por moneda de la póliza.** En Vida la tabla de factores distingue MXN vs USD (ej. TempoLife 100% MXN / 80% USD). Se selecciona la fila cuyo `currency_id` coincide con `poliza.currency_id` — la póliza USD recibe su factor USD (conserva el "haircut" del 80%). GMM no discrimina por moneda (los 3 factores son MXN).
+- **Conversión a MXN al final.** `pca_ccy = prima_neta × factor` (en moneda de la póliza); si la póliza no es MXN, se convierte vía `res.currency._convert(pca_ccy, MXN, company, fecha_pago)`. Matemáticamente equivalente a "convertir antes del factor" (resuelve la corrección M3 de Arquitectura §5.2, que queda obsoleta en su lectura "siempre factor MXN").
+- **Campo nuevo `bca.recibo.pca_currency_id`** (default MXN), al que apunta `currency_field` de `pca_aplicada`. Necesario porque la PCA está en MXN aunque la póliza (y `recibo.currency_id`) puedan ser USD. Se congela al pago junto con `pca_aplicada`/`factor_aplicado` (R-PCA-01).
+- **Exclusión "coberturas individuales de accidentes/invalidez": fuera de alcance E7.** No existe campo estructurado (solo el texto libre `coberturas_adicionales`); queda como ajuste manual futuro. E7 implementa solo las exclusiones con campo: aportación adicional y temporalidad < 10 (Vida); coaseguro ≤ 5% (GMM).
+
+**Razón:**
+- Conservar el factor por moneda mantiene la semántica económica (las pólizas USD sí valen menos PCA), y aun así el resultado queda homogéneo en MXN para reportes y liquidaciones consolidadas.
+- Pinear la PCA a su propia moneda (`pca_currency_id`) evita mostrar montos ambiguos cuando la póliza es USD.
+- La exclusión por coberturas individuales no es auto-evaluable desde texto libre; forzarla sería adivinar. Mejor dejarla explícita como pendiente que producir PCA incorrecta.
+
+**Hallazgo asociado (deuda de datos):** `bca.poliza.coaseguro` se guarda como **fracción** (0.10 = 10%) mientras que `bca.factor.pca.coaseguro_min` del seed GMM usa **puntos porcentuales** (10.0). El calculador normaliza (`coaseguro_pct = poliza.coaseguro × 100`) antes de comparar. Registrado en `Bugs.md`.

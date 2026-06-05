@@ -9,7 +9,7 @@ ESTADO_RECIBO_SELECTION = [
     ('cancelado', 'Cancelado'),
 ]
 
-CAMPOS_PCA_PROTEGIDOS = {'pca_aplicada', 'factor_aplicado'}
+CAMPOS_PCA_PROTEGIDOS = {'pca_aplicada', 'factor_aplicado', 'pca_currency_id'}
 
 
 class BcaRecibo(models.Model):
@@ -108,9 +108,20 @@ class BcaRecibo(models.Model):
     )
 
     # PCA congelada al pago. Inmutable salvo por env.su o cancelación autorizada.
+    # Se expresa SIEMPRE en MXN (decisión D-08), por eso usa pca_currency_id
+    # (no currency_id, que es la moneda de la póliza y puede ser USD).
+    pca_currency_id: int = fields.Many2one(
+        'res.currency',
+        string='Moneda PCA',
+        readonly=True,
+        default=lambda self: (
+            self.env.ref('base.MXN', raise_if_not_found=False)
+            or self.env.company.currency_id
+        ),
+    )
     pca_aplicada: float = fields.Monetary(
         string='PCA Aplicada',
-        currency_field='currency_id',
+        currency_field='pca_currency_id',
         readonly=True,
         tracking=True,
     )
@@ -262,6 +273,10 @@ class BcaRecibo(models.Model):
                 'agente_id': rec.poliza_id.agente_id.id,
                 'promotoria_id': rec.poliza_id.promotoria_id.id,
                 'pca_aplicada': pca,
+                'pca_currency_id': (
+                    self.env.ref('base.MXN', raise_if_not_found=False)
+                    or self.env.company.currency_id
+                ).id,
                 'factor_aplicado': factor,
                 'motivo_exclusion_pca': motivo,
                 'bitacora_linea_id': vals.get('bitacora_linea_id'),
@@ -359,12 +374,11 @@ class BcaRecibo(models.Model):
         return True
 
     def _calcular_pca(self) -> tuple:
-        """Delega al calculador registrado para la aseguradora.
+        """Delega al calculador de PCA registrado para la aseguradora.
 
-        Mientras los calculadores reales no estén implementados (Etapa 7),
-        atrapamos NotImplementedError para no bloquear el flujo de pago
-        durante el desarrollo de E2-E6. El registry levantará KeyError
-        si la aseguradora no tiene calculador asignado.
+        Retorna (pca, factor_aplicado, motivo_exclusion) con la PCA en MXN.
+        El registry levanta UserError si la aseguradora no tiene calculador
+        asignado (ej. Qualitas/Autos, diferido a post-v1).
         """
         from ..calculadores_pca import CALCULADOR_REGISTRY
         self.ensure_one()
@@ -378,8 +392,4 @@ class BcaRecibo(models.Model):
             raise UserError(
                 _('No hay calculador de PCA registrado para %s.') % codigo
             )
-        try:
-            return CALCULADOR_REGISTRY[codigo](self.env).calcular(self)
-        except NotImplementedError:
-            # Stub temporal hasta Etapa 7 — permite ejercitar el flujo E2.
-            return (0.0, 0.0, 'Calculador pendiente — Etapa 7')
+        return CALCULADOR_REGISTRY[codigo](self.env).calcular(self)
