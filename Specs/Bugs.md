@@ -48,6 +48,14 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 
 ## Bugs Resueltos
 
+Resuelto el **2026-06-05** (rama `desarrollo`):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-014 | Contactos (form, Agente, pestaña BCA Seguros) | Al abrir un Agente, la pestaña BCA crasheaba con `OwlError → TypeError: Cannot read properties of undefined (reading '1')` en `SelectionField`. Causa: registros viejos con `bca_estado_agente`/`estado='con_licencia'`, valor eliminado del `Selection` al pasar a la nomenclatura de 3 estados (D-07). No afectaba a promotorías (no renderizan esos campos). | Datos | 🔴 Crítica | Migración `migrations/19.0.1.1.0/post-migrate.py`: mapea `con_licencia→clave_definitiva` en el puente, sanea el rollup del partner y lo recalcula desde el puente. Bump de manifest a `19.0.1.1.0`. | desarrollo |
+
+---
+
 Lote resuelto el **2026-05-27** (commits `407af41` + `7ba6570`, rama `desarrollo`; verificado en `sandbox_bca1`: 87 tests, 0 failures, 0 errors).
 
 | ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |

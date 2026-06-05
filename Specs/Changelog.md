@@ -4,6 +4,25 @@
 
 ---
 
+## Sesión 2026-06-05 (cont.) — Fix BUG-014: crash OwlError en pestaña BCA de Agentes (migración D-07)
+
+### Qué se hizo
+El cambio D-07 dejó registros viejos con `bca_estado_agente='con_licencia'` (y `estado='con_licencia'` en el puente), valor que ya no existe en el `Selection`. Al abrir un Agente → pestaña BCA, el `SelectionField` de Owl reventaba (`Cannot read properties of undefined (reading '1')`). Se agregó una **migración de datos** que mapea `con_licencia → clave_definitiva` y recalcula el rollup. Solo datos; sin cambios de lógica de runtime.
+
+### Archivos
+- `BCA_Seguros/__manifest__.py` — `version` `19.0.1.0.0` → **`19.0.1.1.0`** (obligatorio para que corra la migración).
+- `BCA_Seguros/migrations/19.0.1.1.0/post-migrate.py` — **NUEVO**. `migrate(cr, version)`: (1) puente `con_licencia→clave_definitiva`; (2) sanea el rollup del partner; (3) recalcula `bca_estado_agente` desde el puente (agente sin claves → prospecto). Loguea conteos y avisa de agentes "Con Licencia" sin clave.
+- `BCA_Seguros/migrations/1.0.0/post_migrate.py` — **ELIMINADO**. Stub muerto: nunca corría (nombre con guion bajo en vez de `post-migrate.py`, carpeta sin prefijo de serie, y sin función `migrate`).
+
+### Aprendizaje (naming de migraciones Odoo) — verificado con `odoo-development-skill`
+- El archivo debe llamarse **`post-migrate.py` / `pre-migrate.py` (con guion)**: Odoo solo ejecuta archivos que empiezan con `pre-`, `post-` o `end-`.
+- La carpeta debe ser la **versión completa** (`19.0.1.1.0`): `convert_version` deja intactas las versiones con ≥2 puntos, así que `1.1.0` quedaría fuera del rango de ejecución.
+
+### Verificación (sandbox)
+`odoo -d <db> -u BCA_Seguros --stop-after-init` → en el log debe verse `Running migration [19.0.1.1.0] post-migrate.py` y `BCA D-07: N clave(s) ... migradas`. Luego abrir un Agente → pestaña BCA sin crash.
+
+---
+
 ## Sesión 2026-06-05 — Nomenclatura de agentes: 3 estados de carrera (rollup computed)
 
 ### Qué se hizo
