@@ -45,11 +45,25 @@ GMM en `bca.poliza.beneficiario`; y confirma generando **solo los recibos poster
   el proceso, y los 4 casos de `estatus_pago` computed. Registrado en `tests/__init__.py`.
 - `BCA_Seguros/tests/test_poliza_vida.py` — ajustado: ya no asigna `estatus_pago` (ahora computed).
 
+### Fix de regresión destapado por el deploy — BUG-016 (commit `38736b7`)
+El primer `-u` honesto sobre `sandbox_bca1` destapó un bug **latente desde la E7** en
+`bca.recibo.action_registrar_pago`: el cálculo de PCA corría ANTES del write que asigna
+`fecha_pago`, así que el calculador leía `recibo.fecha_pago=False` y `vigencia_desde <= False`
+no encontraba el factor → PCA congelada en 0 (6 fallos en `test_pca_metlife`). **Fix:** fijar
+`rec.fecha_pago = vals['fecha_pago']` antes de `_calcular_pca()`. Diagnóstico vía `odoo shell`
+(reproducción aislada: `_calcular_pca()` daba `(0,0,'Sin factor')` con fecha False y
+`(12000.0,1.0,'')` con fecha fijada). Registrado en `Bugs.md` (BUG-016).
+
 ### Archivos (specs)
 - `Specs/Decisiones.md` — **D-09** (supera **D-06**, marcada como superada).
+- `Specs/Bugs.md` — **BUG-016** (resuelto).
+
+### Verificación en sandbox_bca1 (APROBADA — 2026-06-05)
+Tras `38736b7`: `docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags
+BCA_Seguros --stop-after-init --no-http` → **`BCA_Seguros: 135 tests, 0 failures, 0 errors`**.
+Incluye los 14 tests nuevos de portafolio + estatus_pago y los 6 de PCA recuperados por BUG-016.
 
 ### Pendiente
-- **Verificación en sandbox** (deploy `-u BCA_Seguros` + tests). No hay Python local; XML validado.
 - Confirmar nombres de columnas contra el **Excel real de muestra**; el validador falla
   fail-fast si difieren → ajustar `COLUMNAS_REQUERIDAS`/mapeo en el wizard.
 - **Etapa 8 (cobranza diaria)** y **Etapa 9 (reportes SQL)** siguen pendientes.

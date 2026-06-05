@@ -636,9 +636,11 @@ class CalculadorPCABase:
 
 ### Etapa 8 — Wizards
 **Tiempo estimado:** 4–5 horas
-**Estado:** 🟡 Parcial — **Carga de Portafolio implementada** (2026-06-05, versión `19.0.1.3.0`,
-verificación sandbox pendiente). Cobranza Diaria pendiente (siguiente sub-etapa).
-Decisión asociada: **D-09** (`estatus_pago` computed). Ver `Changelog.md` (sesión Etapa 8 parcial).
+**Estado:** 🟡 Parcial — **Carga de Portafolio implementada y verificada** (2026-06-05,
+versión `19.0.1.3.0`, sandbox `sandbox_bca1`: **135 tests, 0 failures**). Cobranza Diaria
+pendiente (siguiente sub-etapa). Decisión asociada: **D-09** (`estatus_pago` computed).
+El deploy destapó **BUG-016** (PCA congelada en 0 por `fecha_pago=False` al calcular),
+corregido en `recibo.py` (commit `38736b7`). Ver `Changelog.md` y `Bugs.md`.
 
 #### `wizards/carga_portafolio.py`
 `bca.wizard.carga.portafolio` (TransientModel):
