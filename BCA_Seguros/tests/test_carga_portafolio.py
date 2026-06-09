@@ -221,6 +221,44 @@ class TestCargaPortafolioGrabado(_PortafolioFixtures):
 
 
 @tagged('BCA_Seguros')
+class TestPlantillaDescarga(_PortafolioFixtures):
+    """Descarga de la plantilla y round-trip: lo que genera el wizard debe
+    ser re-validable por el propio wizard sin errores estructurales."""
+
+    def test_descargar_devuelve_act_url_y_adjunto(self) -> None:
+        wizard = self._wizard(_build_xlsx({'VIDA': (HEADERS_VIDA, [self._fila_vida()])}))
+        accion = wizard.action_descargar_plantilla()
+        self.assertEqual(accion['type'], 'ir.actions.act_url')
+        self.assertEqual(accion['target'], 'download')
+        self.assertIn('/web/content/', accion['url'])
+
+        att_id = int(accion['url'].split('/web/content/')[1].split('?')[0])
+        adjunto = self.env['ir.attachment'].browse(att_id)
+        self.assertEqual(adjunto.name, 'plantilla_portafolio_BCA.xlsx')
+        self.assertEqual(
+            adjunto.mimetype,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        self.assertTrue(adjunto.datas)
+        # Atado al transient para que el vacuum lo purgue.
+        self.assertEqual(adjunto.res_model, 'bca.wizard.carga.portafolio')
+        self.assertEqual(adjunto.res_id, wizard.id)
+
+    def test_round_trip_plantilla_es_validable(self) -> None:
+        # La plantilla generada se vuelve a cargar: la estructura (hojas VIDA y
+        # GMM, columnas requeridas) debe ser válida y no lanzar.
+        origen = self._wizard(_build_xlsx({'VIDA': (HEADERS_VIDA, [self._fila_vida()])}))
+        accion = origen.action_descargar_plantilla()
+        att_id = int(accion['url'].split('/web/content/')[1].split('?')[0])
+        datas = self.env['ir.attachment'].browse(att_id).datas
+
+        wizard = self._wizard(datas)
+        wizard.action_validar()
+        self.assertEqual(wizard.state, 'validado')
+        # 2 filas de ejemplo por hoja (VIDA + GMM).
+        self.assertEqual(wizard.total_filas, 4)
+
+
+@tagged('BCA_Seguros')
 class TestEstatusPagoComputed(_PortafolioFixtures):
     """estatus_pago derivado de pagado_hasta/pagado_hasta_inicial vs hoy."""
 

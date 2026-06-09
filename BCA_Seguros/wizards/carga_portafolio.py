@@ -8,6 +8,8 @@ from datetime import date, datetime
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from . import plantilla_portafolio
+
 try:
     import openpyxl
 except ImportError:  # pragma: no cover - declarado en external_dependencies
@@ -158,6 +160,32 @@ class BcaWizardCargaPortafolio(models.TransientModel):
             'reporte_html': self._render_reporte(resultados, fase='grabado'),
         })
         return self._reabrir()
+
+    def action_descargar_plantilla(self) -> dict:
+        """Genera la plantilla .xlsx al vuelo y la entrega como descarga.
+
+        El catálogo de columnas vive en ``plantilla_portafolio`` (única fuente
+        de verdad, compartida con el script de dev). El adjunto se ata al
+        registro transient para que el vacuum de transients lo purgue.
+        """
+        self.ensure_one()
+        if openpyxl is None:
+            raise UserError(_('La librería openpyxl no está instalada.'))
+        datos = plantilla_portafolio.construir_workbook_bytes()
+        adjunto = self.env['ir.attachment'].create({
+            'name': 'plantilla_portafolio_BCA.xlsx',
+            'datas': base64.b64encode(datos),
+            'res_model': self._name,
+            'res_id': self.id,
+            'mimetype': (
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            ),
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%d?download=true' % adjunto.id,
+            'target': 'download',
+        }
 
     # ------------------------------------------------------------------ #
     # Lectura del archivo
