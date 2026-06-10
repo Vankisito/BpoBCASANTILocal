@@ -86,7 +86,11 @@ class BcaWizardCargaPortafolio(models.TransientModel):
     _name = 'bca.wizard.carga.portafolio'
     _description = 'Wizard Carga Masiva de Portafolio'
 
-    archivo: bytes = fields.Binary(string='Archivo de Portafolio (.xlsx)', required=True)
+    # No 'required' a nivel de campo: el botón "Descargar plantilla" es un
+    # type="object" que guarda el wizard antes de ejecutarse, y un archivo
+    # obligatorio bloquearía la descarga (que precisamente sirve para obtener
+    # el archivo). La obligatoriedad se valida en _abrir_workbook al validar/grabar.
+    archivo: bytes = fields.Binary(string='Archivo de Portafolio (.xlsx)')
     nombre_archivo: str = fields.Char(string='Nombre del Archivo')
     aseguradora_id: int = fields.Many2one(
         'res.partner',

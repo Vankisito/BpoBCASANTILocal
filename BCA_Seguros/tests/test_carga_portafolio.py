@@ -226,7 +226,13 @@ class TestPlantillaDescarga(_PortafolioFixtures):
     ser re-validable por el propio wizard sin errores estructurales."""
 
     def test_descargar_devuelve_act_url_y_adjunto(self) -> None:
-        wizard = self._wizard(_build_xlsx({'VIDA': (HEADERS_VIDA, [self._fila_vida()])}))
+        # Sin archivo adjunto: la descarga NO debe exigir el campo 'archivo'
+        # (de lo contrario el guardado previo al type='object' fallaría).
+        wizard = self.env['bca.wizard.carga.portafolio'].create({
+            'aseguradora_id': self.aseguradora.id,
+            'modo': 'crear_actualizar',
+        })
+        self.assertFalse(wizard.archivo)
         accion = wizard.action_descargar_plantilla()
         self.assertEqual(accion['type'], 'ir.actions.act_url')
         self.assertEqual(accion['target'], 'download')
