@@ -210,6 +210,24 @@ class TestCargaPortafolioGrabado(_PortafolioFixtures):
         self.assertEqual(wizard2.creadas, 0)
         self.assertEqual(wizard2.rechazadas, 1)
 
+    def test_clave_agente_tolera_ceros_a_la_izquierda(self) -> None:
+        # La aseguradora registra la clave con padding ('000019799') pero el
+        # Excel la trae sin ceros ('19799', celda numérica). Debe resolver.
+        agente = self.env['res.partner'].create({
+            'name': 'Agente Padded', 'bca_tipo': 'agente',
+            'parent_id': self.promotoria.id,
+        })
+        self.env['res.partner.agente.aseguradora'].create({
+            'agente_id': agente.id, 'aseguradora_id': self.aseguradora.id,
+            'clave_agente': '000019799', 'estado': 'clave_definitiva',
+        })
+        fila = self._fila_vida(**{'Póliza': 'PV-PAD', 'Clave de Agente': '19799'})
+        wizard = self._grabar({'VIDA': (HEADERS_VIDA, [fila])})
+        self.assertEqual(wizard.creadas, 1)
+        self.assertEqual(wizard.rechazadas, 0)
+        pol = self.env['bca.poliza'].search([('name', '=', 'PV-PAD')])
+        self.assertEqual(pol.agente_id, agente)
+
     def test_fila_con_error_no_detiene_proceso(self) -> None:
         ok = self._fila_vida(**{'Póliza': 'PV-OK'})
         malo = self._fila_vida(**{'Póliza': 'PV-MAL', 'Clave de Agente': 'NOPE'})

@@ -434,10 +434,19 @@ class BcaWizardCargaPortafolio(models.TransientModel):
         # La clave puede venir como número; normalizar a texto sin decimales.
         if isinstance(clave_raw, float) and clave_raw.is_integer():
             clave = str(int(clave_raw))
-        registro = self.env['res.partner.agente.aseguradora'].search([
-            ('aseguradora_id', '=', self.aseguradora_id.id),
-            ('clave_agente', '=', clave),
-        ], limit=1)
+        Bridge = self.env['res.partner.agente.aseguradora']
+        base = [('aseguradora_id', '=', self.aseguradora_id.id)]
+        registro = Bridge.search(base + [('clave_agente', '=', clave)], limit=1)
+        if not registro and clave.isdigit():
+            # Tolerar ceros a la izquierda: el Excel pierde el padding al
+            # tratar la clave como número (celda numérica), mientras la
+            # aseguradora la registra con relleno (p. ej. '000019799' vs
+            # '19799'). Se comparan por valor numérico en ambos sentidos.
+            objetivo = clave.lstrip('0') or '0'
+            registro = Bridge.search(base).filtered(
+                lambda b: (b.clave_agente or '').strip().isdigit()
+                and ((b.clave_agente or '').strip().lstrip('0') or '0') == objetivo
+            )[:1]
         if not registro:
             raise UserError(_(
                 'Clave de agente "%s" no registrada en la aseguradora.'
