@@ -43,7 +43,10 @@
                                 <field name="aseguradora_id"
                                        options="{'no_create': True}"/>
                                 <field name="clave_agente"/>
-                                <field name="estado"/>
+                                <field name="estado" widget="badge"
+                                       decoration-success="estado == 'clave_definitiva'"
+                                       decoration-info="estado == 'clave_arranque'"
+                                       decoration-muted="estado == 'prospecto'"/>
                                 <field name="fecha_licencia"/>
                             </list>
                         </field>
@@ -136,10 +139,44 @@
         </field>
     </record>
 
+    <!-- Listas focalizadas BCA: la lista genérica de contactos trae
+         teléfono/email/ciudad (vacíos para aseguradoras/promotorías) y omite
+         lo relevante del negocio. Standalone (no heredadas) para controlar las
+         columnas; el form sigue siendo el heredado con la pestaña BCA Seguros. -->
+    <record id="view_partner_empresa_list_bca" model="ir.ui.view">
+        <field name="name">res.partner.empresa.list.bca</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <list string="Empresas BCA">
+                <field name="name"/>
+                <field name="bca_codigo_aseguradora" optional="show"/>
+                <field name="phone" optional="hide"/>
+                <field name="email" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_partner_agente_list_bca" model="ir.ui.view">
+        <field name="name">res.partner.agente.list.bca</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <list string="Agentes">
+                <field name="name"/>
+                <field name="parent_id" string="Promotoría"/>
+                <field name="bca_promotoria_id" optional="hide"/>
+                <field name="bca_estado_agente" widget="badge"
+                       decoration-success="bca_estado_agente == 'clave_definitiva'"
+                       decoration-info="bca_estado_agente == 'clave_arranque'"
+                       decoration-muted="bca_estado_agente == 'prospecto'"/>
+            </list>
+        </field>
+    </record>
+
     <record id="action_partner_aseguradoras" model="ir.actions.act_window">
         <field name="name">Aseguradoras</field>
         <field name="res_model">res.partner</field>
         <field name="view_mode">list,form</field>
+        <field name="view_id" ref="BCA_Seguros.view_partner_empresa_list_bca"/>
         <field name="domain">[('bca_tipo', '=', 'aseguradora')]</field>
         <field name="context">{'default_bca_tipo': 'aseguradora', 'default_is_company': True}</field>
     </record>
@@ -148,6 +185,7 @@
         <field name="name">Promotorías</field>
         <field name="res_model">res.partner</field>
         <field name="view_mode">list,form</field>
+        <field name="view_id" ref="BCA_Seguros.view_partner_empresa_list_bca"/>
         <field name="domain">[('bca_tipo', '=', 'promotoria')]</field>
         <field name="context">{'default_bca_tipo': 'promotoria', 'default_is_company': True}</field>
     </record>
@@ -156,6 +194,7 @@
         <field name="name">Agentes</field>
         <field name="res_model">res.partner</field>
         <field name="view_mode">list,form</field>
+        <field name="view_id" ref="BCA_Seguros.view_partner_agente_list_bca"/>
         <field name="domain">[('bca_tipo', '=', 'agente')]</field>
         <field name="context">{'default_bca_tipo': 'agente'}</field>
     </record>

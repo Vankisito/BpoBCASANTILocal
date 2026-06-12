@@ -33,10 +33,51 @@
         </field>
     </record>
 
+    <!-- Lista focalizada de productos de seguro: muestra aseguradora y ramo
+         (la lista genérica de producto trae precio/stock, irrelevantes aquí). -->
+    <record id="view_product_template_list_bca" model="ir.ui.view">
+        <field name="name">product.template.list.bca</field>
+        <field name="model">product.template</field>
+        <field name="arch" type="xml">
+            <list string="Productos de Seguro">
+                <field name="name"/>
+                <field name="bca_aseguradora_id"/>
+                <field name="bca_ramo"/>
+                <field name="bca_nombre_archivo_aseguradora" optional="hide"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_product_template_search_bca" model="ir.ui.view">
+        <field name="name">product.template.search.bca</field>
+        <field name="model">product.template</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Productos de Seguro">
+                <field name="name"/>
+                <field name="bca_aseguradora_id"/>
+                <field name="bca_nombre_archivo_aseguradora"/>
+                <separator/>
+                <filter name="filter_vida" string="Vida"
+                        domain="[('bca_ramo', '=', 'vida')]"/>
+                <filter name="filter_gmm" string="GMM"
+                        domain="[('bca_ramo', '=', 'gmm')]"/>
+                <group>
+                    <filter name="group_aseguradora" string="Aseguradora"
+                            context="{'group_by': 'bca_aseguradora_id'}"/>
+                    <filter name="group_ramo" string="Ramo"
+                            context="{'group_by': 'bca_ramo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_product_bca" model="ir.actions.act_window">
         <field name="name">Productos de Seguro</field>
         <field name="res_model">product.template</field>
-        <field name="view_mode">list,form,kanban</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="BCA_Seguros.view_product_template_list_bca"/>
+        <field name="search_view_id" ref="BCA_Seguros.view_product_template_search_bca"/>
         <field name="domain">[('bca_es_producto_seguro', '=', True)]</field>
         <field name="context">{'default_bca_es_producto_seguro': True}</field>
     </record>
