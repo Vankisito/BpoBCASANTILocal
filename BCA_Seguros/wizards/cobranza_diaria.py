@@ -9,6 +9,7 @@ from datetime import datetime
 from odoo import _, fields, models
 from odoo.exceptions import UserError
 
+from . import plantilla_cobranza_diaria
 from ..parsers import get_parser
 
 _logger = logging.getLogger(__name__)
@@ -28,7 +29,11 @@ class BcaWizardCobranzaDiaria(models.TransientModel):
     _name = 'bca.wizard.cobranza.diaria'
     _description = 'Wizard Cobranza Diaria desde CSV'
 
-    archivo: bytes = fields.Binary(string='Archivo de Cobranza (.csv)', required=True)
+    # Sin 'required': el botón "Descargar plantilla" es type="object" y guarda
+    # el wizard antes de ejecutarse; un archivo obligatorio bloquearía la
+    # descarga (que precisamente sirve para obtener el archivo). La
+    # obligatoriedad se valida en _abrir_csv al procesar.
+    archivo: bytes = fields.Binary(string='Archivo de Cobranza (.csv)')
     nombre_archivo: str = fields.Char(string='Nombre del Archivo')
     aseguradora_id: int = fields.Many2one(
         'res.partner',
@@ -127,6 +132,40 @@ class BcaWizardCobranzaDiaria(models.TransientModel):
             'res_id': bitacora.id,
             'view_mode': 'form',
             'target': 'current',
+        }
+
+    # ------------------------------------------------------------------ #
+    # Descarga de plantilla
+    # ------------------------------------------------------------------ #
+    def action_descargar_plantilla(self) -> dict:
+        """Genera la plantilla CSV del ramo seleccionado y la entrega.
+
+        Los encabezados salen de ``parser_cls.columnas_requeridas`` (única
+        fuente de verdad, compartida con la validación de estructura), por lo
+        que lo que se descarga siempre pasa ``validar_estructura``. El adjunto
+        se ata al registro transient para que el vacuum lo purgue.
+        """
+        self.ensure_one()
+        codigo = self.aseguradora_id.bca_codigo_aseguradora
+        if not codigo:
+            raise UserError(_(
+                'La aseguradora %s no tiene código configurado '
+                '(campo "Código de Aseguradora").'
+            ) % self.aseguradora_id.display_name)
+        parser_cls = get_parser(codigo, self.ramo)
+        datos = plantilla_cobranza_diaria.construir_csv_bytes(
+            parser_cls.columnas_requeridas)
+        adjunto = self.env['ir.attachment'].create({
+            'name': 'plantilla_cobranza_%s_%s.csv' % (codigo.lower(), self.ramo),
+            'datas': base64.b64encode(datos),
+            'res_model': self._name,
+            'res_id': self.id,
+            'mimetype': 'text/csv',
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%d?download=true' % adjunto.id,
+            'target': 'download',
         }
 
     # ------------------------------------------------------------------ #

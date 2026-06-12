@@ -21,19 +21,43 @@
                             <field name="nombre_archivo" invisible="1"/>
                         </group>
                     </group>
-                    <div class="text-muted">
-                        <p>
-                            El archivo se procesa en una sola fase: se valida la
-                            estructura, se aplican los pagos a los recibos pendientes
-                            (FIFO) y se genera una <strong>bitácora de importación</strong>
-                            con el detalle por fila.
+                    <div class="alert alert-info" role="status">
+                        <p class="mb-1">
+                            <strong>Requisitos del archivo (.csv)</strong> — usa
+                            <strong>Descargar plantilla</strong> para obtener el
+                            formato exacto del <strong>ramo seleccionado</strong>
+                            (las columnas difieren entre Vida y GMM).
                         </p>
+                        <ul class="mb-0">
+                            <li><strong>Formato:</strong> CSV con separador coma;
+                                encabezados en la <strong>primera fila</strong> con
+                                los nombres exactos de la plantilla.</li>
+                            <li><strong>Formatos de celda:</strong> fechas
+                                <code>dd/mm/aaaa</code>; montos con punto decimal
+                                (<code>1234.56</code>); Moneda <code>MXN</code> o
+                                <code>USD</code>.</li>
+                            <li><strong>Deben existir previamente</strong> en la
+                                aseguradora el <code>producto</code>, la
+                                <code>clave de agente</code> y el
+                                <code>conducto</code> (conducto sin coincidencia →
+                                advertencia, no aborta).</li>
+                            <li><strong>GMM:</strong> las filas con
+                                <code>estatus_pago</code> <code>anulado</code> o
+                                <code>cancelado</code> se omiten (R-COB-01).</li>
+                            <li>El proceso aplica los pagos a los recibos pendientes
+                                (FIFO) y genera una
+                                <strong>bitácora de importación</strong> con el
+                                detalle por fila.</li>
+                        </ul>
                     </div>
                 </sheet>
                 <footer>
                     <button name="action_procesar" type="object"
                             string="Procesar" class="btn-primary"
                             confirm="¿Confirmas el procesamiento del archivo de cobranza? Los pagos se aplicarán a los recibos pendientes."/>
+                    <button name="action_descargar_plantilla" type="object"
+                            string="Descargar plantilla" icon="fa-download"
+                            class="btn-secondary"/>
                     <button string="Cerrar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

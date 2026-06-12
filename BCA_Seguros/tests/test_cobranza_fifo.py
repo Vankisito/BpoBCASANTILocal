@@ -231,3 +231,61 @@ class TestCobranzaDiaria(_CobranzaFixtures):
         self.assertEqual(bitacora.recibos_aplicados, 1)
         marcas = bitacora.linea_ids.mapped('marca')
         self.assertIn('anulado', marcas)
+
+
+@tagged('BCA_Seguros')
+class TestPlantillaCobranzaDescarga(_CobranzaFixtures):
+    """Descarga de la plantilla CSV y round-trip: lo que genera el wizard debe
+    pasar la propia ``validar_estructura`` del parser (lo descargado es subible).
+    """
+
+    def _leer_plantilla(self, ramo: str) -> tuple:
+        """Descarga la plantilla del ramo y devuelve (accion, adjunto, reader)."""
+        wizard = self.env['bca.wizard.cobranza.diaria'].create({
+            'aseguradora_id': self.aseguradora.id,
+            'ramo': ramo,
+        })
+        self.assertFalse(wizard.archivo, 'la descarga no debe exigir archivo')
+        accion = wizard.action_descargar_plantilla()
+        att_id = int(accion['url'].split('/web/content/')[1].split('?')[0])
+        adjunto = self.env['ir.attachment'].browse(att_id)
+        texto = base64.b64decode(adjunto.datas).decode('utf-8-sig')
+        reader = csv.DictReader(io.StringIO(texto))
+        return accion, adjunto, reader
+
+    def test_descargar_plantilla_devuelve_act_url_y_adjunto(self) -> None:
+        accion, adjunto, _reader = self._leer_plantilla('vida')
+        self.assertEqual(accion['type'], 'ir.actions.act_url')
+        self.assertEqual(accion['target'], 'download')
+        self.assertIn('/web/content/', accion['url'])
+        self.assertEqual(adjunto.name, 'plantilla_cobranza_metlife_vida.csv')
+        self.assertEqual(adjunto.mimetype, 'text/csv')
+        self.assertTrue(adjunto.datas)
+        # Atado al transient para que el vacuum lo purgue.
+        self.assertEqual(adjunto.res_model, 'bca.wizard.cobranza.diaria')
+
+    def test_plantilla_vida_tiene_columnas_requeridas(self) -> None:
+        _accion, _adjunto, reader = self._leer_plantilla('vida')
+        self.assertEqual(reader.fieldnames, COLUMNAS_LSP)
+        filas = list(reader)
+        self.assertEqual(len(filas), 1, 'plantilla con una fila de ejemplo')
+
+    def test_plantilla_gmm_tiene_columnas_requeridas(self) -> None:
+        _accion, adjunto, reader = self._leer_plantilla('gmm')
+        self.assertEqual(adjunto.name, 'plantilla_cobranza_metlife_gmm.csv')
+        self.assertEqual(reader.fieldnames, COLUMNAS_GCAYE)
+
+    def test_plantilla_round_trip_es_procesable(self) -> None:
+        """La plantilla descargada se sube tal cual: estructura válida (no
+        lanza UserError) y la fila de ejemplo (póliza inexistente) se reporta."""
+        _accion, adjunto, _reader = self._leer_plantilla('vida')
+        wizard = self.env['bca.wizard.cobranza.diaria'].create({
+            'archivo': adjunto.datas,
+            'nombre_archivo': adjunto.name,
+            'aseguradora_id': self.aseguradora.id,
+            'ramo': 'vida',
+        })
+        action = wizard.action_procesar()  # no debe lanzar por estructura
+        bitacora = self.env['bca.bitacora.importacion'].browse(action['res_id'])
+        self.assertEqual(len(bitacora.linea_ids), 1)
+        self.assertEqual(bitacora.linea_ids.marca, 'no_encontrada')
