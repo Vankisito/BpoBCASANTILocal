@@ -9,6 +9,7 @@ from . import (
     poliza_cambio_agente,
     recibo,
     bitacora,
+    dashboard,
     hr_applicant,
     crm_lead,
 )

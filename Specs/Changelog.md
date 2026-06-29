@@ -4,6 +4,39 @@
 
 ---
 
+## Sesión 2026-06-29 — Etapa 3.5: Tablero de Inicio (Fase A — backend agregador)
+
+### Qué se hizo
+Inicio de la **Etapa 3.5** (Tablero de Inicio del módulo). **Fase A**: agregador
+backend de solo lectura + test unitario + decisiones.
+
+- Nuevo `models/dashboard.py` → `bca.dashboard` (`AbstractModel`). Métodos:
+  - `get_dashboard_data()`: devuelve el **contrato §6** ya calculado (6 tarjetas:
+    Cartera, Cobranza, PCA, Vigencia, Importaciones, Agentes) usando `search_count`
+    y `_read_group` (respetan record rules; sin SQL crudo). Series `tendencia_semanal`
+    (6) y `tendencia_mensual` (12) por buckets de fecha.
+  - `action_open(key)`: navegación por método Python que retorna el `act_window`
+    filtrado por dominio (DEC-026; sin `type="action"`+`active_id`).
+- Nuevo `tests/test_dashboard.py` (5 tests, tag `BCA_Seguros`): estructura del
+  contrato, cuadre con `search_count`, navegación, clave inválida y no-escritura.
+- Mapeo de la spec genérica (`hd_seguros`) al modelo real (`BCA_Seguros`): `estado`,
+  `ramo`, `pca_aplicada`, `fecha_pago`, `fecha_desde/hasta`, `bca.factor.pca`,
+  `bca.bitacora.importacion`, `bca_estado_agente`.
+- Decisiones registradas: **D-10** (`prima_total` ya almacenado, DEC-028 innecesaria),
+  **D-11** (PCA por promotoría usa `recibo.promotoria_id` foto inmutable), **D-12**
+  (patrón client action OWL del tablero).
+
+### Archivos
+- Nuevos: `models/dashboard.py`, `tests/test_dashboard.py`.
+- Modificados: `models/__init__.py`, `tests/__init__.py`, `Specs/Decisiones.md`.
+
+### Pendientes (esta etapa)
+- Fase B: componente OWL (6 tarjetas + navegación) + acción client + assets en manifest.
+- Fase C: mini-gráficas Chart.js.
+- Fase D: `menuitem` raíz como acción por defecto (tablero) + visibilidad 5 roles.
+
+---
+
 ## Sesión 2026-06-29 — Etapa 9: Reportes SQL (SICs) + reorganización de menú
 
 ### Qué se hizo

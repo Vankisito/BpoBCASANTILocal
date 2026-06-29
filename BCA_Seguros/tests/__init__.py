@@ -12,4 +12,5 @@ from . import (
     test_parsers,
     test_carga_portafolio,
     test_reportes,
+    test_dashboard,
 )

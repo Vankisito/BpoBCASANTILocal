@@ -153,3 +153,40 @@ operativa la da `pagado_hasta`) se mantiene y se refuerza.
 - El `pagado_hasta_inicial` permite cargar pólizas en vigor sin inventar recibos históricos pagados (decisión del usuario en Etapa 8: generar solo recibos posteriores al corte).
 
 **Impacto:** `bca.poliza.estatus_pago` ahora `readonly` en la vista (badge). El layout "Estatus de Pago" ya no se almacena verbatim: "suspendido" → `pago_suspendido=True`; al_corriente/vencido los deriva el computed desde `pagado_hasta_inicial`. Tests que asignaban `estatus_pago` a mano se ajustaron.
+
+---
+
+## D-10 — `prima_total` NO requiere `store=True` para el Tablero (revisa spec DEC-028)
+
+**Fecha:** 2026-06-29
+**Contexto:** La spec Etapa 3.5 (§5) proponía volver `bca.recibo.prima_total` a `store=True` (DEC-028) para poder sumarlo con `_read_group` en la tarjeta de Cobranza.
+
+**Decisión:** No se modifica el modelo. `bca.recibo.prima_total` **ya es un campo `Monetary` almacenado** (no computed): se captura en `action_registrar_pago` y vive en BD. La agregación del tablero se hace directamente con `_read_group([...], [], ['prima_total:sum'])`. DEC-028 queda como innecesaria.
+
+**Razón:** El supuesto de la spec (genérica `hd_seguros`) no aplica al modelo real; tocar el campo sería un cambio sin beneficio y con riesgo de migración.
+
+---
+
+## D-11 — PCA por promotoría en el Tablero usa la foto inmutable del recibo
+
+**Fecha:** 2026-06-29
+**Contexto:** La spec (§7, Tarjeta 6) advertía que `_read_group` no atraviesa `recibo → poliza → agente.promotoria` y proponía un campo `related` almacenado o agregación manual en Python.
+
+**Decisión:** Se agrupa directamente por `bca.recibo.promotoria_id`, que **ya está almacenado** como foto inmutable al pago (asignado en `action_registrar_pago`, el mismo campo que consumen los reportes PCA de E9). No se crea ningún campo nuevo ni se hace agregación manual.
+
+**Razón:** El salto a dos niveles que temía la spec no existe en el modelo real; la dimensión ya está materializada en el recibo, así que la agregación es un `_read_group` de un solo nivel y además respeta la semántica histórica (no se mueve si el agente de la póliza cambia).
+
+---
+
+## D-12 — Tablero de Inicio: client action OWL sobre `AbstractModel` agregador solo-lectura
+
+**Fecha:** 2026-06-29
+**Contexto:** Etapa 3.5 introduce la primera pantalla OWL del módulo (pantalla de inicio).
+
+**Decisión:** Patrón del tablero:
+- **Backend:** `models.AbstractModel` `bca.dashboard` con `get_dashboard_data()` (devuelve el contrato §6 ya calculado) y `action_open(key)` (devuelve el `act_window` filtrado por tarjeta). Solo lee/agrega vía `search_count`/`_read_group` (respetan record rules); nunca escribe. Por ser `AbstractModel` no requiere ACL.
+- **Frontend:** componente OWL en `static/src/dashboard/`, registrado en `registry.category("actions")` como `bca_dashboard`; consume los datos por RPC en `onWillStart`. Mini-gráficas con Chart.js empaquetado en Odoo 19 (sin dependencias externas).
+- **Navegación:** los clics llaman `action_open()` (método Python que retorna el action dict) — **cumple DEC-026**: nada de `type="action"` + `active_id` en contexto.
+- **Acción y menú:** `ir.actions.client` `action_dashboard`; el `menuitem` raíz la usa como acción por defecto (resuelve el pendiente de visibilidad). Visible a los 5 grupos BCA; los agregados se filtran por las record rules de cada rol.
+
+**Razón:** Mantiene toda la lógica de negocio en backend y la seguridad en el ORM; el front solo dibuja. Reutiliza la foto inmutable del recibo y las acciones de lista existentes por dominio.
