@@ -518,16 +518,17 @@
     <!-- ================================================================
          REPORTES SQL (vistas con _auto=False)
 
-         TODO Etapa 9: cuando las vistas pca_por_agente y estado_cartera
-         expongan el campo agente_id (hoy son SELECT WHERE FALSE), agregar
-         filtrado por user.id al agente. Por ahora, todas las rules son
-         [(1,'=',1)] — el control efectivo se hace en la ACL (CSV).
+         Etapa 9: las vistas pca_por_agente y estado_cartera ya exponen
+         agente_id, así que el Agente queda filtrado a SUS propias filas
+         (por agente_id.user_ids). El resto de grupos mantiene [(1,'=',1)]
+         (regla A3 de implied_ids). pca.promotoria y pca.consolidado no son
+         visibles para el Agente (sin ACL), por eso no llevan rule de agente.
          ================================================================ -->
     <record id="rule_rep_pca_agente_agente" model="ir.rule">
-        <field name="name">bca.reporte.pca.agente: acceso agente (TODO E9 filtrado)</field>
+        <field name="name">bca.reporte.pca.agente: agente ve solo lo suyo</field>
         <field name="model_id" ref="model_bca_reporte_pca_agente"/>
         <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="domain_force">['|', ('agente_id.user_ids', 'in', [user.id]), ('agente_id', '=', False)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
@@ -580,10 +581,10 @@
 
     <!-- bca.reporte.estado.cartera (mismo patrón que pca.agente) -->
     <record id="rule_rep_estado_cartera_agente" model="ir.rule">
-        <field name="name">bca.reporte.estado.cartera: acceso agente (TODO E9 filtrado)</field>
+        <field name="name">bca.reporte.estado.cartera: agente ve solo lo suyo</field>
         <field name="model_id" ref="model_bca_reporte_estado_cartera"/>
         <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="domain_force">['|', ('agente_id.user_ids', 'in', [user.id]), ('agente_id', '=', False)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>

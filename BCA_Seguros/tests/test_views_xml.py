@@ -73,6 +73,18 @@ class TestViewsXml(TransactionCase):
         self._validate('BCA_Seguros.view_wizard_carga_portafolio_form')
         self._validate('BCA_Seguros.view_wizard_cobranza_diaria_form')
 
+    def test_reportes_views(self) -> None:
+        """Etapa 9 — pivot/graph/list/search de los 4 reportes SQL parsean
+        contra las columnas reales de la vista."""
+        for base in (
+            'view_reporte_pca_agente',
+            'view_reporte_pca_promotoria',
+            'view_reporte_pca_consolidado',
+            'view_reporte_estado_cartera',
+        ):
+            for tipo in ('pivot', 'graph', 'list', 'search'):
+                self._validate(f'BCA_Seguros.{base}_{tipo}')
+
     def test_menu_root_existe(self) -> None:
         menu = self.env.ref('BCA_Seguros.menu_bca_root')
         self.assertTrue(menu, 'Menú raíz BCA no se cargó')
@@ -96,6 +108,12 @@ class TestViewsXml(TransactionCase):
             'BCA_Seguros.action_partner_promotorias',
             'BCA_Seguros.action_partner_agentes',
             'BCA_Seguros.action_product_bca',
+            'BCA_Seguros.action_wizard_carga_portafolio',
+            'BCA_Seguros.action_wizard_cobranza_diaria',
+            'BCA_Seguros.action_reporte_pca_agente',
+            'BCA_Seguros.action_reporte_pca_promotoria',
+            'BCA_Seguros.action_reporte_pca_consolidado',
+            'BCA_Seguros.action_reporte_estado_cartera',
         ):
             self.assertTrue(
                 self.env.ref(xmlid, raise_if_not_found=False),

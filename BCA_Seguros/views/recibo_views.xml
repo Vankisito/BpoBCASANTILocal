@@ -46,6 +46,7 @@
                             string="Registrar Pago"
                             class="oe_highlight"
                             invisible="estado != 'pendiente'"
+                            groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
                             confirm="Vas a registrar el pago de este recibo. La PCA y el factor aplicado quedarán congelados y no podrán editarse. ¿Continuar?"/>
                     <button name="action_cancelar_pago"
                             type="object"

@@ -11,4 +11,5 @@ from . import (
     test_views_xml,
     test_parsers,
     test_carga_portafolio,
+    test_reportes,
 )

@@ -679,8 +679,15 @@ selector de ramo limitado a **Vida/GMM** (Autos/Qualitas placeholder). Ver `Chan
 
 ---
 
-### Etapa 9 — Reportes SQL (SICs)
+### Etapa 9 — Reportes SQL (SICs)  ✅ COMPLETADA (2026-06-29, v`19.0.1.5.0`)
 **Tiempo estimado:** 3–4 horas
+
+> **Cierre:** 4 vistas SQL reales (`_auto=False` + `init()` con `SQL()` builder de v19, patrón
+> `sale.report` de Odoo core) con pivot/graph/list/search y menú. Foto inmutable del recibo
+> (C2), solo Clave Definitiva computa (R-PCA-03, por aseguradora), PCA en MXN (D-08), estado de
+> cartera caída/en_riesgo/vigente. Se reorganizó el menú (Pólizas/Cobranza/Reportes/
+> Configuración) y se ocultó "Registrar Pago" al agente. Tests en `test_reportes.py` +
+> `test_views_xml`. Migración `19.0.1.5.0`. Ver `Changelog.md` (sesión 2026-06-29).
 
 Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 **Patrón crítico:** en el SQL, siempre tomar `agente_id` y `promotoria_id` del `bca_recibo` (inmutabilidad histórica). NO hacer join hacia la póliza actual (C2).
@@ -696,10 +703,12 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 `migrations/1.0.0/post_migrate.py`: script que invoca `init()` de todos los modelos de reporte.
 
 **Checklist Etapa 9:**
-- [ ] SIC 1 (por agente) muestra datos correctos tras pagar un recibo
-- [ ] SIC 2 (por promotoría) agrupa correctamente
-- [ ] Agente en estado prospecto NO aparece en los reportes de PCA
-- [ ] `odoo-bin -u BCA_Seguros` recrea las SQL views sin error
+- [x] SIC 1 (por agente) muestra datos correctos tras pagar un recibo — test `test_sic1_agente_muestra_pca`
+- [x] SIC 2 (por promotoría) agrupa correctamente — test `test_sic2_promotoria_agrega_dos_agentes`
+- [x] Agente sin Clave Definitiva NO aparece en los reportes de PCA — test `test_sic1_agente_no_definitiva_no_aparece`
+- [x] `odoo-bin -u BCA_Seguros` recrea las SQL views sin error — migración `19.0.1.5.0/post-migrate.py` + post_init_hook
+- [x] Inmutabilidad: cambiar agente tras el pago no mueve la PCA reportada — test `test_reporte_usa_foto_inmutable_del_recibo`
+- [x] SIC 4 (estado de cartera) clasifica caída/en_riesgo/vigente — tests `test_sic4_*`
 
 ---
 

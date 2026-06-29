@@ -14,7 +14,10 @@
               groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="50"/>
 
-    <!-- Pólizas (visible para todos los roles BCA) -->
+    <!-- ============================================================
+         Pólizas (todos los roles BCA) — solo pólizas + carga de cartera.
+         Los Recibos viven ahora bajo Cobranza.
+         ============================================================ -->
     <menuitem id="menu_bca_polizas"
               name="Pólizas"
               parent="menu_bca_root"
@@ -27,47 +30,84 @@
               action="BCA_Seguros.action_poliza"
               sequence="10"/>
 
-    <menuitem id="menu_bca_recibos"
-              name="Recibos"
-              parent="menu_bca_polizas"
-              action="BCA_Seguros.action_recibo"
-              sequence="20"/>
-
     <menuitem id="menu_bca_cargar_portafolio"
               name="Cargar Portafolio"
               parent="menu_bca_polizas"
               action="BCA_Seguros.action_wizard_carga_portafolio"
               groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
-              sequence="30"/>
+              sequence="20"/>
 
-    <!-- Cobranza (Operador+) -->
+    <!-- ============================================================
+         Cobranza — el padre se abre también al Agente para que conserve
+         acceso a SUS recibos (filtrados por record rule). Importar Cobranza
+         y Bitácoras quedan restringidos a Operador+ con groups EXPLÍCITO
+         (sin ellos, al incluir agente en el padre, el agente los vería).
+         ============================================================ -->
     <menuitem id="menu_bca_cobranza"
               name="Cobranza"
               parent="menu_bca_root"
-              groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="20"/>
+
+    <menuitem id="menu_bca_recibos"
+              name="Recibos"
+              parent="menu_bca_cobranza"
+              action="BCA_Seguros.action_recibo"
+              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              sequence="10"/>
 
     <menuitem id="menu_bca_importar_cobranza"
               name="Importar Cobranza"
               parent="menu_bca_cobranza"
               action="BCA_Seguros.action_wizard_cobranza_diaria"
               groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
-              sequence="5"/>
+              sequence="20"/>
 
     <menuitem id="menu_bca_bitacoras"
               name="Bitácoras de Importación"
               parent="menu_bca_cobranza"
               action="BCA_Seguros.action_bitacora"
-              sequence="10"/>
+              groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              sequence="30"/>
 
-    <!-- Reportes (Líder+) — items pivot/graph se agregan en Etapa 9 -->
+    <!-- ============================================================
+         Reportes (Líder+) — SICs de la Etapa 9.
+         Consolidado BCA restringido a Director Comercial+ (espeja la ACL).
+         ============================================================ -->
     <menuitem id="menu_bca_reportes"
               name="Reportes"
               parent="menu_bca_root"
               groups="BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="30"/>
 
-    <!-- Configuración (Director Comercial+) -->
+    <menuitem id="menu_bca_reporte_pca_agente"
+              name="PCA por Agente"
+              parent="menu_bca_reportes"
+              action="BCA_Seguros.action_reporte_pca_agente"
+              sequence="10"/>
+
+    <menuitem id="menu_bca_reporte_pca_promotoria"
+              name="PCA por Promotoría"
+              parent="menu_bca_reportes"
+              action="BCA_Seguros.action_reporte_pca_promotoria"
+              sequence="20"/>
+
+    <menuitem id="menu_bca_reporte_pca_consolidado"
+              name="Consolidado BCA"
+              parent="menu_bca_reportes"
+              action="BCA_Seguros.action_reporte_pca_consolidado"
+              groups="BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              sequence="30"/>
+
+    <menuitem id="menu_bca_reporte_estado_cartera"
+              name="Estado de Cartera"
+              parent="menu_bca_reportes"
+              action="BCA_Seguros.action_reporte_estado_cartera"
+              sequence="40"/>
+
+    <!-- ============================================================
+         Configuración (Director Comercial+) — sin cambios.
+         ============================================================ -->
     <menuitem id="menu_bca_configuracion"
               name="Configuración"
               parent="menu_bca_root"

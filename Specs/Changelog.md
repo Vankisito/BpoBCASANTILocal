@@ -4,6 +4,71 @@
 
 ---
 
+## Sesión 2026-06-29 — Etapa 9: Reportes SQL (SICs) + reorganización de menú
+
+### Qué se hizo
+Cierre de la **Etapa 9**. Los 4 modelos de reporte (`bca.reporte.pca.agente`,
+`bca.reporte.pca.promotoria`, `bca.reporte.pca.consolidado`, `bca.reporte.estado.cartera`),
+que eran placeholders `SELECT 1 WHERE FALSE`, ahora tienen su **vista SQL real** + vistas de
+análisis **pivot/graph/list/search** y entradas de menú. Se aprovechó la entrega para
+**reorganizar el menú** y un par de correcciones de UX. Bump a **`19.0.1.5.0`**.
+
+Patrón canónico de Odoo core (`sale.report`): modelo `_auto=False` + `init()` con `CREATE
+VIEW`. Odoo 19: el DDL se construye con el **`SQL()` builder** (`from odoo.tools import SQL`,
+nombre de tabla vía `SQL.identifier(self._table)`) — las queries string a `cr.execute()` están
+deprecadas en v19.
+
+Reglas de negocio respetadas:
+- **Inmutabilidad histórica (C2/R-PCA-01):** los reportes PCA leen `agente_id`/`promotoria_id`
+  de la **foto del recibo** (`bca_recibo`), no de la póliza actual.
+- **Solo Clave Definitiva computa (R-PCA-03):** JOIN a `res_partner_agente_aseguradora`
+  filtrando `estado='clave_definitiva'` **por la aseguradora de la póliza** (no el rollup del
+  partner) — un agente puede ser definitiva en una aseguradora y arranque en otra.
+- **Sólo recibos pagados** y **PCA en MXN** (D-08, vía `pca_currency_id`).
+- **Estado de cartera:** una fila por póliza activa; `caida`/`en_riesgo`/`vigente` por
+  `pagado_hasta` vs hoy (umbral 30d = `bca_seguros.dias_gracia_pago`, literal en SQL).
+  `promotoria_id` sale de `agente_id.parent_id` (la póliza no almacena promotoría).
+
+### Reorganización de menú (decisión del usuario)
+- **Pólizas** → {Pólizas, Cargar Portafolio}. Se **quitó Recibos** de aquí.
+- **Cobranza** → {Recibos, Importar Cobranza, Bitácoras}. El padre se **abre al Agente**;
+  Recibos visible a todos los roles (el agente ve solo los suyos por record rule); Importar
+  Cobranza y Bitácoras con `groups` **explícito operador+** (excluyen al agente).
+- **Reportes** → los 4 SICs (Consolidado restringido a Director Comercial+).
+- **Configuración** → sin cambios.
+- **UX recibo:** el botón "Registrar Pago" ahora tiene `groups` operador+ (el agente ya era
+  solo-lectura por ACL `1,0,0,0`; esto evita mostrarle un botón que daría AccessError).
+
+### Archivos (código)
+- `BCA_Seguros/reports/pca_por_agente.py`, `pca_por_promotoria.py`, `pca_consolidado.py`,
+  `estado_cartera.py` — **vistas SQL reales** + campos del modelo (era placeholder).
+- `BCA_Seguros/views/reportes_views.xml` — pivot/graph/list/search + 4 actions (era skeleton).
+- `BCA_Seguros/views/menu.xml` — reorganización completa (4 ramas).
+- `BCA_Seguros/views/recibo_views.xml` — `groups` operador+ en botón "Registrar Pago".
+- `BCA_Seguros/security/record_rules.xml` — resuelto el TODO E9: el Agente queda filtrado a
+  sus propias filas en `pca.agente` y `estado.cartera` (`agente_id.user_ids in [user.id]`).
+- `BCA_Seguros/migrations/19.0.1.5.0/post-migrate.py` — **NUEVO**: recrea las 4 vistas SQL.
+- `BCA_Seguros/__manifest__.py` — `version` `19.0.1.4.0` → **`19.0.1.5.0`**.
+
+### Archivos (tests)
+- `BCA_Seguros/tests/test_reportes.py` — **NUEVO** (`@tagged('BCA_Seguros')`): SIC1 muestra PCA
+  con foto del recibo; agente no-definitiva no aparece; SIC2 agrega dos agentes de la misma
+  promotoría; SIC3 mantiene grano fino para drill-down; inmutabilidad (cambiar agente tras el
+  pago no mueve la PCA reportada); SIC4 clasifica caída/en_riesgo/vigente. Registrado en
+  `tests/__init__.py`.
+- `BCA_Seguros/tests/test_views_xml.py` — añadido `test_reportes_views` (parseo de las 16
+  vistas de reporte) + actions de reportes/wizards en `test_actions_principales_existen`.
+
+### Pendiente / follow-ups
+- **Verificación en sandbox** (el usuario corre el comando): tras deploy `-u` (aplica
+  migración `19.0.1.5.0` + post_init_hook), correr
+  `docker exec odoo_golden odoo -d sandbox_bca1 --test-enable --test-tags BCA_Seguros --stop-after-init --no-http`
+  y leer `docker exec odoo_golden tail -n 60 /var/log/odoo/odoo.log`. Esperado: 143 + nuevos, 0 fallos.
+- **Etapa 11** (cierre formal de la suite) y el sub-proyecto **Reclutamiento** (ahora objetivo
+  `19.0.1.6.0`) quedan como siguientes frentes.
+
+---
+
 ## Sesión 2026-06-05 — Etapa 8 (cierre): Wizard de Cobranza Diaria
 
 ### Qué se hizo
