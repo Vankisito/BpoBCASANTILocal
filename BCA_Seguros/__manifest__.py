@@ -27,6 +27,7 @@
         'views/product_template_views.xml',
         'views/hr_applicant_views.xml',
         'views/crm_lead_views.xml',
+        'views/dashboard_views.xml',
         'views/conducto_views.xml',
         'views/factor_pca_views.xml',
         'views/poliza_views.xml',
@@ -38,6 +39,11 @@
         # menu.xml siempre último: depende de todas las actions anteriores
         'views/menu.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'BCA_Seguros/static/src/dashboard/**/*',
+        ],
+    },
     'post_init_hook': 'post_init_hook_bca_seguros',
     'installable': True,
     'application': True,
