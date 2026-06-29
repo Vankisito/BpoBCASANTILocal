@@ -11,8 +11,20 @@
     <menuitem id="menu_bca_root"
               name="BCA Seguros"
               web_icon="BCA_Seguros,static/description/icon.png"
+              action="BCA_Seguros.action_dashboard"
               groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="50"/>
+
+    <!-- ============================================================
+         Tablero (pantalla de inicio). Es la acción por defecto del
+         menú raíz; además queda como primer submenú para acceso directo.
+         Visible a los 5 roles BCA; los agregados respetan record rules.
+         ============================================================ -->
+    <menuitem id="menu_bca_tablero"
+              name="Tablero"
+              parent="menu_bca_root"
+              action="BCA_Seguros.action_dashboard"
+              sequence="1"/>
 
     <!-- ============================================================
          Pólizas (todos los roles BCA) — solo pólizas + carga de cartera.

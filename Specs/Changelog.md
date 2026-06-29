@@ -4,11 +4,13 @@
 
 ---
 
-## Sesión 2026-06-29 — Etapa 3.5: Tablero de Inicio (Fase A — backend agregador)
+## Sesión 2026-06-29 — Etapa 3.5: Tablero de Inicio (Fases A–D) · `19.0.1.6.0`
 
 ### Qué se hizo
-Inicio de la **Etapa 3.5** (Tablero de Inicio del módulo). **Fase A**: agregador
-backend de solo lectura + test unitario + decisiones.
+**Etapa 3.5** completa (Tablero de Inicio del módulo), en 4 fases con un commit
+cada una. Bump a **`19.0.1.6.0`**.
+
+**Fase A — backend agregador (solo lectura) + test + decisiones.**
 
 - Nuevo `models/dashboard.py` → `bca.dashboard` (`AbstractModel`). Métodos:
   - `get_dashboard_data()`: devuelve el **contrato §6** ya calculado (6 tarjetas:
@@ -26,14 +28,33 @@ backend de solo lectura + test unitario + decisiones.
   **D-11** (PCA por promotoría usa `recibo.promotoria_id` foto inmutable), **D-12**
   (patrón client action OWL del tablero).
 
-### Archivos
-- Nuevos: `models/dashboard.py`, `tests/test_dashboard.py`.
-- Modificados: `models/__init__.py`, `tests/__init__.py`, `Specs/Decisiones.md`.
+**Fase B — componente OWL.** `static/src/dashboard/{dashboard.js,dashboard.xml,
+dashboard.scss}`: client action `bca_dashboard` registrado en
+`registry.category("actions")`; consume `get_dashboard_data()` en `onWillStart`;
+6 tarjetas en grilla 3×2 con cifras clickeables que navegan vía `action_open()`
+(`doAction` sobre el `act_window`). `ir.actions.client` `action_dashboard` en
+`views/dashboard_views.xml`; assets `web.assets_backend` en el manifest. Paleta de
+marca del prototipo (vino `#7A2E52`, teal `#1F9E8F`, semáforos verde/ámbar/rojo).
 
-### Pendientes (esta etapa)
-- Fase B: componente OWL (6 tarjetas + navegación) + acción client + assets en manifest.
-- Fase C: mini-gráficas Chart.js.
-- Fase D: `menuitem` raíz como acción por defecto (tablero) + visibilidad 5 roles.
+**Fase C — mini-gráficas Chart.js.** `loadJS` de Chart.js empaquetado en Odoo
+(`/web/static/lib/Chart/Chart.js`, sin libs externas). 4 gráficas: Cartera (barras
+por ramo), Cobranza (línea semanal), PCA (línea mensual), Agentes (barras PCA por
+promotoría). Creadas en `onMounted`, destruidas en `onWillUnmount`.
+
+**Fase D — menú e inicio.** `menu_bca_root` usa `action_dashboard` como acción por
+defecto (resuelve la visibilidad: al entrar al módulo se aterriza en el tablero) +
+submenú `Tablero` (sequence 1). Visible a los 5 roles; agregados filtrados por
+record rules. Test `test_actions_principales_existen` cubre `action_dashboard`.
+
+### Archivos
+- Nuevos: `models/dashboard.py`, `tests/test_dashboard.py`,
+  `views/dashboard_views.xml`, `static/src/dashboard/{dashboard.js,.xml,.scss}`.
+- Modificados: `models/__init__.py`, `tests/__init__.py`, `tests/test_views_xml.py`,
+  `views/menu.xml`, `__manifest__.py` (assets + data + versión), `Specs/Decisiones.md`.
+
+### Verificación pendiente (sandbox)
+- Correr la suite con tag `BCA_Seguros` y confirmar verde (incl. `test_dashboard`).
+- Confirmar la ruta del asset de Chart.js en el build (`/web/static/lib/Chart/Chart.js`).
 
 ---
 

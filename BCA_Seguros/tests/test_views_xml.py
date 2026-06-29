@@ -99,6 +99,7 @@ class TestViewsXml(TransactionCase):
     def test_actions_principales_existen(self) -> None:
         """Las actions referenciadas en menu.xml deben existir."""
         for xmlid in (
+            'BCA_Seguros.action_dashboard',
             'BCA_Seguros.action_poliza',
             'BCA_Seguros.action_recibo',
             'BCA_Seguros.action_bitacora',
