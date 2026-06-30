@@ -142,8 +142,22 @@ class TestDashboard(TransactionCase):
             Recibo.search_count([
                 ('estado', '=', 'pagado'), ('factor_aplicado', '>', 0)]))
         self.assertGreater(recibo.pca_aplicada, 0)
-        self.assertEqual(data['agentes']['con_licencia'], 1)
-        self.assertEqual(data['agentes']['prospectos'], 1)
+        # No hardcodear conteos: la BD puede traer otros agentes (seed / demo).
+        # Validamos que la cifra del tablero == search_count equivalente y que
+        # nuestros agentes de prueba quedan incluidos.
+        Partner = self.env['res.partner']
+        self.assertEqual(
+            data['agentes']['con_licencia'],
+            Partner.search_count([
+                ('bca_tipo', '=', 'agente'),
+                ('bca_estado_agente', '=', 'clave_definitiva')]))
+        self.assertEqual(
+            data['agentes']['prospectos'],
+            Partner.search_count([
+                ('bca_tipo', '=', 'agente'),
+                ('bca_estado_agente', '=', 'prospecto')]))
+        self.assertGreaterEqual(data['agentes']['con_licencia'], 1)
+        self.assertGreaterEqual(data['agentes']['prospectos'], 1)
 
     # ---------------------------------------------------------- navegación
     def test_action_open_devuelve_act_window(self) -> None:
