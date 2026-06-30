@@ -4,6 +4,53 @@
 
 ---
 
+## Sesión 2026-06-29 — Etapa 11: Cierre formal de la suite de pruebas · `19.0.1.6.1`
+
+### Qué se hizo
+Cierre formal de la **Etapa 11 — Pruebas** (última etapa antes del sub-proyecto de
+Reclutamiento). Alcance acotado al **DoD mínimo del plan**: suite verde y reproducible,
+sin warnings de deprecación, cobertura documentada. **No se escribieron tests nuevos.**
+
+- **Aislamiento del *drift* de conductos (D-13).** 3 tests fallaban en sandbox con
+  `marca='advertencia'` (conducto no-match): dependían del conducto semilla, y el match
+  del parser exige `codigo_archivo` **+ `aseguradora_id` + `activo=True`** (no sólo el
+  código, que cambia por diseño). Ahora cada fixture **crea su propio conducto** ligado a
+  la aseguradora del test, con `codigo_archivo` único, y alimenta ese código — el patrón
+  que ya usaban `test_pca_metlife`/`test_reportes`/`test_poliza_*`. Determinista en BD
+  limpia y en sandbox drifteado. No es regresión.
+  - `tests/test_parsers.py` — `setUpClass` Vida/GMM crean `cls.conducto`; `_fila_valida`
+    usa `self.conducto.codigo_archivo`.
+  - `tests/test_cobranza_fifo.py` — `setUpClass` crea `cls.conducto`; `_fila_vida`/
+    `_fila_gmm` y el `registrar_pago` de `test_poliza_sin_recibo_pendiente` lo usan.
+  - El caso negativo `'CONDUCTO_INVENTADO'` (no-match deliberado) permanece intacto.
+- **Artefacto de cobertura.** Nuevo `Specs/TESTS_COVERAGE.md`: inventario de 14 archivos /
+  ~127 tests, áreas de cobertura fuerte y **huecos conocidos y aceptados** (factor_pca,
+  conducto, cambio_agente, beneficiario, bitacora.linea, validaciones de res.partner/
+  product.template, agente.aseguradora, CalculadorPCABase, record rules secundarias) +
+  la convención de inmunidad al drift (§4).
+- **Deprecación Odoo 19.** Escaneo estático limpio: el código ya usa `<list>` y no hay
+  `attrs=`/`states=`/`@api.one`/`name_get(`. Pendiente sólo confirmarlo en el log de la
+  corrida de sandbox.
+- **Bump** `19.0.1.6.0` → **`19.0.1.6.1`** y checklist de Etapa 11 marcado en el Plan.
+
+### Archivos
+- Nuevos: `Specs/TESTS_COVERAGE.md`.
+- Modificados: `tests/test_parsers.py`, `tests/test_cobranza_fifo.py`,
+  `__manifest__.py` (versión), `Specs/Decisiones.md` (D-13),
+  `Specs/Plan de Desarrollo.md` (checklist Etapa 11).
+
+### Verificación pendiente (sandbox · la corre el usuario)
+```bash
+docker exec odoo_golden odoo -d sandbox_bca1 -u BCA_Seguros \
+  --test-enable --test-tags BCA_Seguros --stop-after-init --no-http \
+  --logfile=/var/log/odoo/test_e11.log
+tail -n 120 /var/log/odoo/test_e11.log
+```
+Esperado: `0 failed, 0 error(s)`, los 3 tests antes frágiles en verde, sin
+`DeprecationWarning`. Al confirmarlo, marcar el último ítem del checklist Etapa 11.
+
+---
+
 ## Sesión 2026-06-29 — Etapa 3.5: Tablero de Inicio (Fases A–D) · `19.0.1.6.0`
 
 ### Qué se hizo

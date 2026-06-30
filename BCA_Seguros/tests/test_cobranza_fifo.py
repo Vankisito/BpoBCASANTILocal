@@ -55,6 +55,11 @@ class _CobranzaFixtures(TransactionCase):
             'bca_aseguradora_id': cls.aseguradora.id,
             'bca_ramo': 'gmm',
         })
+        cls.conducto = cls.env['bca.conducto'].create({
+            'name': 'Conducto Test Cobranza',
+            'codigo_archivo': 'TEST_COND_COB',
+            'aseguradora_id': cls.aseguradora.id,
+        })
 
     # -- helpers -------------------------------------------------------- #
     def _poliza(self, name: str, ramo: str = 'vida',
@@ -86,7 +91,7 @@ class _CobranzaFixtures(TransactionCase):
             'fecha_aplicacion': '15/01/2025',
             'vigencia_desde': '01/01/2025',
             'vigencia_hasta': '01/02/2025',
-            'conducto': 'AGENTE_DIRECTO',
+            'conducto': self.conducto.codigo_archivo,
             'prima_modal': '1,000.00',
             'recargo': '0.00',
             'prima_total': '1,000.00',
@@ -104,7 +109,7 @@ class _CobranzaFixtures(TransactionCase):
             'fecha_aplicacion': '15/01/2025',
             'vigencia_desde': '01/01/2025',
             'vigencia_hasta': '01/02/2025',
-            'conducto': 'AGENTE_DIRECTO',
+            'conducto': self.conducto.codigo_archivo,
             'prima_neta': '1,000.00',
             'recargo': '0.00',
             'gastos_expedicion': '0.00',
@@ -178,8 +183,7 @@ class TestCobranzaDiaria(_CobranzaFixtures):
             'fecha_pago': '2025-01-10',
             'prima_neta': 12000.0,
             'prima_total': 12000.0,
-            'conducto_id': self.env.ref(
-                'BCA_Seguros.conducto_metlife_agente_directo').id,
+            'conducto_id': self.conducto.id,
         })
         # 'anual' genera 1 recibo por anualidad; tras pagarlo no quedan pendientes
         # en la anualidad vigente, pero el avance automático crea la siguiente.

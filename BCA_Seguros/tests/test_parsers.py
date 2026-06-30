@@ -85,7 +85,11 @@ class TestParserMetLifeVida(TransactionCase):
         super().setUpClass()
         Partner = cls.env['res.partner']
         cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
-        cls.conducto = cls.env.ref('BCA_Seguros.conducto_metlife_agente_directo')
+        cls.conducto = cls.env['bca.conducto'].create({
+            'name': 'Conducto Test Vida',
+            'codigo_archivo': 'TEST_COND_VIDA',
+            'aseguradora_id': cls.aseguradora.id,
+        })
         cls.holding = Partner.create({
             'name': 'Holding Vida Test',
             'bca_tipo': 'holding',
@@ -146,7 +150,7 @@ class TestParserMetLifeVida(TransactionCase):
             'fecha_aplicacion': '15/01/2026',
             'vigencia_desde': '01/01/2026',
             'vigencia_hasta': '01/02/2026',
-            'conducto': 'AGENTE_DIRECTO',
+            'conducto': self.conducto.codigo_archivo,
             'prima_modal': '1,000.00',
             'recargo': '0.00',
             'prima_total': '1,000.00',
@@ -215,6 +219,11 @@ class TestParserMetLifeGMM(TransactionCase):
         super().setUpClass()
         Partner = cls.env['res.partner']
         cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
+        cls.conducto = cls.env['bca.conducto'].create({
+            'name': 'Conducto Test GMM',
+            'codigo_archivo': 'TEST_COND_GMM',
+            'aseguradora_id': cls.aseguradora.id,
+        })
         cls.holding = Partner.create({
             'name': 'Holding GMM Test',
             'bca_tipo': 'holding',
@@ -274,7 +283,7 @@ class TestParserMetLifeGMM(TransactionCase):
             'fecha_aplicacion': '15/01/2026',
             'vigencia_desde': '01/01/2026',
             'vigencia_hasta': '01/02/2026',
-            'conducto': 'AGENTE_DIRECTO',
+            'conducto': self.conducto.codigo_archivo,
             'prima_neta': '1,000.00',
             'recargo': '0.00',
             'gastos_expedicion': '0.00',

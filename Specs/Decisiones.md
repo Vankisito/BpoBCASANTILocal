@@ -190,3 +190,23 @@ operativa la da `pagado_hasta`) se mantiene y se refuerza.
 - **Acción y menú:** `ir.actions.client` `action_dashboard`; el `menuitem` raíz la usa como acción por defecto (resuelve el pendiente de visibilidad). Visible a los 5 grupos BCA; los agregados se filtran por las record rules de cada rol.
 
 **Razón:** Mantiene toda la lógica de negocio en backend y la seguridad en el ORM; el front solo dibuja. Reutiliza la foto inmutable del recibo y las acciones de lista existentes por dominio.
+
+## D-13 — Los fixtures crean su propio conducto (no dependen del seed) — inmunidad al drift
+
+**Fecha:** 2026-06-29
+**Contexto:** Etapa 11 (cierre de la suite). 3 tests (parsers Vida/GMM y wizard de cobranza) fallaban en sandbox con `marca='advertencia'` (conducto no-match). Hardcodeaban el literal `'AGENTE_DIRECTO'` / `env.ref(seed)` apuntando al conducto semilla `BCA_Seguros.conducto_metlife_agente_directo`. `ParserBase._resolver_conducto` busca por **`codigo_archivo` + `aseguradora_id` + `activo=True`**; el conducto semilla no es estable entre entornos (su `codigo_archivo` cambia por diseño y su aseguradora/`activo` pueden diferir en sandbox), así que el match se rompía y `recibo.conducto_id` quedaba vacío.
+
+**Decisión:** Ningún fixture debe depender del conducto semilla (ni por literal ni por `env.ref`). Cada fixture **crea su propio conducto** ligado a la aseguradora del test, con un `codigo_archivo` único, y alimenta ese código:
+```python
+# setUpClass
+cls.conducto = cls.env['bca.conducto'].create({
+    'name': 'Conducto Test ...',
+    'codigo_archivo': 'TEST_COND_...',
+    'aseguradora_id': cls.aseguradora.id,
+})
+# fila
+'conducto': self.conducto.codigo_archivo,
+```
+Es el mismo patrón que ya usaban `test_pca_metlife`, `test_reportes`, `test_poliza_vida` y `test_poliza_gmm`. El caso negativo deliberado (`'CONDUCTO_INVENTADO'` en `test_metlife_vida_conducto_no_match_continua`) sí usa un literal a propósito y permanece.
+
+**Razón:** El match del parser depende de 3 condiciones (código + aseguradora + activo); sincronizar sólo el código contra el seed no basta porque la aseguradora o el flag pueden haber drifteado. Crear el conducto en el propio test garantiza las 3 condiciones de forma determinista, sin acoplarse a datos semilla mutables. No es regresión funcional. Ver `Specs/TESTS_COVERAGE.md §4`.

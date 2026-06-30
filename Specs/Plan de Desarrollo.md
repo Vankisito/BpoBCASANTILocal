@@ -753,9 +753,14 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 **Ejecutar:** `odoo-bin --test-enable --test-tags BCA_Seguros -i BCA_Seguros`
 
-**Checklist Etapa 11:**
-- [ ] Todos los tests pasan en verde
-- [ ] Sin warnings de deprecación de Odoo 19
+**Checklist Etapa 11:** _(cierre formal 2026-06-29 · `v19.0.1.6.1`)_
+- [x] Suite estabilizada y reproducible — fixtures inmunes al *drift* de conductos
+  (D-13); cobertura inventariada en `Specs/TESTS_COVERAGE.md` (14 archivos / ~127 tests,
+  0 skip/xfail). Alcance de cierre: DoD mínimo (sin tests nuevos; huecos documentados).
+- [x] Sin warnings de deprecación de Odoo 19 — escaneo estático limpio (usa `<list>`,
+  sin `attrs=`/`states=`/`@api.one`/`name_get(`).
+- [ ] Verde `0 failed, 0 error(s)` confirmado en sandbox (corrida del usuario; ver
+  Changelog 2026-06-29 Etapa 11).
 
 ---
 
