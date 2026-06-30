@@ -6,9 +6,15 @@
 **Audiencia:** Desarrolladores humanos y agentes IA  
 **Estado:** Documento vivo — actualizar al cerrar cada etapa
 
+> **Estructura de `Specs/`:** los documentos están organizados por fase.
+> Transversales (gobiernan todo el módulo) en la raíz: `Plan de Desarrollo.md`,
+> `Decisiones.md`, `Changelog.md`, `Bugs.md`, `TESTS_COVERAGE.md`.
+> Fase 1 (cobranza/pólizas/cartera + tablero) en `Specs/01-cobranza-polizas/`.
+> Reclutamiento de agentes en `Specs/02-reclutamiento/`.
+>
 > **Documentos de referencia obligatorios (leer antes de este plan):**
-> 1. `Specs/Arquitectura_BCA_Seguros.md` — modelo de datos, reglas, correcciones arquitectónicas
-> 2. `Specs/Logica de Negocios_BCA_Seguros.md` — qué debe hacer el negocio y por qué
+> 1. `Specs/01-cobranza-polizas/Arquitectura_BCA_Seguros.md` — modelo de datos, reglas, correcciones arquitectónicas
+> 2. `Specs/01-cobranza-polizas/Logica de Negocios_BCA_Seguros.md` — qué debe hacer el negocio y por qué
 > 3. `Specs/Decisiones.md` (cuando exista) — decisiones ya tomadas y sus razones
 
 ---
@@ -21,7 +27,7 @@ Lee las secciones 2–4 para entender el alcance y las reglas. Luego avanza etap
 ### Para un agente IA
 Sigue este protocolo antes de generar cualquier código:
 
-1. **Lee `Specs/Arquitectura_BCA_Seguros.md` completo.** Contiene las definiciones exactas de campos, tipos, constraints y 13 correcciones críticas (C1–M5). No asumir nada que no esté ahí.
+1. **Lee `Specs/01-cobranza-polizas/Arquitectura_BCA_Seguros.md` completo.** Contiene las definiciones exactas de campos, tipos, constraints y 13 correcciones críticas (C1–M5). No asumir nada que no esté ahí.
 2. **Consulta la versión de Odoo:** es **19 Community**. Aplican: OWL v3 (si se necesita frontend), `invisible=...` (no `attrs`), `groups=` en campos en lugar de `attrs="{'invisible': [...]}"` para seguridad.
 3. **Antes de cada etapa, lee el patrón correspondiente** en `C:\Users\rafav\.claude\skills\odoo-development-skill\skills\` según el índice del skill.
 4. **No generes código de memoria.** Si hay duda sobre sintaxis de Odoo 19, lee el archivo de pattern primero.

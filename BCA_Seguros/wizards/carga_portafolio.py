@@ -18,7 +18,7 @@ except ImportError:  # pragma: no cover - declarado en external_dependencies
 _logger = logging.getLogger(__name__)
 
 # Estructura del layout LAY_OUT_-_Portafolio_BCA: encabezados en fila 2, tipos en
-# fila 3, datos desde fila 4 (ver Specs/diccionario-campos-{vida,gmm}-*).
+# fila 3, datos desde fila 4 (ver Specs/01-cobranza-polizas/diccionario-campos-{vida,gmm}-*).
 FILA_ENCABEZADOS = 2
 FILA_INICIO_DATOS = 4
 

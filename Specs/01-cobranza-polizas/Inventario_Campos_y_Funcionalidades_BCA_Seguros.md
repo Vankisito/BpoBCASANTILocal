@@ -443,7 +443,7 @@ CAMPOS_PCA_PROTEGIDOS = {'pca_aplicada', 'factor_aplicado', 'pca_currency_id'}
 - Hojas → ramo: `VIDA→vida`, `GMM→gmm` (Autos/Qualitas fuera de alcance).
 - Mapas de normalización: `PERIODICIDAD_MAP`, `ESTADO_POLIZA_MAP`, `ESTADO_CIVIL_MAP`, `GENERO_MAP`, `PARENTESCO_MAP`.
 - Botón "Descargar plantilla" genera `.xlsx` (`tools/generar_plantilla_portafolio.py`, `wizards/plantilla_portafolio.py`).
-- Diccionarios de columnas: `Specs/diccionario-campos-vida-bca-seguros-v1.md` y `…-gmm-…`.
+- Diccionarios de columnas: `Specs/01-cobranza-polizas/diccionario-campos-vida-bca-seguros-v1.md` y `…-gmm-…`.
 
 ### 14.2 `bca.wizard.cobranza.diaria` — Cobranza diaria (.csv)
 
