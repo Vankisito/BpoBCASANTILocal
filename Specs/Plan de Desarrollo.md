@@ -803,7 +803,7 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 **Checklist Etapa 12:**
 - [x] **Fase A** (2026-07-02, `19.0.1.7.0`): `bca.sede` CRUD; 12 etapas + "Alta Interna" como datos del módulo; `hired_stage=True` en cédula/alta; form sin error XML; sin campos duplicados (género/ramo reusan selección; RFC=`vat` diferido a Fase C por confirmar). Sandbox local `Devlocal`: 136 tests, 0 failed.
-- [ ] **Fase B:** PDA riesgo ⇒ actividad al promotor; avanzar sin VoBo ⇒ `ValidationError`.
+- [x] **Fase B** (2026-07-02, `19.0.1.7.1`): PDA riesgo (nivel no_ideal/baja) ⇒ actividad al promotor; avanzar más allá de "Evaluación PDA" sin VoBo ⇒ `ValidationError`. Local `Devlocal`: 140 tests, 0 failed.
 - [ ] **Fase C:** no se llega a "Cédula Emitida" sin los 5 datos; conversión crea partner+puente(`clave_arranque`)+empleado idempotente por Id interno; agente reutilizado en 2ª aseguradora; agente recién habilitado NO aparece en reportes PCA (E9); Alta Interna no crea partner agente.
 - [ ] **Fase D:** rechazar exige motivo (2 seed); recordatorios/avisos disparan; pivote agrupa por sede/reclutadora/ramo/periodo.
 - [ ] **Fase E:** reclutadora ve solo `user_id==uid`; Director ve todo (`[(1,'=',1)]`); separación por `job_id`.

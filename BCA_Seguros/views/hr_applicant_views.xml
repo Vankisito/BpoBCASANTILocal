@@ -40,6 +40,20 @@
                         </group>
                     </group>
                 </page>
+                <page string="Evaluación PDA" name="bca_pda">
+                    <group>
+                        <group string="Resultado PDA">
+                            <field name="bca_pda_nivel"/>
+                            <field name="bca_pda_correlacion"/>
+                            <field name="bca_pda_perfil"/>
+                        </group>
+                        <group string="Compuerta de riesgo (L1)">
+                            <field name="bca_pda_riesgo"/>
+                            <field name="bca_pda_visto_bueno_promotor"
+                                   invisible="not bca_pda_riesgo"/>
+                        </group>
+                    </group>
+                </page>
                 <page string="Origen" name="bca_origen">
                     <group>
                         <group string="Captación">

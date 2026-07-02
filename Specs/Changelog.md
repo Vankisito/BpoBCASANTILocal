@@ -4,6 +4,32 @@
 
 ---
 
+## Sesión 2026-07-02 — Etapa 12 Fase B: PDA + compuerta de riesgo L1 · `19.0.1.7.1`
+
+### Qué se hizo
+Segunda fase de la Etapa 12 (HU-1.3): evaluación PDA y la lógica L1.
+
+- **Campos PDA** en `hr.applicant` (todos `copy=False`): `bca_pda_nivel` (Selection
+  `PDA_NIVEL_SELECTION`, constante de módulo, 5 niveles), `bca_pda_correlacion` (Float),
+  `bca_pda_perfil` (Char), `bca_pda_visto_bueno_promotor` (Bool), `bca_pda_riesgo`
+  (Bool computed store, nivel ∈ {no_ideal, baja}).
+- **Compuerta L1** (`_check_pda_gate`, `@api.constrains`): bloquea avanzar más allá de
+  "Evaluación PDA" (resuelta por `env.ref` + `sequence`, no ID) si hay riesgo sin VoBo;
+  solo aplica al embudo `job_reclutamiento_agente`.
+- **Notificación al promotor** (`_bca_notificar_riesgo_pda`, en `write`): al marcarse riesgo
+  sin VoBo crea `mail.activity` "Visto bueno PDA requerido" para el usuario ligado a la
+  promotoría destino (fallback a la reclutadora); idempotente (SI-2: solo notificación).
+- **Vista:** pestaña "Evaluación PDA" con resultado + compuerta (VoBo visible solo si riesgo).
+- **Tests** (4): `test_pda_riesgo_computed`, `test_pda_riesgo_crea_actividad_promotor`,
+  `test_pda_avance_sin_vobo_bloquea`, `test_pda_con_vobo_avanza`. Local `Devlocal`: 140 tests, 0 failed.
+- **Bump** `19.0.1.7.0` → **`19.0.1.7.1`**.
+
+### Archivos
+- Modificados: `models/hr_applicant.py`, `views/hr_applicant_views.xml`,
+  `tests/test_hr_applicant.py`, `__manifest__.py`, docs de `Specs/`.
+
+---
+
 ## Sesión 2026-07-02 — Etapa 12 Fase A: Cimientos de Reclutamiento · `19.0.1.7.0`
 
 ### Qué se hizo

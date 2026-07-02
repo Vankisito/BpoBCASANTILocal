@@ -4,7 +4,7 @@ from datetime import date
 
 from dateutil.relativedelta import relativedelta
 
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
@@ -191,3 +191,58 @@ class TestHrApplicant(TransactionCase):
         # Los campos nativos reusados existen.
         for nativo in ('partner_name', 'email_from', 'partner_phone'):
             self.assertIn(nativo, fields, f'Se esperaba reusar el campo nativo {nativo}.')
+
+    # ---------------------------------------------------------------
+    # Etapa 12 Fase B — PDA + compuerta de riesgo L1 (HU-1.3)
+    # ---------------------------------------------------------------
+    def _crear_applicant_pda(self, nivel: str, **overrides) -> object:
+        return self._crear_applicant(
+            self.job_reclutamiento,
+            bca_promotoria_destino_id=self.promotoria.id,
+            bca_pda_nivel=nivel,
+            **overrides,
+        )
+
+    def test_pda_riesgo_computed(self) -> None:
+        """Nivel baja/no_ideal ⇒ riesgo; ideal/recomendado/aceptable ⇒ sin riesgo."""
+        for nivel in ('baja', 'no_ideal'):
+            self.assertTrue(self._crear_applicant_pda(nivel).bca_pda_riesgo)
+        for nivel in ('ideal', 'recomendado', 'aceptable'):
+            self.assertFalse(self._crear_applicant_pda(nivel).bca_pda_riesgo)
+
+    def test_pda_riesgo_crea_actividad_promotor(self) -> None:
+        """Riesgo PDA sin VoBo ⇒ actividad "Visto bueno PDA requerido" al promotor."""
+        promotor = self.env['res.users'].create({
+            'name': 'Promotor Responsable',
+            'login': 'promotor_pda@test.com',
+            'partner_id': self.promotoria.id,
+        })
+        applicant = self._crear_applicant(
+            self.job_reclutamiento,
+            bca_promotoria_destino_id=self.promotoria.id,
+        )
+        applicant.bca_pda_nivel = 'baja'  # dispara notificación vía write
+        actividades = applicant.activity_ids.filtered(
+            lambda a: a.user_id == promotor)
+        self.assertTrue(actividades, 'Debe crear actividad para el promotor.')
+        self.assertEqual(actividades[0].summary, 'Visto bueno PDA requerido')
+        # Idempotente: no duplica al reescribir.
+        applicant.bca_pda_nivel = 'no_ideal'
+        self.assertEqual(
+            len(applicant.activity_ids.filtered(lambda a: a.user_id == promotor)),
+            1, 'No debe duplicar la actividad del promotor.')
+
+    def test_pda_avance_sin_vobo_bloquea(self) -> None:
+        """Avanzar más allá de "Evaluación PDA" con riesgo y sin VoBo ⇒ ValidationError."""
+        stage_acuerdo = self.env.ref('BCA_Seguros.stage_acuerdo_arranque')
+        applicant = self._crear_applicant_pda('baja')
+        with self.assertRaises(ValidationError):
+            applicant.stage_id = stage_acuerdo
+
+    def test_pda_con_vobo_avanza(self) -> None:
+        """Con VoBo del promotor, el candidato en riesgo sí avanza."""
+        stage_acuerdo = self.env.ref('BCA_Seguros.stage_acuerdo_arranque')
+        applicant = self._crear_applicant_pda(
+            'baja', bca_pda_visto_bueno_promotor=True)
+        applicant.stage_id = stage_acuerdo  # no debe lanzar
+        self.assertEqual(applicant.stage_id, stage_acuerdo)
