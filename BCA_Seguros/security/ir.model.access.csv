@@ -65,3 +65,6 @@ acl_rep_estado_cartera_director,bca.reporte.estado.cartera director,model_bca_re
 acl_bca_sede_user,bca.sede user,model_bca_sede,base.group_user,1,0,0,0
 acl_bca_sede_dir_comercial,bca.sede dir_comercial,model_bca_sede,BCA_Seguros.group_bca_director_comercial,1,1,1,0
 acl_bca_sede_director,bca.sede director,model_bca_sede,BCA_Seguros.group_bca_director,1,1,1,1
+acl_hr_applicant_reclutadora,hr.applicant reclutadora,hr_recruitment.model_hr_applicant,BCA_Seguros.group_bca_reclutadora,1,1,1,0
+acl_hr_applicant_dir_comercial,hr.applicant dir_comercial,hr_recruitment.model_hr_applicant,BCA_Seguros.group_bca_director_comercial,1,0,0,0
+acl_hr_applicant_director,hr.applicant director,hr_recruitment.model_hr_applicant,BCA_Seguros.group_bca_director,1,0,0,0

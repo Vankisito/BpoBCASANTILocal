@@ -4,6 +4,35 @@
 
 ---
 
+## Sesión 2026-07-02 — Etapa 12 Fase E: Visibilidad por reclutadora (CIERRE) · `19.0.1.7.4`
+
+### Qué se hizo
+HU-1.6. Cierre de la Etapa 12 con los grupos y record rules de reclutamiento (SI-1).
+
+- **Grupos hermanos** (`security/groups.xml`, fuera de la cadena de 5 — A3):
+  `group_bca_reclutadora` (implica el Entrevistador nativo) y `group_bca_capital_humano`
+  (implica el Encargado nativo, ve todo/gestiona embudo).
+- **Record rules** sobre `hr.applicant` (`security/record_rules.xml`): reclutadora
+  `[('user_id','=',user.id)]` (r/w/c); Director Comercial y Director `[(1,'=',1)]` lectura.
+  Capital Humano ve todo vía la rule nativa de Encargado (no se toca). Rules combinadas por
+  OR: la reclutadora ve lo suyo, los directores ven todo.
+- **ACL** (`security/ir.model.access.csv`): `hr.applicant` reclutadora r/w/c; Director
+  Comercial/Director lectura (no están en grupos nativos de reclutamiento).
+- **Tests** (2): `test_reclutadora_ve_solo_sus_candidatos`, `test_director_ve_todos_los_candidatos`.
+  Local `Devlocal`: **150 tests, 0 failed**.
+- **Bump** `19.0.1.7.3` → **`19.0.1.7.4`**. Cierra la Etapa 12 (Fases A–E).
+
+### Decisión de diseño (visibilidad)
+- Directores ven todo vía rule `[(1,'=',1)]` + ACL de lectura (consumen el pivote SIC), sin
+  poderes nativos de reclutamiento. Reclutadora sobre Entrevistador nativo (la rule de
+  Entrevistador se combina por OR con `user_id==uid`: ve lo suyo + donde sea entrevistadora).
+
+### Archivos
+- Modificados: `security/groups.xml`, `security/record_rules.xml`,
+  `security/ir.model.access.csv`, `tests/test_record_rules.py`, `__manifest__.py`, docs.
+
+---
+
 ## Sesión 2026-07-02 — Etapa 12 Fase D: Automatizaciones + motivos + SIC · `19.0.1.7.3`
 
 ### Qué se hizo

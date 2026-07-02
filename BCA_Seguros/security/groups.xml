@@ -59,4 +59,27 @@
         <field name="name">Director BCA</field>
         <field name="implied_ids" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
     </record>
+
+    <!-- ================================================================
+         GRUPOS DE RECLUTAMIENTO (Etapa 12 Fase E, SI-1) — HERMANOS.
+         Fuera de la cadena acumulativa de los 5 grupos anteriores (A3):
+         se apoyan en los grupos NATIVOS de hr_recruitment para el acceso a
+         la app y su ACL. La visibilidad la fija security/record_rules.xml.
+           - Reclutadora: acceso nivel Entrevistador (no ve-todo) + rule
+             user_id==uid → ve solo SUS candidatos.
+           - Capital Humano: acceso nivel Encargado (ve todo, gestiona embudo).
+         Los Directores (BCA) ven todo vía rule [(1,'=',1)] + ACL de lectura,
+         sin poderes nativos de reclutamiento (ver record_rules/ACL).
+         ================================================================ -->
+    <record id="group_bca_reclutadora" model="res.groups">
+        <field name="name">Reclutadora BCA</field>
+        <field name="implied_ids"
+               eval="[(4, ref('hr_recruitment.group_hr_recruitment_interviewer'))]"/>
+    </record>
+
+    <record id="group_bca_capital_humano" model="res.groups">
+        <field name="name">Capital Humano BCA</field>
+        <field name="implied_ids"
+               eval="[(4, ref('hr_recruitment.group_hr_recruitment_user'))]"/>
+    </record>
 </odoo>

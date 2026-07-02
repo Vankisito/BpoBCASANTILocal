@@ -770,7 +770,7 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 ---
 
-### Etapa 12 — Reclutamiento y Habilitación de Agentes  🔲 EN PLANIFICACIÓN
+### Etapa 12 — Reclutamiento y Habilitación de Agentes  ✅ COMPLETA (`19.0.1.7.4`, 2026-07-02)
 **Tiempo estimado:** 16–22 horas (5 fases)
 **Documento director:** `Specs/02-reclutamiento/spec-etapa-12-reclutamiento-bca-v1.md`
 **Specs de negocio:** `Specs/02-reclutamiento/` (BDD v1.3, SDD v1.1, análisis HU/TT, HU+criterios)
@@ -806,9 +806,9 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 - [x] **Fase B** (2026-07-02, `19.0.1.7.1`): PDA riesgo (nivel no_ideal/baja) ⇒ actividad al promotor; avanzar más allá de "Evaluación PDA" sin VoBo ⇒ `ValidationError`. Local `Devlocal`: 140 tests, 0 failed.
 - [x] **Fase C** (2026-07-02, `19.0.1.7.2`): no se llega a hired sin los 5 datos; conversión crea partner+puente(`clave_arranque`)+empleado idempotente por Id interno (RFC=`bca_rfc`→`partner.vat`, CURP=`bca_curp`); agente reutilizado en 2ª aseguradora; recién habilitado en `clave_arranque` NO computa PCA; Alta Interna no crea agente/puente. Local `Devlocal`: 145 tests, 0 failed.
 - [x] **Fase D** (2026-07-02, `19.0.1.7.3`): 2 motivos de rechazo seed; aviso L6 (base.automation on_stage_set); pivote SIC por sede/reclutadora/ramo/evento/etapa. L3/L5 diferidos a SOP (necesitan trigger por fecha + etapa Stand by). Local `Devlocal`: 148 tests, 0 failed.
-- [ ] **Fase E:** reclutadora ve solo `user_id==uid`; Director ve todo (`[(1,'=',1)]`); separación por `job_id`.
-- [ ] **SI-Sede pendiente:** rellenar `data/bca_sedes_iniciales.xml` con la lista oficial antes de cerrar Fase A.
-- [ ] Verde `0 failed, 0 error(s)` en sandbox por fase.
+- [x] **Fase E** (2026-07-02, `19.0.1.7.4`): reclutadora ve solo `user_id==uid`; Director ve todo (`[(1,'=',1)]` + ACL lectura); grupos hermanos (reclutadora/capital humano). Separación por `job_id` = refinamiento futuro. Local `Devlocal`: 150 tests, 0 failed.
+- [ ] **SI-Sede pendiente:** rellenar `data/bca_sedes_iniciales.xml` con la lista oficial (seed placeholder Matriz/CDMX/MTY por ahora).
+- [x] Verde `0 failed, 0 error(s)` en Docker local (`Devlocal`) por fase A–E.
 
 ---
 

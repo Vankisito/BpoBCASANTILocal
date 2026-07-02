@@ -49,7 +49,7 @@
 | `test_hr_applicant.py` (ext.) ✅ | `test_pda_riesgo_computed`, `test_pda_riesgo_crea_actividad_promotor`, `test_pda_avance_sin_vobo_bloquea`, `test_pda_con_vobo_avanza` | B |
 | `test_hr_applicant.py` (ext.) ✅ | `test_hired_sin_5_datos_bloquea`, `test_conversion_crea_puente_clave_arranque` (estado clave_arranque = no-PCA), `test_conversion_crea_employee`, `test_idempotencia_por_rfc_curp`, `test_alta_interna_no_crea_puente_ni_agente` (+ tests de conversión actualizados con 5 datos) | C |
 | `test_hr_applicant.py` (ext.) ✅ | `test_refuse_reasons_seed`, `test_automation_aviso_etapa_seed`, `test_sic_action_pivote_seed` (L3/L5 diferidos a SOP) | D |
-| `test_record_rules.py` (ext.) | reclutadora ve solo `user_id==uid`; Director ve todo; separación por `job_id` | E |
+| `test_record_rules.py` (ext.) ✅ | `TestReclutamientoRecordRules`: `test_reclutadora_ve_solo_sus_candidatos`, `test_director_ve_todos_los_candidatos` (separación por job_id → refinamiento futuro) | E |
 
 **Cruce crítico de seguridad PCA:** `test_agente_clave_arranque_no_computa_pca` debe verificar contra
 los reportes SQL de E9 que un agente en `clave_arranque` **no** aparece en la PCA (red de seguridad de D-14/F1).

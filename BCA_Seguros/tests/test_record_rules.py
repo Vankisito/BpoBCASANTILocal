@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from odoo.exceptions import AccessError
+from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
 
@@ -182,3 +183,56 @@ class TestRecordRules(TransactionCase):
         self.recibo_a.with_user(self.user_dc).action_cancelar_pago()
         self.assertEqual(self.recibo_a.estado, 'pendiente')
         self.assertEqual(self.recibo_a.pca_aplicada, 0.0)
+
+
+@tagged('BCA_Seguros')
+class TestReclutamientoRecordRules(TransactionCase):
+    """Etapa 12 Fase E — visibilidad del embudo de reclutamiento (SI-1)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        User = cls.env['res.users'].with_context(no_reset_password=True)
+        internal = cls.env.ref('base.group_user')
+        cls.job = cls.env.ref('BCA_Seguros.job_reclutamiento_agente')
+        cls.stage = cls.env.ref('BCA_Seguros.stage_recibido')
+        g_reclutadora = cls.env.ref('BCA_Seguros.group_bca_reclutadora')
+        g_director = cls.env.ref('BCA_Seguros.group_bca_director')
+
+        cls.recl1 = User.create({
+            'name': 'Reclutadora Uno', 'login': 'bca_test_recl_1',
+            'group_ids': [(6, 0, [internal.id, g_reclutadora.id])],
+        })
+        cls.recl2 = User.create({
+            'name': 'Reclutadora Dos', 'login': 'bca_test_recl_2',
+            'group_ids': [(6, 0, [internal.id, g_reclutadora.id])],
+        })
+        cls.director = User.create({
+            'name': 'Director Recl', 'login': 'bca_test_dir_recl',
+            'group_ids': [(6, 0, [internal.id, g_director.id])],
+        })
+
+        Applicant = cls.env['hr.applicant']
+        cls.app1 = Applicant.create({
+            'partner_name': 'Cand de Recl1', 'job_id': cls.job.id,
+            'stage_id': cls.stage.id, 'user_id': cls.recl1.id,
+        })
+        cls.app2 = Applicant.create({
+            'partner_name': 'Cand de Recl2', 'job_id': cls.job.id,
+            'stage_id': cls.stage.id, 'user_id': cls.recl2.id,
+        })
+
+    def test_reclutadora_ve_solo_sus_candidatos(self) -> None:
+        """Reclutadora ve user_id==uid; no ve los de otra reclutadora (SI-1)."""
+        Applicant = self.env['hr.applicant'].with_user(self.recl1)
+        visibles = Applicant.search([('partner_name', 'like', 'Cand de Recl')])
+        self.assertIn(self.app1, visibles)
+        self.assertNotIn(self.app2, visibles,
+                         'La reclutadora no debe ver candidatos de otra.')
+
+    def test_director_ve_todos_los_candidatos(self) -> None:
+        """Director ve todo (rule [(1,'=',1)] + ACL de lectura)."""
+        Applicant = self.env['hr.applicant'].with_user(self.director)
+        visibles = Applicant.search([('partner_name', 'like', 'Cand de Recl')])
+        self.assertIn(self.app1, visibles)
+        self.assertIn(self.app2, visibles)

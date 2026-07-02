@@ -691,4 +691,44 @@
         <field name="perm_create" eval="False"/>
         <field name="perm_unlink" eval="False"/>
     </record>
+
+    <!-- ================================================================
+         Visibilidad del embudo de reclutamiento (Etapa 12 Fase E, SI-1).
+         Las rules de distintos grupos se combinan con OR: la reclutadora
+         (grupo restrictivo) ve user_id==uid; Directores (grupos con
+         [(1,'=',1)]) ven todo. Capital Humano ve todo vía la rule NATIVA de
+         Encargado (group_hr_recruitment_user); esa rule nativa no se toca.
+         ================================================================ -->
+    <record id="rule_hr_applicant_reclutadora" model="ir.rule">
+        <field name="name">hr.applicant: reclutadora ve solo sus candidatos</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_reclutadora'))]"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_hr_applicant_dir_comercial" model="ir.rule">
+        <field name="name">hr.applicant: Director Comercial ve todo</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_hr_applicant_director" model="ir.rule">
+        <field name="name">hr.applicant: Director ve todo</field>
+        <field name="model_id" ref="hr_recruitment.model_hr_applicant"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
 </odoo>
