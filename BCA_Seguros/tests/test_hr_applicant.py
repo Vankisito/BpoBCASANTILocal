@@ -351,3 +351,26 @@ class TestHrApplicant(TransactionCase):
             self.assertNotEqual(applicant.partner_id.bca_tipo, 'agente')
         despues = self.env['res.partner.agente.aseguradora'].search_count([])
         self.assertEqual(antes, despues, 'Alta interna no debe crear puentes.')
+
+    # ---------------------------------------------------------------
+    # Etapa 12 Fase D — motivos de rechazo + automatización + SIC (HU-1.7/1.9)
+    # ---------------------------------------------------------------
+    def test_refuse_reasons_seed(self) -> None:
+        """Los 2 motivos de rechazo están seed como datos del módulo."""
+        prospecto = self.env.ref('BCA_Seguros.refuse_reason_declinado_prospecto')
+        bca = self.env.ref('BCA_Seguros.refuse_reason_declinado_bca')
+        self.assertEqual(prospecto.name, 'Declinado por Prospecto')
+        self.assertEqual(bca.name, 'Declinado por BCA')
+
+    def test_automation_aviso_etapa_seed(self) -> None:
+        """La automatización de aviso por etapa (L6) está seed y activa."""
+        automation = self.env.ref('BCA_Seguros.automation_aviso_cambio_etapa')
+        self.assertEqual(automation.trigger, 'on_stage_set')
+        self.assertEqual(automation.model_id.model, 'hr.applicant')
+        self.assertTrue(automation.action_server_ids, 'Debe tener acción servidor.')
+
+    def test_sic_action_pivote_seed(self) -> None:
+        """La acción SIC de reclutamiento abre pivote sobre hr.applicant."""
+        action = self.env.ref('BCA_Seguros.action_sic_reclutamiento')
+        self.assertEqual(action.res_model, 'hr.applicant')
+        self.assertIn('pivot', action.view_mode)

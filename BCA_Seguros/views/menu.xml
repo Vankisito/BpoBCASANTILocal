@@ -117,6 +117,13 @@
               action="BCA_Seguros.action_reporte_estado_cartera"
               sequence="40"/>
 
+    <!-- SIC de Reclutamiento (Etapa 12): pivote de postulantes. -->
+    <menuitem id="menu_bca_sic_reclutamiento"
+              name="SIC Reclutamiento"
+              parent="menu_bca_reportes"
+              action="BCA_Seguros.action_sic_reclutamiento"
+              sequence="50"/>
+
     <!-- ============================================================
          Configuración (Director Comercial+) — sin cambios.
          ============================================================ -->

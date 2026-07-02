@@ -4,6 +4,37 @@
 
 ---
 
+## Sesión 2026-07-02 — Etapa 12 Fase D: Automatizaciones + motivos + SIC · `19.0.1.7.3`
+
+### Qué se hizo
+HU-1.7/1.9/2.1/3.1. Avisos, motivos de rechazo y reporte de embudo.
+
+- **Motivos de rechazo** (`data/hr_refuse_reasons.xml`, `noupdate`): "Declinado por
+  Prospecto" y "Declinado por BCA" (`hr.applicant.refuse.reason`).
+- **Automatización L6** (`data/base_automation_reclutamiento.xml`): `base.automation`
+  `on_stage_set` + `ir.actions.server` (state=code) que publica una nota al avanzar de
+  etapa, scopeada a `job_reclutamiento_agente`. D-17: solo avisos. Se añadió
+  **`base_automation`** a `depends`.
+- **SIC de reclutamiento** (`views/reclutamiento_views.xml`): pivote + gráfica + búsqueda
+  sobre `hr.applicant` con dimensiones sede · reclutadora · puesto · ramo · evento · etapa;
+  acción `action_sic_reclutamiento` + menú bajo Reportes.
+- **Tests** (3): `test_refuse_reasons_seed`, `test_automation_aviso_etapa_seed`,
+  `test_sic_action_pivote_seed`. Local `Devlocal`: 148 tests, 0 failed.
+- **Bump** `19.0.1.7.2` → **`19.0.1.7.3`**.
+
+### Diferido (SOP/HU futura)
+- **L3** (recordatorio a 3 días / no localizado) y **L5** (no-show → Stand by): requieren
+  triggers `on_time` por campo de fecha y una etapa "Stand by" fuera del modelo actual. Se
+  documentan como SOP; se añadirán cuando BCA defina la etapa Stand by.
+
+### Archivos
+- Nuevos: `data/hr_refuse_reasons.xml`, `data/base_automation_reclutamiento.xml`,
+  `views/reclutamiento_views.xml`.
+- Modificados: `views/menu.xml`, `tests/test_hr_applicant.py`, `__manifest__.py` (depends +
+  data + bump), docs.
+
+---
+
 ## Sesión 2026-07-02 — Etapa 12 Fase C: Conversión en Cédula Emitida (NÚCLEO) · `19.0.1.7.2`
 
 ### Qué se hizo

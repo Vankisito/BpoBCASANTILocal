@@ -805,7 +805,7 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 - [x] **Fase A** (2026-07-02, `19.0.1.7.0`): `bca.sede` CRUD; 12 etapas + "Alta Interna" como datos del módulo; `hired_stage=True` en cédula/alta; form sin error XML; sin campos duplicados (género/ramo reusan selección; RFC=`vat` diferido a Fase C por confirmar). Sandbox local `Devlocal`: 136 tests, 0 failed.
 - [x] **Fase B** (2026-07-02, `19.0.1.7.1`): PDA riesgo (nivel no_ideal/baja) ⇒ actividad al promotor; avanzar más allá de "Evaluación PDA" sin VoBo ⇒ `ValidationError`. Local `Devlocal`: 140 tests, 0 failed.
 - [x] **Fase C** (2026-07-02, `19.0.1.7.2`): no se llega a hired sin los 5 datos; conversión crea partner+puente(`clave_arranque`)+empleado idempotente por Id interno (RFC=`bca_rfc`→`partner.vat`, CURP=`bca_curp`); agente reutilizado en 2ª aseguradora; recién habilitado en `clave_arranque` NO computa PCA; Alta Interna no crea agente/puente. Local `Devlocal`: 145 tests, 0 failed.
-- [ ] **Fase D:** rechazar exige motivo (2 seed); recordatorios/avisos disparan; pivote agrupa por sede/reclutadora/ramo/periodo.
+- [x] **Fase D** (2026-07-02, `19.0.1.7.3`): 2 motivos de rechazo seed; aviso L6 (base.automation on_stage_set); pivote SIC por sede/reclutadora/ramo/evento/etapa. L3/L5 diferidos a SOP (necesitan trigger por fecha + etapa Stand by). Local `Devlocal`: 148 tests, 0 failed.
 - [ ] **Fase E:** reclutadora ve solo `user_id==uid`; Director ve todo (`[(1,'=',1)]`); separación por `job_id`.
 - [ ] **SI-Sede pendiente:** rellenar `data/bca_sedes_iniciales.xml` con la lista oficial antes de cerrar Fase A.
 - [ ] Verde `0 failed, 0 error(s)` en sandbox por fase.
