@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from dateutil.relativedelta import relativedelta
+from psycopg2 import IntegrityError
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -173,6 +174,58 @@ class HrApplicant(models.Model):
             user_id=promotor_user.id,
         )
 
+    # --- Datos de habilitación / emisión de cédula (Etapa 12 Fase C, HU-1.4) ---
+    # RFC → bca_rfc (hr.applicant NO tiene `vat` nativo); se mapea a partner.vat
+    # en la conversión. CURP → bca_curp; ambos forman el Id interno PCA (D-15).
+    bca_clave_arranque: str = fields.Char(string='Clave de Arranque', copy=False)
+    bca_fecha_cedula: fields.Date = fields.Date(string='Fecha de Cédula', copy=False)
+    bca_aseguradora_id: int = fields.Many2one(
+        'res.partner',
+        string='Aseguradora',
+        domain=[('bca_tipo', '=', 'aseguradora')],
+        ondelete='restrict',
+        copy=False,
+    )
+    bca_rfc: str = fields.Char(string='RFC', copy=False)
+    bca_curp: str = fields.Char(string='CURP', index=True, copy=False)
+
+    @api.constrains('stage_id')
+    def _check_habilitacion_datos(self) -> None:
+        """L2: no se llega a una etapa hired del embudo de agentes sin los 5 datos.
+
+        Solo para `job_reclutamiento_agente`; NO aplica a "Alta Interna" ni a otros
+        jobs. Los 5 datos: clave de arranque, fecha de cédula, aseguradora, RFC, CURP.
+        """
+        job_recl = self.env.ref(
+            'BCA_Seguros.job_reclutamiento_agente', raise_if_not_found=False,
+        )
+        if not job_recl:
+            return
+        for applicant in self:
+            if (applicant.job_id == job_recl and applicant.stage_id
+                    and applicant.stage_id.hired_stage):
+                faltantes = applicant._bca_datos_habilitacion_faltantes()
+                if faltantes:
+                    raise ValidationError(_(
+                        'No se puede habilitar al agente "%(nombre)s": faltan datos '
+                        'de habilitación: %(faltantes)s.'
+                    ) % {
+                        'nombre': applicant.partner_name or applicant.display_name,
+                        'faltantes': ', '.join(faltantes),
+                    })
+
+    def _bca_datos_habilitacion_faltantes(self) -> list:
+        """Devuelve las etiquetas de los datos de habilitación ausentes."""
+        self.ensure_one()
+        requeridos = [
+            ('bca_clave_arranque', _('Clave de Arranque')),
+            ('bca_fecha_cedula', _('Fecha de Cédula')),
+            ('bca_aseguradora_id', _('Aseguradora')),
+            ('bca_rfc', _('RFC')),
+            ('bca_curp', _('CURP')),
+        ]
+        return [label for field_name, label in requeridos if not self[field_name]]
+
     def write(self, vals: dict) -> bool:
         """Detecta paso a stage hired y dispara creación de res.partner BCA.
 
@@ -191,11 +244,11 @@ class HrApplicant(models.Model):
         return result
 
     def _bca_crear_partner_desde_contratado(self) -> None:
-        """Crea res.partner agente o promotoría según el hr.job del applicant.
+        """Enruta la conversión según el hr.job del applicant contratado.
 
         Idempotente: si ya hay partner_id con bca_tipo coherente, no hace nada.
-        Solo actúa sobre applicants cuyo job_id es uno de los dos BCA registrados;
-        ignora silenciosamente cualquier otro job (ej. puestos estándar de RH).
+        Solo actúa sobre los dos jobs BCA; ignora silenciosamente cualquier otro
+        (ej. "Alta Interna" u otros puestos de RH → alta nativa, sin agente/puente).
         """
         self.ensure_one()
         job_captacion = self.env.ref(
@@ -215,46 +268,157 @@ class HrApplicant(models.Model):
             )
             return
 
-        partner_vals = {
+        if self.job_id == job_captacion:
+            self._bca_crear_promotoria()
+        else:
+            self._bca_habilitar_agente()
+
+    def _bca_crear_promotoria(self) -> None:
+        """Captación: crea el res.partner promotoría bajo el holding Grupo BCA."""
+        self.ensure_one()
+        holding = self.env.ref(
+            'BCA_Seguros.partner_bca_holding', raise_if_not_found=False,
+        )
+        if not holding:
+            raise UserError(_(
+                'No se encontró el partner Grupo BCA holding '
+                '(BCA_Seguros.partner_bca_holding). Verifique que '
+                'data/aseguradoras_iniciales.xml esté cargado.'
+            ))
+        partner = self.env['res.partner'].create({
             'name': self.partner_name or self.name,
             'email': self.email_from or False,
             'phone': self.partner_phone or False,
-        }
+            'bca_tipo': 'promotoria',
+            'parent_id': holding.id,
+            'is_company': True,
+        })
+        self.partner_id = partner
+        self._bca_log_partner_vinculado(partner)
 
-        if self.job_id == job_captacion:
-            holding = self.env.ref(
-                'BCA_Seguros.partner_bca_holding', raise_if_not_found=False,
-            )
-            if not holding:
-                raise UserError(_(
-                    'No se encontró el partner Grupo BCA holding '
-                    '(BCA_Seguros.partner_bca_holding). Verifique que '
-                    'data/aseguradoras_iniciales.xml esté cargado.'
-                ))
-            partner_vals.update({
-                'bca_tipo': 'promotoria',
-                'parent_id': holding.id,
-                'is_company': True,
+    def _bca_habilitar_agente(self) -> None:
+        """L2: habilita al agente al emitir cédula (HU-1.4).
+
+        Crea/reutiliza el partner agente (idempotente por Id interno = Nombre+RFC+
+        CURP, D-15), asienta la clave por aseguradora en `clave_arranque` (F1 — NO
+        `clave_definitiva`, no computa PCA) y crea el hr.employee. Atómico: valida
+        los 5 datos antes de crear nada.
+        """
+        self.ensure_one()
+        if not self.bca_promotoria_destino_id:
+            raise UserError(_(
+                'Para contratar a un agente debe especificar la '
+                'Promotoría destino en el candidato.'
+            ))
+        faltantes = self._bca_datos_habilitacion_faltantes()
+        if faltantes:
+            raise ValidationError(_(
+                'No se puede habilitar al agente "%(nombre)s": faltan datos de '
+                'habilitación: %(faltantes)s.'
+            ) % {
+                'nombre': self.partner_name or self.display_name,
+                'faltantes': ', '.join(faltantes),
             })
-        else:  # job_reclutamiento
-            if not self.bca_promotoria_destino_id:
-                raise UserError(_(
-                    'Para contratar a un agente debe especificar la '
-                    'Promotoría destino en el candidato.'
-                ))
-            partner_vals.update({
+
+        Partner = self.env['res.partner'].sudo()
+        # Idempotencia por Id interno: reutiliza el agente aunque exista en otra
+        # promotoría/aseguradora; solo se le agrega la clave de la nueva (D-15).
+        agente = Partner.search([
+            ('bca_tipo', '=', 'agente'),
+            ('vat', '=', self.bca_rfc),
+            ('bca_curp', '=', self.bca_curp),
+        ], limit=1)
+        if not agente:
+            agente = Partner.create({
+                'name': (self.partner_name or self.name or '').strip(),
+                'email': self.email_from or False,
+                'phone': self.partner_phone or False,
                 'bca_tipo': 'agente',
                 'parent_id': self.bca_promotoria_destino_id.id,
                 'is_company': False,
+                'vat': self.bca_rfc,
+                'bca_curp': self.bca_curp,
             })
+        self.partner_id = agente
 
-        partner = self.env['res.partner'].create(partner_vals)
-        self.partner_id = partner
+        self._bca_crear_clave_aseguradora(agente)
+        self._bca_crear_empleado(agente)
+        self._bca_log_partner_vinculado(agente)
+        self._bca_actividad_habilitacion(agente)
+
+    def _bca_crear_clave_aseguradora(self, agente):
+        """Asienta la clave por aseguradora en `clave_arranque` (F1). Idempotente."""
+        self.ensure_one()
+        Clave = self.env['res.partner.agente.aseguradora'].sudo()
+        existente = Clave.search([
+            ('agente_id', '=', agente.id),
+            ('aseguradora_id', '=', self.bca_aseguradora_id.id),
+        ], limit=1)
+        if existente:
+            return existente
+        vals = {
+            'agente_id': agente.id,
+            'aseguradora_id': self.bca_aseguradora_id.id,
+            'clave_agente': self.bca_clave_arranque,
+            'estado': 'clave_arranque',  # F1: NUNCA clave_definitiva (D-14)
+            'fecha_licencia': self.bca_fecha_cedula,
+        }
+        try:
+            with self.env.cr.savepoint():
+                clave = Clave.create(vals)
+                clave.flush_recordset()
+                return clave
+        except IntegrityError:
+            _logger.info(
+                'Clave duplicada (agente %s / aseguradora %s); se reutiliza.',
+                agente.id, self.bca_aseguradora_id.id,
+            )
+            return Clave.search([
+                ('aseguradora_id', '=', self.bca_aseguradora_id.id),
+                ('clave_agente', '=', self.bca_clave_arranque),
+            ], limit=1)
+
+    def _bca_crear_empleado(self, agente):
+        """Crea el hr.employee vinculado al partner agente (no-empleado legal).
+
+        Se usa `sudo()`: la reclutadora puede no tener ACL de creación de empleados.
+        """
+        self.ensure_one()
+        Employee = self.env['hr.employee'].sudo()
+        existente = Employee.search([('work_contact_id', '=', agente.id)], limit=1)
+        if existente:
+            return existente
+        return Employee.create({
+            'name': agente.name,
+            'work_contact_id': agente.id,
+            'work_email': self.email_from or False,
+        })
+
+    def _bca_actividad_habilitacion(self, agente) -> None:
+        """Notifica a la reclutadora y al promotor de la promotoría destino."""
+        self.ensure_one()
+        destinatarios = self.user_id | self.bca_promotoria_destino_id.user_ids[:1]
+        summary = _('Agente habilitado en Clave de Arranque')
+        for user in destinatarios:
+            self.activity_schedule(
+                'mail.mail_activity_data_todo',
+                summary=summary,
+                note=_('Se habilitó al agente %(agente)s en clave de arranque '
+                       'para %(aseg)s.') % {
+                    'agente': agente.name,
+                    'aseg': self.bca_aseguradora_id.name,
+                },
+                user_id=user.id,
+            )
+
+    def _bca_log_partner_vinculado(self, partner) -> None:
+        """Chatter + log del partner creado/vinculado."""
+        self.ensure_one()
         self.message_post(body=_(
-            'Se creó automáticamente el contacto BCA <a href="#" data-oe-model="res.partner" '
+            'Se creó/vinculó el contacto BCA <a href="#" data-oe-model="res.partner" '
             'data-oe-id="%(id)s">%(name)s</a> (%(tipo)s) al cerrar el candidato como Contratado.'
         ) % {'id': partner.id, 'name': partner.name, 'tipo': partner.bca_tipo})
         _logger.info(
-            'hr.applicant %s: creado res.partner %s (%s, bca_tipo=%s).',
+            'hr.applicant %s: partner %s (%s, bca_tipo=%s).',
             self.id, partner.id, partner.name, partner.bca_tipo,
         )

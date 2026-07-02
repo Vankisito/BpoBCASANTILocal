@@ -28,6 +28,10 @@ class TestHrApplicant(TransactionCase):
             'bca_tipo': 'promotoria',
             'parent_id': cls.holding.id,
         })
+        cls.aseguradora = cls.env['res.partner'].create({
+            'name': 'Aseguradora Test',
+            'bca_tipo': 'aseguradora',
+        })
 
         Stage = cls.env['hr.recruitment.stage']
         cls.stage_open = Stage.create({'name': 'Test - En Proceso', 'sequence': 1})
@@ -49,18 +53,35 @@ class TestHrApplicant(TransactionCase):
         vals.update(overrides)
         return self.env['hr.applicant'].create(vals)
 
+    def _datos_habilitacion(self, **overrides) -> dict:
+        """Los 5 datos de habilitación (Fase C) + promotoría destino."""
+        vals = {
+            'bca_promotoria_destino_id': self.promotoria.id,
+            'bca_clave_arranque': 'CLV-001',
+            'bca_fecha_cedula': date(2026, 1, 15),
+            'bca_aseguradora_id': self.aseguradora.id,
+            'bca_rfc': 'AGEJ800101ABC',
+            'bca_curp': 'AGEJ800101HDFxxx01',
+        }
+        vals.update(overrides)
+        return vals
+
     def test_contratado_reclutamiento_crea_agente(self) -> None:
-        """Applicant de Reclutamiento de Agente → crea res.partner agente."""
+        """Reclutamiento con los 5 datos → crea agente + puente + empleado."""
         applicant = self._crear_applicant(
             self.job_reclutamiento,
             partner_name='Juan Agente',
-            bca_promotoria_destino_id=self.promotoria.id,
+            **self._datos_habilitacion(),
         )
         applicant.stage_id = self.stage_hired
-        self.assertTrue(applicant.partner_id, 'Debe crearse partner_id.')
-        self.assertEqual(applicant.partner_id.bca_tipo, 'agente')
-        self.assertEqual(applicant.partner_id.parent_id, self.promotoria)
-        self.assertEqual(applicant.partner_id.name, 'Juan Agente')
+        agente = applicant.partner_id
+        self.assertTrue(agente, 'Debe crearse partner_id.')
+        self.assertEqual(agente.bca_tipo, 'agente')
+        self.assertEqual(agente.parent_id, self.promotoria)
+        self.assertEqual(agente.name, 'Juan Agente')
+        # RFC → vat nativo; CURP → bca_curp.
+        self.assertEqual(agente.vat, 'AGEJ800101ABC')
+        self.assertEqual(agente.bca_curp, 'AGEJ800101HDFxxx01')
 
     def test_contratado_captacion_crea_promotoria(self) -> None:
         """Applicant de Captación de Promotoría → crea res.partner promotoría."""
@@ -75,8 +96,9 @@ class TestHrApplicant(TransactionCase):
         self.assertEqual(applicant.partner_id.name, 'Nueva Promotoría SA')
 
     def test_reclutamiento_sin_promotoria_destino_error(self) -> None:
-        """Reclutamiento de Agente sin promotoría destino → UserError."""
-        applicant = self._crear_applicant(self.job_reclutamiento)
+        """Reclutamiento con 5 datos pero sin promotoría destino → UserError."""
+        datos = self._datos_habilitacion(bca_promotoria_destino_id=False)
+        applicant = self._crear_applicant(self.job_reclutamiento, **datos)
         with self.assertRaises(UserError):
             applicant.stage_id = self.stage_hired
 
@@ -184,13 +206,21 @@ class TestHrApplicant(TransactionCase):
         # Género/ramo reusan exactamente las selecciones compartidas.
         self.assertEqual(fields['bca_genero'].selection, GENERO_SELECTION)
         self.assertEqual(fields['bca_ramo'].selection, RAMO_SELECTION)
-        # No se reinventan campos que ya existen de forma nativa.
-        for redundante in ('bca_rfc', 'bca_nombre', 'bca_correo', 'bca_telefono'):
+        # No se reinventan campos que ya existen de forma nativa en hr.applicant.
+        for redundante in ('bca_nombre', 'bca_correo', 'bca_telefono'):
             self.assertNotIn(redundante, fields,
                              f'{redundante} duplica un campo nativo; debe reusarse.')
         # Los campos nativos reusados existen.
         for nativo in ('partner_name', 'email_from', 'partner_phone'):
             self.assertIn(nativo, fields, f'Se esperaba reusar el campo nativo {nativo}.')
+        # RFC: en res.partner se reusa el `vat` nativo (NO se crea bca_rfc en el
+        # partner). En hr.applicant sí existe bca_rfc (no hay `vat` nativo ahí).
+        partner_fields = self.env['res.partner']._fields
+        self.assertIn('vat', partner_fields)
+        self.assertNotIn('bca_rfc', partner_fields,
+                         'res.partner debe reusar `vat`, no crear bca_rfc.')
+        self.assertIn('bca_rfc', fields,
+                      'hr.applicant necesita bca_rfc (no tiene `vat` nativo).')
 
     # ---------------------------------------------------------------
     # Etapa 12 Fase B — PDA + compuerta de riesgo L1 (HU-1.3)
@@ -246,3 +276,78 @@ class TestHrApplicant(TransactionCase):
             'baja', bca_pda_visto_bueno_promotor=True)
         applicant.stage_id = stage_acuerdo  # no debe lanzar
         self.assertEqual(applicant.stage_id, stage_acuerdo)
+
+    # ---------------------------------------------------------------
+    # Etapa 12 Fase C — conversión en Cédula Emitida L2 (HU-1.4/1.5)
+    # ---------------------------------------------------------------
+    def test_hired_sin_5_datos_bloquea(self) -> None:
+        """Llegar a una etapa hired sin los 5 datos ⇒ ValidationError (L2)."""
+        applicant = self._crear_applicant(
+            self.job_reclutamiento,
+            bca_promotoria_destino_id=self.promotoria.id,
+        )
+        with self.assertRaises(ValidationError):
+            applicant.stage_id = self.stage_hired
+
+    def test_conversion_crea_puente_clave_arranque(self) -> None:
+        """La conversión asienta el puente en estado clave_arranque (F1/D-14)."""
+        applicant = self._crear_applicant(
+            self.job_reclutamiento, partner_name='Ana Agente',
+            **self._datos_habilitacion(),
+        )
+        applicant.stage_id = self.stage_hired
+        claves = applicant.partner_id.agente_aseguradora_ids
+        self.assertEqual(len(claves), 1)
+        self.assertEqual(claves.estado, 'clave_arranque')
+        self.assertNotEqual(claves.estado, 'clave_definitiva',
+                            'El recién habilitado NO debe computar PCA.')
+        self.assertEqual(claves.aseguradora_id, self.aseguradora)
+        self.assertEqual(claves.clave_agente, 'CLV-001')
+
+    def test_conversion_crea_employee(self) -> None:
+        """La conversión crea un hr.employee vinculado por work_contact_id."""
+        applicant = self._crear_applicant(
+            self.job_reclutamiento, partner_name='Beto Agente',
+            **self._datos_habilitacion(),
+        )
+        applicant.stage_id = self.stage_hired
+        empleado = self.env['hr.employee'].search(
+            [('work_contact_id', '=', applicant.partner_id.id)])
+        self.assertEqual(len(empleado), 1)
+        self.assertEqual(empleado.name, 'Beto Agente')
+
+    def test_idempotencia_por_rfc_curp(self) -> None:
+        """Mismo RFC+CURP en otra aseguradora ⇒ mismo agente, clave agregada (D-15)."""
+        aseguradora2 = self.env['res.partner'].create({
+            'name': 'Aseguradora Dos', 'bca_tipo': 'aseguradora',
+        })
+        app1 = self._crear_applicant(
+            self.job_reclutamiento, partner_name='Caro Agente',
+            **self._datos_habilitacion(),
+        )
+        app1.stage_id = self.stage_hired
+        agente1 = app1.partner_id
+
+        app2 = self._crear_applicant(
+            self.job_reclutamiento, partner_name='Caro Agente',
+            **self._datos_habilitacion(
+                bca_aseguradora_id=aseguradora2.id, bca_clave_arranque='CLV-002'),
+        )
+        app2.stage_id = self.stage_hired
+        self.assertEqual(app2.partner_id, agente1,
+                         'Debe reutilizarse el mismo agente por Id interno.')
+        self.assertEqual(len(agente1.agente_aseguradora_ids), 2,
+                         'Se agrega la clave de la nueva aseguradora.')
+        self.assertEqual(
+            set(agente1.agente_aseguradora_ids.mapped('estado')), {'clave_arranque'})
+
+    def test_alta_interna_no_crea_puente_ni_agente(self) -> None:
+        """Alta interna (job no BCA) ⇒ sin partner agente ni puente (HU-1.5)."""
+        stage_alta = self.env.ref('BCA_Seguros.stage_alta_interna')
+        antes = self.env['res.partner.agente.aseguradora'].search_count([])
+        applicant = self._crear_applicant(self.job_estandar)
+        applicant.stage_id = stage_alta
+        if applicant.partner_id:
+            self.assertNotEqual(applicant.partner_id.bca_tipo, 'agente')
+        despues = self.env['res.partner.agente.aseguradora'].search_count([])
+        self.assertEqual(antes, despues, 'Alta interna no debe crear puentes.')

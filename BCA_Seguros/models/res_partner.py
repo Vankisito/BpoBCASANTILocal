@@ -74,6 +74,14 @@ class ResPartner(models.Model):
         GENERO_SELECTION,
         string='Género',
     )
+    # CURP: parte del Id interno PCA del agente (Nombre + RFC(`vat`) + CURP,
+    # norma PCA Car. 2). RFC reusa el campo nativo `vat`. index para la búsqueda
+    # de idempotencia de la conversión (Etapa 12 Fase C, D-15).
+    bca_curp: str = fields.Char(
+        string='CURP',
+        index=True,
+        copy=False,
+    )
 
     # Referencias de pago del contratante (MetLife Vida).
     bca_ref_prima_basica_trad: str = fields.Char(

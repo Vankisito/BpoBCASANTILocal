@@ -4,6 +4,47 @@
 
 ---
 
+## Sesión 2026-07-02 — Etapa 12 Fase C: Conversión en Cédula Emitida (NÚCLEO) · `19.0.1.7.2`
+
+### Qué se hizo
+Núcleo de la Etapa 12 (HU-1.4/1.5): la habilitación del agente al emitir cédula.
+
+- **`res.partner.bca_curp`** (Char, index, `copy=False`): parte del Id interno PCA
+  (Nombre + RFC(`vat`) + CURP). RFC reusa el `vat` nativo del partner.
+- **Campos de habilitación en `hr.applicant`** (`copy=False`): `bca_clave_arranque`,
+  `bca_fecha_cedula`, `bca_aseguradora_id` (M2o aseguradora, `ondelete=restrict`),
+  `bca_rfc`, `bca_curp` (index). **Hallazgo:** `hr.applicant` NO tiene `vat` nativo
+  (confirmado en la BD), así que el RFC se captura en `bca_rfc` y se mapea a
+  `partner.vat` en la conversión. El principio de reuso se mantiene: en el partner se
+  reusa `vat`; en el candidato no había campo donde capturarlo.
+- **Guarda L2** (`_check_habilitacion_datos`, `@api.constrains('stage_id')`): no se llega
+  a una etapa hired del embudo `job_reclutamiento_agente` sin los 5 datos; no aplica a
+  "Alta Interna" ni otros jobs.
+- **Conversión reescrita** (`_bca_habilitar_agente`): idempotente por Id interno (busca
+  agente por `vat`+`bca_curp`; reutiliza aunque exista en otra promotoría/aseguradora y
+  solo agrega la clave nueva — D-15). Asienta el puente en **`clave_arranque`** (F1/D-14
+  — NO computa PCA), captura `IntegrityError` de los UNIQUE con `savepoint`. Crea
+  `hr.employee` (`work_contact_id`, `sudo()` acotado). Avisos a reclutadora y promotor.
+  Fail-fast de los 5 datos antes de crear nada (atómico). Rama de captación de promotoría
+  intacta; "Alta Interna"/otros jobs → alta nativa sin agente/puente (HU-1.5).
+- **Vista:** pestaña "Habilitación" (RFC, CURP, aseguradora, clave, fecha de cédula).
+- **Tests** (6 nuevos + 3 actualizados): `test_hired_sin_5_datos_bloquea`,
+  `test_conversion_crea_puente_clave_arranque`, `test_conversion_crea_employee`,
+  `test_idempotencia_por_rfc_curp`, `test_alta_interna_no_crea_puente_ni_agente`, y el
+  cruce de no-PCA (estado `clave_arranque`, complementa `test_reportes.test_sic1_...`).
+  Local `Devlocal`: 145 tests, 0 failed.
+- **Bump** `19.0.1.7.1` → **`19.0.1.7.2`**. Sin migración (campos nuevos, sin backfill).
+
+### Archivos
+- Modificados: `models/res_partner.py`, `models/hr_applicant.py`,
+  `views/hr_applicant_views.xml`, `tests/test_hr_applicant.py`, `__manifest__.py`, docs.
+
+### Decisión de diseño registrada
+- **RFC en el candidato = `bca_rfc` → `partner.vat`** (hr.applicant no tiene `vat` nativo).
+  Ajusta la letra del spec ("RFC=vat") sin romper el reuso. Complementa D-15.
+
+---
+
 ## Sesión 2026-07-02 — Etapa 12 Fase B: PDA + compuerta de riesgo L1 · `19.0.1.7.1`
 
 ### Qué se hizo

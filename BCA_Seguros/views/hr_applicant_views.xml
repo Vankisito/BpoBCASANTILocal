@@ -54,6 +54,20 @@
                         </group>
                     </group>
                 </page>
+                <page string="Habilitación" name="bca_habilitacion">
+                    <group>
+                        <group string="Identidad (Id interno PCA)">
+                            <field name="bca_rfc"/>
+                            <field name="bca_curp"/>
+                        </group>
+                        <group string="Cédula / Clave de Arranque">
+                            <field name="bca_aseguradora_id"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="bca_clave_arranque"/>
+                            <field name="bca_fecha_cedula"/>
+                        </group>
+                    </group>
+                </page>
                 <page string="Origen" name="bca_origen">
                     <group>
                         <group string="Captación">
