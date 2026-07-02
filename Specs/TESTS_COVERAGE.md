@@ -36,6 +36,26 @@
 
 ---
 
+## 1.b Cobertura planificada — Etapa 12 (Reclutamiento) 🔲
+
+> Tests **a implementar** durante las Fases A–E de la Etapa 12. Documento director:
+> `Specs/02-reclutamiento/spec-etapa-12-reclutamiento-bca-v1.md`. Se incorporan al inventario
+> §1 al cerrar cada fase con su conteo real.
+
+| Archivo | Tests previstos | Fase |
+|---|---|---|
+| `test_bca_sede.py` (nuevo) ✅ | `test_crud_y_rec_name`, `test_archivado`, `test_codigo_unico`, `test_codigo_nulo_permite_varias` | A |
+| `test_hr_applicant.py` (ext.) ✅ | `test_embudo_12_etapas_cargadas`, `test_hired_stages_flag`, `test_campos_identificacion_capturables`, `test_edad_computed_no_almacenada`, `test_no_campos_duplicados` (género/ramo reusan selección; RFC=`vat` diferido a Fase C) | A |
+| `test_hr_applicant.py` (ext.) | L1 PDA: riesgo ⇒ actividad al promotor; avanzar sin VoBo ⇒ `ValidationError` | B |
+| `test_hr_applicant.py` (ext.) | `test_hired_sin_5_datos_bloquea`, `test_conversion_crea_puente_clave_arranque`, `test_idempotencia_por_rfc_curp`, `test_conversion_crea_employee`, `test_agente_clave_arranque_no_computa_pca`, `test_alta_interna_no_crea_puente_ni_agente` | C |
+| `test_views_xml.py` (ext.) | smoke de carga de `base.automation` + motivos de rechazo; `test_refuse_reasons_seed` | D |
+| `test_record_rules.py` (ext.) | reclutadora ve solo `user_id==uid`; Director ve todo; separación por `job_id` | E |
+
+**Cruce crítico de seguridad PCA:** `test_agente_clave_arranque_no_computa_pca` debe verificar contra
+los reportes SQL de E9 que un agente en `clave_arranque` **no** aparece en la PCA (red de seguridad de D-14/F1).
+
+---
+
 ## 2. Cobertura fuerte (núcleo de negocio)
 
 Modelos y flujos con tests dedicados y aserciones de comportamiento:

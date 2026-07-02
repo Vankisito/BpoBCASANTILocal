@@ -62,3 +62,6 @@ acl_rep_estado_cartera_operador,bca.reporte.estado.cartera operador,model_bca_re
 acl_rep_estado_cartera_lider,bca.reporte.estado.cartera lider,model_bca_reporte_estado_cartera,BCA_Seguros.group_bca_lider,1,0,0,0
 acl_rep_estado_cartera_dir_comercial,bca.reporte.estado.cartera dir_comercial,model_bca_reporte_estado_cartera,BCA_Seguros.group_bca_director_comercial,1,0,0,0
 acl_rep_estado_cartera_director,bca.reporte.estado.cartera director,model_bca_reporte_estado_cartera,BCA_Seguros.group_bca_director,1,0,0,0
+acl_bca_sede_user,bca.sede user,model_bca_sede,base.group_user,1,0,0,0
+acl_bca_sede_dir_comercial,bca.sede dir_comercial,model_bca_sede,BCA_Seguros.group_bca_director_comercial,1,1,1,0
+acl_bca_sede_director,bca.sede director,model_bca_sede,BCA_Seguros.group_bca_director,1,1,1,1

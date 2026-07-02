@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
+
 from odoo.exceptions import UserError
+from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
+from odoo.addons.BCA_Seguros.models.product_template import RAMO_SELECTION
+from odoo.addons.BCA_Seguros.models.res_partner import GENERO_SELECTION
 
+
+@tagged('BCA_Seguros')
 class TestHrApplicant(TransactionCase):
-    """Etapa 3 — hr.applicant: creación automática de res.partner BCA."""
+    """Etapa 3 + Etapa 12 Fase A — hr.applicant: campos BCA y conversión."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -94,3 +103,91 @@ class TestHrApplicant(TransactionCase):
         if partner:
             self.assertNotIn(partner.bca_tipo, ('agente', 'promotoria'),
                              'Job ajeno no debe producir partner con bca_tipo BCA.')
+
+    # ---------------------------------------------------------------
+    # Etapa 12 Fase A — cimientos (HU-1.0/1.1/1.2)
+    # ---------------------------------------------------------------
+    def test_embudo_12_etapas_cargadas(self) -> None:
+        """Las 12 etapas comerciales + Alta Interna cargan como datos del módulo."""
+        Stage = self.env['hr.recruitment.stage']
+        job_recl = self.job_reclutamiento
+        xmlids_seq = [
+            ('stage_recibido', 1), ('stage_prospeccion', 2), ('stage_cafe', 3),
+            ('stage_entrevista', 4), ('stage_evaluacion_pda', 5),
+            ('stage_acuerdo_arranque', 6), ('stage_clave_arranque', 7),
+            ('stage_inscripcion_cia', 8), ('stage_curso_cedula', 9),
+            ('stage_examen', 10), ('stage_cedula_emitida', 11),
+            ('stage_en_desarrollo', 12),
+        ]
+        for xmlid, seq in xmlids_seq:
+            stage = self.env.ref(f'BCA_Seguros.{xmlid}')
+            self.assertEqual(stage.sequence, seq, f'{xmlid} sequence != {seq}')
+            self.assertIn(job_recl, stage.job_ids,
+                          f'{xmlid} debe estar scopeada a job_reclutamiento_agente.')
+
+    def test_hired_stages_flag(self) -> None:
+        """Cédula Emitida y Alta Interna tienen hired_stage=True; el resto no."""
+        cedula = self.env.ref('BCA_Seguros.stage_cedula_emitida')
+        alta = self.env.ref('BCA_Seguros.stage_alta_interna')
+        recibido = self.env.ref('BCA_Seguros.stage_recibido')
+        self.assertTrue(cedula.hired_stage, 'Cédula Emitida debe ser hired_stage.')
+        self.assertTrue(alta.hired_stage, 'Alta Interna debe ser hired_stage.')
+        self.assertFalse(recibido.hired_stage, 'Recibido NO debe ser hired_stage.')
+        # Alta Interna es global (sin job_ids): disponible a jobs internos.
+        self.assertFalse(alta.job_ids, 'Alta Interna debe ser global (sin job_ids).')
+
+    def test_campos_identificacion_capturables(self) -> None:
+        """Los campos bca_ de identificación/perfil se capturan y persisten."""
+        sede = self.env['bca.sede'].create({'name': 'Sede Test', 'codigo': 'TST'})
+        applicant = self._crear_applicant(
+            self.job_reclutamiento,
+            bca_sede_id=sede.id,
+            bca_ramo='vida',
+            bca_genero='femenino',
+            bca_institucion='Universidad X',
+            bca_perfil_academico='Licenciatura',
+            bca_perfil_laboral='Ventas',
+            bca_tiene_cedula_previa=True,
+            bca_tipo_candidato='Referido',
+            bca_referido_por='Ana',
+            bca_folio_cv='CV-001',
+            bca_evento='Feria de Empleo',
+            bca_contactado=True,
+            bca_entrevistado=False,
+            bca_reagendaciones=2,
+        )
+        self.assertEqual(applicant.bca_sede_id, sede)
+        self.assertEqual(applicant.bca_ramo, 'vida')
+        self.assertEqual(applicant.bca_genero, 'femenino')
+        self.assertEqual(applicant.bca_reagendaciones, 2)
+        self.assertEqual(applicant.bca_evento, 'Feria de Empleo')
+
+    def test_edad_computed_no_almacenada(self) -> None:
+        """bca_edad se calcula desde la fecha de nacimiento y NO se almacena."""
+        nacimiento = date.today() - relativedelta(years=30)
+        applicant = self._crear_applicant(
+            self.job_reclutamiento,
+            bca_fecha_nacimiento=nacimiento,
+        )
+        self.assertEqual(applicant.bca_edad, 30)
+        self.assertFalse(
+            self.env['hr.applicant']._fields['bca_edad'].store,
+            'bca_edad debe ser computed no almacenado (depende de hoy).',
+        )
+        # Sin fecha de nacimiento → 0.
+        vacio = self._crear_applicant(self.job_reclutamiento)
+        self.assertEqual(vacio.bca_edad, 0)
+
+    def test_no_campos_duplicados(self) -> None:
+        """Reuso, no reinvención: género/ramo reusan selecciones; sin campos RFC/nombre duplicados."""
+        fields = self.env['hr.applicant']._fields
+        # Género/ramo reusan exactamente las selecciones compartidas.
+        self.assertEqual(fields['bca_genero'].selection, GENERO_SELECTION)
+        self.assertEqual(fields['bca_ramo'].selection, RAMO_SELECTION)
+        # No se reinventan campos que ya existen de forma nativa.
+        for redundante in ('bca_rfc', 'bca_nombre', 'bca_correo', 'bca_telefono'):
+            self.assertNotIn(redundante, fields,
+                             f'{redundante} duplica un campo nativo; debe reusarse.')
+        # Los campos nativos reusados existen.
+        for nativo in ('partner_name', 'email_from', 'partner_phone'):
+            self.assertIn(nativo, fields, f'Se esperaba reusar el campo nativo {nativo}.')

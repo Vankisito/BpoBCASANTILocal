@@ -4,6 +4,61 @@
 
 ---
 
+## Sesión 2026-07-02 — Etapa 12 Fase A: Cimientos de Reclutamiento · `19.0.1.7.0`
+
+### Qué se hizo
+Primera fase de la **Etapa 12 — Reclutamiento y Habilitación de Agentes** (HU 1.0/1.1/1.2).
+Cimientos sin lógica de conversión: catálogo de sedes, campos de identificación/perfil
+en el candidato y el embudo de 12 etapas como datos del módulo.
+
+- **Modelo `bca.sede`** (`models/bca_sede.py`): catálogo simple `name`/`codigo`/`active`,
+  `_order='name'`, `codigo` `copy=False` y único vía `models.Constraint` (v19, `NULL≠NULL`
+  permite varias sin código). Vista list/form/search + acción + menú en Configuración.
+  Seed placeholder `data/bca_sedes_iniciales.xml` (`noupdate="1"`; **lista oficial pendiente
+  de SI-Sede**).
+- **Embudo de 12 etapas** (`data/hr_recruitment_stages.xml`, `noupdate="1"`): Recibido…En
+  Desarrollo Comercial, scopeadas a `job_reclutamiento_agente` vía `job_ids`. "Cédula Emitida"
+  (seq 11) y "Contratado (Alta Interna)" (global, seq 99) con `hired_stage=True`. Se referencian
+  por `env.ref` y se comparan por `sequence` (evita drift D-13).
+- **Campos `bca_` en `hr.applicant`** (identificación/perfil, sin lógica): sede, ramo/género
+  (reusan `RAMO_SELECTION`/`GENERO_SELECTION`), fecha de nacimiento, `bca_edad` **computed no
+  almacenado** (depende de "hoy"; OCA), institución, perfiles, tipo de candidato, referido,
+  folio CV (`copy=False`), evento (SI-3/D-16), flags de contacto/entrevista, reagendaciones.
+  Pestañas Identificación / Perfil / Origen vía `<xpath>` en la vista nativa. **RFC(`vat`)/CURP
+  se difieren al grupo "Habilitación" de Fase C** (ver pendiente).
+- **Seguridad:** ACL de `bca.sede` (lectura a `base.group_user` para renderizar el M2o en el
+  candidato; gestión a Director Comercial/Director).
+- **Tests** (`@tagged('BCA_Seguros')`): `test_bca_sede.py` (CRUD, rec_name, archivado, código
+  único/nulo); `test_hr_applicant.py` extendido y **etiquetado** (antes sin tag → no corría bajo
+  `--test-tags BCA_Seguros`): embudo 12 etapas, flags hired, captura de campos, edad computed
+  no-store, no-duplicados (género/ramo reusan selección).
+- **Bump** `19.0.1.6.1` → **`19.0.1.7.0`**.
+
+### Archivos
+- Nuevos: `models/bca_sede.py`, `views/bca_sede_views.xml`, `data/bca_sedes_iniciales.xml`,
+  `data/hr_recruitment_stages.xml`, `tests/test_bca_sede.py`.
+- Modificados: `models/__init__.py`, `models/hr_applicant.py`, `views/hr_applicant_views.xml`,
+  `views/menu.xml`, `security/ir.model.access.csv`, `tests/__init__.py`,
+  `tests/test_hr_applicant.py`, `__manifest__.py`.
+
+### Pendientes
+- **RFC=`vat` por confirmar (bloquea Fase C):** `vat` no es campo nativo de `hr.applicant`.
+  Verificar en el contenedor si el build lo expone; si no, Fase C mapeará RFC → `partner.vat`
+  con un campo propio en el candidato. Por eso RFC/CURP no se muestran aún en Fase A.
+- **SI-Sede:** sustituir el seed placeholder por la lista oficial de plazas de BCA.
+
+### Verificación (sandbox · la corre el usuario)
+```bash
+docker exec odoo_golden odoo -d sandbox_bca1 -u BCA_Seguros \
+  --test-enable --test-tags BCA_Seguros --stop-after-init --no-http \
+  --logfile=/var/log/odoo/test_e12.log
+tail -n 120 /var/log/odoo/test_e12.log
+```
+Esperado: `0 failed, 0 error(s)` (salvo los 3 fallos preexistentes por drift de conductos,
+esperados). Commit y marca de checklist del Plan al pasar en verde.
+
+---
+
 ## Sesión 2026-06-29 — Etapa 11: Cierre formal de la suite de pruebas · `19.0.1.6.1`
 
 ### Qué se hizo

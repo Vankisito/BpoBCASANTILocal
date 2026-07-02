@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================
+         Embudo de reclutamiento de agentes (job_reclutamiento_agente).
+         Etapas como DATOS DEL MÓDULO para reproducibilidad en CI/sandbox
+         (evita el drift D-13). Se referencian por env.ref y se comparan por
+         `sequence`, NUNCA por ID hardcodeado.
+
+         Las 12 etapas comerciales llevan job_ids → job_reclutamiento_agente
+         para no aparecer en puestos internos. "Cédula Emitida" (seq 11) es la
+         etapa de habilitación (hired_stage=True): dispara la conversión a
+         agente (Fase C). "En Desarrollo Comercial" (seq 12) es post-habilitación.
+
+         "Contratado (Alta Interna)" es la etapa hired GLOBAL (sin job_ids) para
+         altas internas ordinarias que NO deben crear agente/puente (HU-1.5).
+         noupdate="1": no clobberar reordenamientos del cliente.
+         ================================================================ -->
+    <data noupdate="1">
+
+        <record id="stage_recibido" model="hr.recruitment.stage">
+            <field name="name">Recibido</field>
+            <field name="sequence">1</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_prospeccion" model="hr.recruitment.stage">
+            <field name="name">Prospección</field>
+            <field name="sequence">2</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_cafe" model="hr.recruitment.stage">
+            <field name="name">Café</field>
+            <field name="sequence">3</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_entrevista" model="hr.recruitment.stage">
+            <field name="name">Entrevista</field>
+            <field name="sequence">4</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_evaluacion_pda" model="hr.recruitment.stage">
+            <field name="name">Evaluación PDA</field>
+            <field name="sequence">5</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_acuerdo_arranque" model="hr.recruitment.stage">
+            <field name="name">Acuerdo de Arranque</field>
+            <field name="sequence">6</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_clave_arranque" model="hr.recruitment.stage">
+            <field name="name">Clave de Arranque</field>
+            <field name="sequence">7</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_inscripcion_cia" model="hr.recruitment.stage">
+            <field name="name">Inscripción CIA</field>
+            <field name="sequence">8</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_curso_cedula" model="hr.recruitment.stage">
+            <field name="name">Curso de Cédula</field>
+            <field name="sequence">9</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_examen" model="hr.recruitment.stage">
+            <field name="name">Examen</field>
+            <field name="sequence">10</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_cedula_emitida" model="hr.recruitment.stage">
+            <field name="name">Cédula Emitida</field>
+            <field name="sequence">11</field>
+            <field name="hired_stage" eval="True"/>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <record id="stage_en_desarrollo" model="hr.recruitment.stage">
+            <field name="name">En Desarrollo Comercial</field>
+            <field name="sequence">12</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente')])]"/>
+        </record>
+
+        <!-- Etapa hired GLOBAL para altas internas (no crea agente/puente). -->
+        <record id="stage_alta_interna" model="hr.recruitment.stage">
+            <field name="name">Contratado (Alta Interna)</field>
+            <field name="sequence">99</field>
+            <field name="hired_stage" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

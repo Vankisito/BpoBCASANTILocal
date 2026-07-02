@@ -1,4 +1,5 @@
 from . import (
+    bca_sede,
     res_partner,
     res_partner_agente_aseg,
     product_template,

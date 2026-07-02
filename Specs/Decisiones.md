@@ -210,3 +210,62 @@ cls.conducto = cls.env['bca.conducto'].create({
 Es el mismo patrón que ya usaban `test_pca_metlife`, `test_reportes`, `test_poliza_vida` y `test_poliza_gmm`. El caso negativo deliberado (`'CONDUCTO_INVENTADO'` en `test_metlife_vida_conducto_no_match_continua`) sí usa un literal a propósito y permanece.
 
 **Razón:** El match del parser depende de 3 condiciones (código + aseguradora + activo); sincronizar sólo el código contra el seed no basta porque la aseguradora o el flag pueden haber drifteado. Crear el conducto en el propio test garantiza las 3 condiciones de forma determinista, sin acoplarse a datos semilla mutables. No es regresión funcional. Ver `Specs/TESTS_COVERAGE.md §4`.
+
+---
+
+> **Etapa 12 — Reclutamiento (D-14…D-18).** Decisiones acordadas en planificación
+> (2026-06-30); se asientan en código durante las Fases A–E. Documento director:
+> `Specs/02-reclutamiento/spec-etapa-12-reclutamiento-bca-v1.md`.
+
+## D-14 — El puente al emitir cédula nace en `clave_arranque`, no en `clave_definitiva`
+
+**Fecha:** 2026-06-30 (Etapa 12, planificación)
+**Contexto:** Al "Cédula Emitida" (`hired`), la conversión crea/alimenta el puente `res.partner.agente.aseguradora`. La versión previa del flujo de reclutamiento proponía `clave_definitiva`.
+
+**Decisión:** El puente se crea con `estado='clave_arranque'`. El agente recién habilitado **NO computa PCA ni comisiones**.
+
+**Razón:** Solo `clave_definitiva` computa PCA (`BDD_BCA_Seguros.md` Car. 8 y 10; R-PCA-03). El reclutamiento entrega al agente habilitado pero en arranque; asentar definitiva activaría comisiones indebidas. Red de seguridad: `test_agente_clave_arranque_no_computa_pca` (cruza con reportes E9). La promoción a definitiva es proceso interno posterior (ver SI-4, fuera de alcance).
+
+---
+
+## D-15 — Idempotencia de la conversión por Id interno (Nombre+RFC+CURP), nunca por clave
+
+**Fecha:** 2026-06-30 (Etapa 12, planificación)
+**Contexto:** La conversión en cédula debe crear o reutilizar el `res.partner` agente sin duplicar cuando el mismo agente se habilita en otra aseguradora/promotoría.
+
+**Decisión:** La identidad del agente es el **Id interno = Nombre + RFC (`vat`) + CURP (`bca_curp`)**. La búsqueda de idempotencia es por `vat`+`bca_curp` (+ nombre normalizado), **nunca** por la clave de agente. Si el agente ya existe, se reutiliza y solo se agrega la clave de la nueva aseguradora al puente. Se agrega `bca_curp` (Char, `index=True`) a `res.partner`.
+
+**Razón:** Norma de identidad PCA (Car. 2): la clave varía por aseguradora y no identifica a la persona. Los UNIQUE del puente (`aseguradora_id,clave_agente` y `agente_id,aseguradora_id`) protegen contra duplicados; capturar `IntegrityError` y reutilizar.
+
+---
+
+## D-16 — "Evento" se modela como campo de texto (`bca_evento`), no como modelo
+
+**Fecha:** 2026-06-30 (Etapa 12, planificación · resuelve SI-3)
+**Contexto:** El reporte de efectividad por fuente/campaña/evento (HU-3.1) necesita una dimensión "evento".
+
+**Decisión:** `bca_evento` (Char/Selection) en `hr.applicant`; los reportes agrupan por ese campo. No se crea el modelo relacional `bca.evento`.
+
+**Razón:** Suficiente para arrancar con reporte pivote; menor superficie. El catálogo relacional (con inversión por evento) queda como mejora futura si BCA lo solicita — migración Char→M2o aislada.
+
+---
+
+## D-17 — La conversión vive en el override de `write()`, no en `base.automation`
+
+**Fecha:** 2026-06-30 (Etapa 12, planificación)
+**Contexto:** Al cambiar `hr.applicant` a la etapa "Cédula Emitida" debe crearse partner agente + puente + empleado.
+
+**Decisión:** La lógica de conversión permanece en el **override de `write()`** (Python) de `hr.applicant` — `_bca_crear_partner_desde_contratado()`. `base.automation` se reserva exclusivamente para avisos/recordatorios (L3/L5/L6).
+
+**Razón:** La conversión crea varios registros relacionados que deben ser **atómicos e idempotentes**; un automated action declarativo no garantiza el control transaccional ni la idempotencia por Id interno. Mantiene la lógica de negocio en el modelo.
+
+---
+
+## D-18 — Visibilidad del embudo de reclutamiento por reclutadora asignada
+
+**Fecha:** 2026-06-30 (Etapa 12, planificación · resuelve SI-1)
+**Contexto:** Hay que definir qué candidatos (`hr.applicant`) ve cada rol.
+
+**Decisión:** Record rule sobre `hr.applicant`: la reclutadora ve sus candidatos (`user_id == uid`); Director Comercial y Director ven todo (regla `[(1,'=',1)]` explícita, A3). El **Promotor** es solo destino + notificación (SI-2), no opera el embudo. Los grupos nuevos (`group_bca_reclutadora`, `group_bca_capital_humano`) se declaran como **hermanos**, fuera de la cadena `implied_ids` de los 5 grupos existentes.
+
+**Razón:** Modelo de visibilidad por responsable, simple y nativo a `hr_recruitment`. Encadenar los grupos por `implied_ids` rompería la semántica de visibilidad no lineal (§2.4.3, corrección A3).

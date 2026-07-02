@@ -10,6 +10,51 @@
                 <field name="bca_promotoria_destino_id"
                        options="{'no_create': True, 'no_open': True}"/>
             </xpath>
+
+            <!-- Pestañas BCA de identificación / perfil / origen (HU-1.2). -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Identificación" name="bca_identificacion">
+                    <group>
+                        <group string="Datos personales">
+                            <field name="bca_genero"/>
+                            <field name="bca_fecha_nacimiento"/>
+                            <field name="bca_edad"/>
+                        </group>
+                        <group string="Ubicación">
+                            <field name="bca_sede_id"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="bca_institucion"/>
+                        </group>
+                    </group>
+                </page>
+                <page string="Perfil" name="bca_perfil">
+                    <group>
+                        <group string="Perfil profesional">
+                            <field name="bca_ramo"/>
+                            <field name="bca_perfil_academico"/>
+                            <field name="bca_perfil_laboral"/>
+                        </group>
+                        <group string="Clasificación">
+                            <field name="bca_tipo_candidato"/>
+                            <field name="bca_tiene_cedula_previa"/>
+                        </group>
+                    </group>
+                </page>
+                <page string="Origen" name="bca_origen">
+                    <group>
+                        <group string="Captación">
+                            <field name="bca_referido_por"/>
+                            <field name="bca_folio_cv"/>
+                            <field name="bca_evento"/>
+                        </group>
+                        <group string="Seguimiento">
+                            <field name="bca_contactado"/>
+                            <field name="bca_entrevistado"/>
+                            <field name="bca_reagendaciones"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
         </field>
     </record>
 

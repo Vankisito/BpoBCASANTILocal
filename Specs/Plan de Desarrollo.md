@@ -770,6 +770,48 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 ---
 
+### Etapa 12 — Reclutamiento y Habilitación de Agentes  🔲 EN PLANIFICACIÓN
+**Tiempo estimado:** 16–22 horas (5 fases)
+**Documento director:** `Specs/02-reclutamiento/spec-etapa-12-reclutamiento-bca-v1.md`
+**Specs de negocio:** `Specs/02-reclutamiento/` (BDD v1.3, SDD v1.1, análisis HU/TT, HU+criterios)
+**Reglas de negocio cubiertas:** R-PCA-03 (solo Clave Definitiva computa), Car. 2/8/10 (Id interno, carrera por aseguradora).
+
+> **Objetivo:** integrar el ciclo del candidato con `hr_recruitment` (embudo `hr.applicant`) hasta
+> la **cédula emitida**, que alimenta el puente `res.partner.agente.aseguradora` en
+> `estado='clave_arranque'` (NO computa PCA). Identidad por **Id interno = Nombre+RFC+CURP**;
+> conversión idempotente en el override de `write()`. La promoción a `clave_definitiva` es
+> proceso interno posterior (SI-4), **fuera de alcance**.
+>
+> **Decisiones de negocio (SIs):** SI-1 visibilidad **por reclutadora** (`user_id`); SI-2 promotor
+> **solo destino + notificación**; SI-3 evento **campo de texto** (`bca_evento`); SI-Sede **seed con
+> lista del usuario**; SI-4 paso a definitiva **fuera de alcance**. Decisiones a registrar: D-14…D-18.
+
+**Fases (commit + bump por fase):**
+
+| Fase | Versión | Nombre | HUs |
+|---|---|---|---|
+| A | `19.0.1.7.0` | Cimientos: `bca.sede` + campos identificación/perfil + embudo 12 etapas | 1.0, 1.1, 1.2 |
+| B | `19.0.1.7.1` | PDA + compuerta de riesgo (L1) | 1.3 |
+| C | `19.0.1.7.2` | **Núcleo:** conversión en Cédula Emitida (L2) + RFC/CURP + puente `clave_arranque` | 1.4, 1.5 |
+| D | `19.0.1.7.3` | Automatizaciones (L3/L5/L6) + motivos de rechazo + SICs/reportes | 1.7–1.9, 2.1, 3.1 |
+| E | `19.0.1.7.4` | Visibilidad por reclutadora (record rules) | 1.6 |
+
+**Archivos clave:** `models/bca_sede.py` (nuevo), `models/hr_applicant.py` (campos + L1 + L2/conversión),
+`models/res_partner.py` (`bca_curp`), `models/res_partner_agente_aseg.py` (puente, sin cambios de esquema),
+`data/hr_recruitment_stages.xml` · `data/bca_sedes_iniciales.xml` · `data/base_automation_reclutamiento.xml` ·
+`data/hr_refuse_reasons.xml` (nuevos), `security/groups.xml` + `record_rules.xml` (Fase E), `__manifest__.py` (bumps).
+
+**Checklist Etapa 12:**
+- [x] **Fase A** (2026-07-02, `19.0.1.7.0`): `bca.sede` CRUD; 12 etapas + "Alta Interna" como datos del módulo; `hired_stage=True` en cédula/alta; form sin error XML; sin campos duplicados (género/ramo reusan selección; RFC=`vat` diferido a Fase C por confirmar). Sandbox local `Devlocal`: 136 tests, 0 failed.
+- [ ] **Fase B:** PDA riesgo ⇒ actividad al promotor; avanzar sin VoBo ⇒ `ValidationError`.
+- [ ] **Fase C:** no se llega a "Cédula Emitida" sin los 5 datos; conversión crea partner+puente(`clave_arranque`)+empleado idempotente por Id interno; agente reutilizado en 2ª aseguradora; agente recién habilitado NO aparece en reportes PCA (E9); Alta Interna no crea partner agente.
+- [ ] **Fase D:** rechazar exige motivo (2 seed); recordatorios/avisos disparan; pivote agrupa por sede/reclutadora/ramo/periodo.
+- [ ] **Fase E:** reclutadora ve solo `user_id==uid`; Director ve todo (`[(1,'=',1)]`); separación por `job_id`.
+- [ ] **SI-Sede pendiente:** rellenar `data/bca_sedes_iniciales.xml` con la lista oficial antes de cerrar Fase A.
+- [ ] Verde `0 failed, 0 error(s)` en sandbox por fase.
+
+---
+
 ## 5. Checklist de instalación y verificación final
 
 ```

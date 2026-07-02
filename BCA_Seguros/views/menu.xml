@@ -162,4 +162,11 @@
               action="BCA_Seguros.action_factor_pca"
               sequence="60"/>
 
+    <!-- Reclutamiento (Etapa 12): catálogo de sedes / plazas. -->
+    <menuitem id="menu_bca_config_sedes"
+              name="Sedes / Plazas"
+              parent="menu_bca_configuracion"
+              action="BCA_Seguros.action_bca_sede"
+              sequence="70"/>
+
 </odoo>

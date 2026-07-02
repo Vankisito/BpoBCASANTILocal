@@ -6,6 +6,7 @@ from . import (
     test_pca_metlife,
     test_inmutabilidad,
     test_record_rules,
+    test_bca_sede,
     test_hr_applicant,
     test_crm_lead,
     test_views_xml,

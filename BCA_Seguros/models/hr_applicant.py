@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import logging
 
-from odoo import _, fields, models
+from dateutil.relativedelta import relativedelta
+
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+from .product_template import RAMO_SELECTION
+from .res_partner import GENERO_SELECTION
 
 _logger = logging.getLogger(__name__)
 
@@ -19,6 +24,53 @@ class HrApplicant(models.Model):
              'Requerido cuando el puesto es "Reclutamiento de Agente".',
         tracking=True,
     )
+
+    # --- Identificación / perfil del candidato (Etapa 12 Fase A, HU-1.2) ---
+    # Campos de captura sin lógica. RFC → campo estándar `vat`; nombre →
+    # partner_name; teléfono → partner_phone; correo → email_from (se reusan,
+    # no se redefinen). Género/ramo reusan las selecciones ya existentes.
+    bca_sede_id: int = fields.Many2one(
+        'bca.sede',
+        string='Sede / Plaza',
+        ondelete='set null',
+        help='Plaza donde se recluta al candidato.',
+    )
+    bca_ramo: str = fields.Selection(RAMO_SELECTION, string='Ramo')
+    bca_genero: str = fields.Selection(GENERO_SELECTION, string='Género')
+    bca_fecha_nacimiento: fields.Date = fields.Date(string='Fecha de Nacimiento')
+    bca_edad: int = fields.Integer(
+        string='Edad',
+        compute='_compute_bca_edad',
+        store=False,
+        help='Edad calculada a la fecha actual desde la fecha de nacimiento. '
+             'No se almacena (cambia con el tiempo); para segmentar por edad '
+             'en reportes use rangos de fecha de nacimiento.',
+    )
+    bca_institucion: str = fields.Char(string='Institución')
+    bca_perfil_academico: str = fields.Char(string='Perfil Académico')
+    bca_perfil_laboral: str = fields.Char(string='Perfil Laboral')
+    bca_tiene_cedula_previa: bool = fields.Boolean(string='¿Tiene Cédula Previa?')
+    bca_tipo_candidato: str = fields.Char(string='Tipo de Candidato')
+    bca_referido_por: str = fields.Char(string='Referido Por')
+    bca_folio_cv: str = fields.Char(string='Folio CV', copy=False)
+    # SI-3: "Evento" (efectividad) como campo de texto simple; el modelo
+    # relacional bca.evento queda como mejora futura (D-16).
+    bca_evento: str = fields.Char(string='Evento')
+    bca_contactado: bool = fields.Boolean(string='Contactado')
+    bca_entrevistado: bool = fields.Boolean(string='Entrevistado')
+    bca_reagendaciones: int = fields.Integer(string='Reagendaciones', default=0)
+
+    @api.depends('bca_fecha_nacimiento')
+    def _compute_bca_edad(self) -> None:
+        """Edad a la fecha actual. No almacenado: se recalcula en cada lectura."""
+        today = fields.Date.context_today(self)
+        for applicant in self:
+            if applicant.bca_fecha_nacimiento:
+                applicant.bca_edad = relativedelta(
+                    today, applicant.bca_fecha_nacimiento,
+                ).years
+            else:
+                applicant.bca_edad = 0
 
     def write(self, vals: dict) -> bool:
         """Detecta paso a stage hired y dispara creación de res.partner BCA.

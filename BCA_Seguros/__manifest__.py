@@ -1,6 +1,6 @@
 {
     'name': 'BCA Seguros — Gestión de Pólizas y Cobranza',
-    'version': '19.0.1.6.1',
+    'version': '19.0.1.7.0',
     'category': 'Insurance',
     'summary': 'Módulo vertical BCA para pólizas, cobranza, PCA y comisiones',
     'author': 'Hábitat Digital',
@@ -16,6 +16,9 @@
         'data/partner_categories.xml',
         'data/product_categories.xml',
         'data/hr_jobs.xml',
+        # Reclutamiento (Etapa 12): sede antes del candidato; stages antes del menú.
+        'data/bca_sedes_iniciales.xml',
+        'data/hr_recruitment_stages.xml',
         'data/aseguradoras_iniciales.xml',
         'data/productos_metlife.xml',
         'data/conductos_metlife.xml',
@@ -26,6 +29,7 @@
         'views/res_partner_views.xml',
         'views/product_template_views.xml',
         'views/hr_applicant_views.xml',
+        'views/bca_sede_views.xml',
         'views/crm_lead_views.xml',
         'views/dashboard_views.xml',
         'views/conducto_views.xml',
