@@ -8,6 +8,15 @@ area: Recursos Humanos / Reclutamiento — Módulo BCA_Seguros
 
 # Spec Etapa 12 — Reclutamiento y Habilitación de Agentes `BCA_Seguros`
 
+> **Actualización D-21 (`v19.0.1.7.8`):** el flujo de conversión se separa en **3 fases** por
+> cruce de umbral de etapa (ver Decisión D-21 y Changelog): (1) **Acuerdo de Arranque** crea el
+> contacto `res.partner` —exige Promotoría + Sede + RFC + CURP— y hace el **traspaso a Capital
+> Humano** (`interviewer_ids`/`user_id` + parámetro `bca_reclutamiento.capital_humano_user_id`);
+> (2) **Cédula Emitida** asienta la clave `clave_arranque`; (3) **Clave Definitiva** (nueva etapa
+> seq 13) crea el `hr.employee`. Renombres "Entrevista"→"Cena" y puestos→"Promotores"/"Agentes";
+> validación de formato RFC/CURP; `bca_tipo_candidato` retirado. Las Fases A–E de abajo describen
+> la construcción histórica; este bloque prevalece donde difieran.
+
 > **Para:** Claude Code (y desarrollador humano)
 > **Módulo:** `BCA_Seguros` (Odoo 19 Community) · Rama `desarrollo`
 > **Tipo:** Nueva funcionalidad — integración del ciclo de carrera del agente con `hr_recruitment`.

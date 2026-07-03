@@ -295,3 +295,20 @@ Se **conservan y reubican**: `bca_folio_cv` → pestaña Identificación; `bca_r
 **Decisión:** El embudo BCA (Fase A + Fase B, 12 etapas) es **exclusivo de las figuras comerciales** y **compartido** por **Agentes y Promotorías**: las 12 etapas llevan `job_ids = [job_reclutamiento_agente, job_captacion_promotoria]`. Los **puestos internos** (cualquier otro `hr.job`) se reclutan por el **embudo nativo de Odoo** (`hr_recruitment`) y cierran con su etapa hired nativa ("Contract Signed"). Se **retira** la etapa BCA `stage_alta_interna` (migración `19.0.1.7.7/pre-migration.py`, que reasigna candidatos antes de borrarla). El ruteo de conversión sigue siendo **por `job_id`** en `_bca_crear_partner_desde_contratado()` (sin cambios de lógica): agente → habilitación, promotoría → alta de promotoría, cualquier otro job → nada.
 
 **Razón:** Un solo embudo por tipo de puesto, más limpio y fiel al negocio: los internos no tienen Fase A/B ni cédula, así que no deben ver etapas comerciales; y las promotorías, que sí son figuras comerciales, deben compartir el mismo embudo que los agentes. Corrige el error documental (internos en Fase A) y el hueco de código (promotorías fuera del embudo). Bump `19.0.1.7.6` → **`19.0.1.7.7`**.
+
+
+---
+
+## D-21 — Flujo de conversión en 3 fases + traspaso a Capital Humano nativo
+
+**Fecha:** 2026-07-03 (Etapa 12, correcciones QA con el usuario)
+**Contexto:** El QA del embudo pidió separar el proceso en dos frentes (Fase A: reclutamiento; Fase B: capital humano) y repartir la conversión, que hasta ahora ocurría toda de golpe al llegar a la etapa hired "Cédula Emitida" (contacto + clave + empleado en `_bca_crear_partner_desde_contratado()`). También pidió una etapa nueva "Clave Definitiva" y un traspaso de gestión a Capital Humano.
+
+**Decisión:** La conversión se dispara por **cruce de umbral de `sequence`** en el override `write()` (`_bca_procesar_transicion_etapa`, patrón D-13 "nunca por ID"), en 3 fases idempotentes:
+1. **Acuerdo de Arranque (seq 6):** crea el contacto `res.partner`. Para el agente exige **Promotoría destino + Sede + RFC + CURP** (identidad idempotente por RFC+CURP, D-15). Además hace el **traspaso Reclutamiento→Capital Humano** con campos **nativos** (sin modelo/campo de "equipo"): la reclutadora se preserva en `interviewer_ids` y `user_id` se reasigna al usuario del `ir.config_parameter` `bca_reclutamiento.capital_humano_user_id` (si no está configurado, solo se avisa en el chatter).
+2. **Cédula Emitida (seq 11, hired):** asienta la clave por aseguradora, **siempre** en `clave_arranque` (D-14). La compuerta L2 (5 datos) se mantiene.
+3. **Clave Definitiva (seq 13, nueva):** crea el `hr.employee` (exige `bca_clave_definitiva`). **NO** promueve el puente a `clave_definitiva` — eso sigue siendo un proceso interno posterior que sí computa PCA (SI-4). El botón nativo "Create Employee" se oculta hasta esta etapa (campo computado `bca_puede_crear_empleado`).
+
+Se retira `bca_tipo_candidato` (duplicaba el origen nativo `source_id`; `DROP COLUMN`, patrón D-19). Se renombran la etapa "Entrevista"→"Cena" y los puestos a "Promotores"/"Agentes" (empujados en migración por `noupdate="1"`). Se añade validación de **formato** RFC/CURP mexicano (`@api.constrains`), independiente del gate L2 de **presencia**.
+
+**Razón:** El proceso real de negocio es de dos fases con dueños distintos; crear el contacto antes (Acuerdo de Arranque) y el empleado después (Clave Definitiva) refleja esa realidad y habilita el traspaso de responsabilidad en la frontera A/B. Usar `interviewer_ids`/`user_id` nativos evita inventar un modelo de "equipo" y reutiliza las record rules existentes. El cruce por `sequence` (no por hired_stage único) hace el flujo robusto a saltos de etapa y a cada fase idempotente. Reemplaza a `_bca_crear_partner_desde_contratado()`/`_bca_habilitar_agente()`. Bump `19.0.1.7.7` → **`19.0.1.7.8`**.

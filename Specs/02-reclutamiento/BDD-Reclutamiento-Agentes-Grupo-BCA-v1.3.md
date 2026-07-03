@@ -2,9 +2,19 @@
 titulo: BDD — Proceso de Reclutamiento y Habilitación de Agentes (Grupo BCA)
 fecha: 2026-07-03
 autor: Hábitat Digital
-version: v1.4
+version: v1.5
 area: Entrega
 ---
+
+> **Cambio v1.5 (D-21):** correcciones de QA y separación del proceso en dos frentes.
+> El **contacto** del candidato se crea al llegar a **"Acuerdo de Arranque"** (no al final), y
+> ahí ocurre el **traspaso de gestión de Reclutamiento a Capital Humano** (la reclutadora queda
+> como *entrevistadora* y el *responsable* pasa a Capital Humano). Se añade la etapa final
+> **"Clave Definitiva"**, donde se **crea el empleado** (requiere el dato de Clave Definitiva);
+> el botón de crear empleado no aparece antes. La etapa **"Entrevista" pasa a llamarse "Cena"**
+> y los puestos a **"Promotores"/"Agentes"**. La Sede/Plaza es **obligatoria** para dar de alta
+> al agente, y RFC/CURP se validan con formato mexicano. Nota: llegar a "Clave Definitiva"
+> **no** convierte la clave del agente en definitiva-PCA (eso sigue siendo un proceso interno posterior).
 
 > **Cambio v1.4 (D-20):** el embudo BCA (Fase A + Fase B) es exclusivo de las **figuras
 > comerciales** —**Agentes y Promotorías**—, que comparten el mismo embudo. Los **puestos

@@ -4,7 +4,8 @@
 > Este documento es el artefacto de cierre de la etapa: inventaría la cobertura real,
 > reconoce los huecos aceptados y fija convenciones para no reintroducir fragilidad.
 >
-> **Última actualización:** 2026-06-29. Mantener sincronizado al agregar/quitar tests.
+> **Última actualización:** 2026-07-03 (D-21, `v19.0.1.7.8`): suite total **164 tests, 0 failed**.
+> `test_hr_applicant.py` reescrito al flujo de conversión por 3 fases. Mantener sincronizado.
 
 ---
 
@@ -45,9 +46,9 @@
 | Archivo | Tests previstos | Fase |
 |---|---|---|
 | `test_bca_sede.py` (nuevo) ✅ | `test_crud_y_rec_name`, `test_archivado`, `test_codigo_unico`, `test_codigo_nulo_permite_varias` | A |
-| `test_hr_applicant.py` (ext.) ✅ | `test_embudo_12_etapas_cargadas` (scopeadas a ambos jobs comerciales, D-20), `test_hired_stages_flag` (sin Alta Interna), `test_campos_identificacion_capturables`, `test_edad_computed_no_almacenada`, `test_no_campos_duplicados` (género/ramo reusan selección; RFC=`vat` diferido a Fase C) | A |
+| `test_hr_applicant.py` (ext.) ✅ | `test_embudo_13_etapas_cargadas` (13 etapas, ambos jobs), `test_etapa_entrevista_renombrada_cena`, `test_puestos_renombrados` (Promotores/Agentes), `test_hired_stages_flag` (Clave Definitiva NO hired), `test_campos_identificacion_capturables` (sin bca_tipo_candidato), `test_institucion_educativa_label`, `test_edad_computed_no_almacenada`, `test_no_campos_duplicados` | A |
 | `test_hr_applicant.py` (ext.) ✅ | `test_pda_riesgo_computed`, `test_pda_riesgo_crea_actividad_promotor`, `test_pda_avance_sin_vobo_bloquea`, `test_pda_con_vobo_avanza` | B |
-| `test_hr_applicant.py` (ext.) ✅ | `test_hired_sin_5_datos_bloquea`, `test_conversion_crea_puente_clave_arranque` (estado clave_arranque = no-PCA), `test_conversion_crea_employee`, `test_idempotencia_por_rfc_curp`, `test_job_interno_nativo_no_crea_puente_ni_agente` (D-20), `test_promotoria_hired_en_cedula_emitida_crea_promotoria` (D-20) (+ tests de conversión actualizados con 5 datos) | C |
+| `test_hr_applicant.py` (ext.) ✅ D-21 | **Fase 1 (Acuerdo):** `test_acuerdo_reclutamiento_crea_agente`, `test_acuerdo_captacion_crea_promotoria`, `test_acuerdo_sin_sede_bloquea`, `test_acuerdo_sin_promotoria_destino_bloquea`, `test_acuerdo_sin_rfc_curp_bloquea`, `test_idempotencia_doble_acuerdo`; **traspaso CH:** `test_traspaso_capital_humano_en_acuerdo`, `test_traspaso_sin_parametro_no_reasigna`. **Fase 2 (Cédula):** `test_hired_sin_datos_habilitacion_bloquea`, `test_conversion_crea_puente_clave_arranque`, `test_idempotencia_por_rfc_curp`, `test_job_interno_nativo_no_crea_puente_ni_agente`. **Fase 3 (Clave Definitiva):** `test_empleado_solo_en_clave_definitiva`, `test_clave_definitiva_faltante_bloquea_empleado`, `test_clave_definitiva_no_promueve_pca`. **Formato:** `test_rfc_formato_invalido`, `test_curp_formato_invalido`, `test_rfc_curp_validos_persisten` | C |
 | `test_hr_applicant.py` (ext.) ✅ | `test_refuse_reasons_seed`, `test_automation_aviso_etapa_seed`, `test_sic_action_pivote_seed` (L3/L5 diferidos a SOP) | D |
 | `test_record_rules.py` (ext.) ✅ | `TestReclutamientoRecordRules`: `test_reclutadora_ve_solo_sus_candidatos`, `test_director_ve_todos_los_candidatos` (separación por job_id → refinamiento futuro) | E |
 

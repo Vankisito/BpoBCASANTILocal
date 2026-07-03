@@ -4,6 +4,57 @@
 
 ---
 
+## Sesión 2026-07-03 — Reclutamiento: correcciones QA + flujo de conversión en 3 fases (D-21) · `19.0.1.7.8`
+
+### Qué se hizo
+Lote de 13 correcciones de QA sobre la Etapa 12 y **re-arquitectura del flujo de conversión**:
+hoy todo (contacto + clave + empleado) se creaba junto en *Cédula Emitida* (hired). Se separa
+en **3 fases idempotentes** disparadas por **cruce de umbral de `sequence`** en `write()`
+(`_bca_procesar_transicion_etapa`):
+
+- **Acuerdo de Arranque (seq 6):** crea el contacto `res.partner` (agente/promotoría) —exige
+  Promotoría destino + Sede + RFC + CURP para el agente (identidad idempotente)— y hace el
+  **traspaso Reclutamiento→Capital Humano** (nativo, sin campos custom): preserva a la reclutadora
+  en `interviewer_ids` y reasigna `user_id` al usuario del `ir.config_parameter`
+  `bca_reclutamiento.capital_humano_user_id` (si vacío, solo avisa en el chatter).
+- **Cédula Emitida (seq 11, hired):** asienta la clave por aseguradora (siempre `clave_arranque`, D-14).
+- **Clave Definitiva (nueva, seq 13):** crea el `hr.employee` (exige `bca_clave_definitiva`); **no**
+  promueve el puente a `clave_definitiva` (SI-4).
+
+Correcciones QA adicionales:
+- Etapa **"Entrevista" → "Cena"**; puestos **"Captación de Promotoría"/"Reclutamiento de Agente" →
+  "Promotores"/"Agentes"** (empujados en migración por el `noupdate="1"`).
+- **Validación de formato RFC/CURP mexicano** (`@api.constrains`, regex).
+- Nuevo campo `bca_clave_definitiva`; `bca_institucion` renombrado a **"Institución Educativa"**.
+- **`bca_tipo_candidato` retirado** (duplicaba el origen nativo; `DROP COLUMN`).
+- Botón nativo **"Create Employee" oculto hasta Clave Definitiva** (campo computado
+  `bca_puede_crear_empleado`, sobre el `invisible` nativo).
+- **Vista:** RFC/CURP → pestaña Identificación; Sede → cuerpo bajo *Promotoría destino*; Folio CV →
+  bajo *LinkedIn* nativo; relabels salariales nativos → **"Expectativa/Propuesta económica"**.
+- **Bump** `19.0.1.7.7` → **`19.0.1.7.8`**.
+
+### Archivos
+- Nuevos: `migrations/19.0.1.7.8/post-migrate.py` (rename etapa/puestos + `DROP COLUMN bca_tipo_candidato`).
+- Modificados: `models/hr_applicant.py`, `views/hr_applicant_views.xml`,
+  `data/hr_recruitment_stages.xml` (nueva `stage_clave_definitiva`), `data/hr_jobs.xml`,
+  `tests/test_hr_applicant.py`, `__manifest__.py`, y docs de `Specs/`.
+
+### Tests
+- Suite reescrita al flujo por fases: **0 failed, 0 error(s) of 164 tests** (Docker local `Devlocal`).
+- Nuevos casos: gate de Sede/RFC/CURP en Acuerdo, traspaso a Capital Humano (con/sin parámetro),
+  empleado solo en Clave Definitiva (+ bloqueo sin dato), formato RFC/CURP, renombres.
+
+### Pendiente
+- Configurar el parámetro `bca_reclutamiento.capital_humano_user_id` (Ajustes → Técnico →
+  Parámetros del sistema) para activar la reasignación automática del responsable.
+
+### Decisión registrada
+- **D-21** — flujo de conversión en 3 fases por cruce de umbral (contacto en Acuerdo de Arranque,
+  clave en Cédula Emitida, empleado en Clave Definitiva); traspaso a Capital Humano vía campos
+  nativos (`interviewer_ids`/`user_id`) + parámetro de configuración.
+
+---
+
 ## Sesión 2026-07-03 — Reclutamiento: embudo comercial solo para figuras comerciales (D-20) · `19.0.1.7.7`
 
 ### Qué se hizo
