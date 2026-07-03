@@ -137,23 +137,23 @@ TT - Cargar catálogo inicial de plazas · Data
 ```gherkin
 Característica: Configurar el embudo de reclutamiento y sus etapas
 
-Escenario: El embudo comercial muestra Fase A y Fase B
-  Dado un candidato con puesto de figura comercial (job_reclutamiento_agente)
+Escenario: El embudo comercial muestra Fase A y Fase B (agentes y promotorías)
+  Dado un candidato con puesto de figura comercial (job_reclutamiento_agente o job_captacion_promotoria)
   Cuando se abre su embudo
   Entonces ve las etapas de Fase A (Recibido…Acuerdo de Arranque)
   Y las de Fase B (Clave de Arranque…Cédula Emitida…En Desarrollo Comercial)
 
-Escenario: El puesto interno solo ve Fase A + etapa terminal interna
+Escenario: El puesto interno usa el embudo nativo de Odoo
   Dado un candidato a puesto interno
   Cuando se abre su embudo
-  Entonces ve la Fase A y la etapa terminal "Contratado (Alta Interna)"
-  Pero no ve ninguna etapa de Fase B
+  Entonces ve el embudo nativo de Odoo y su etapa hired nativa
+  Pero no ve ninguna etapa del embudo comercial BCA (ni Fase A ni Fase B)
 
 Escenario: La etapa de cédula está marcada como hired
   Dado el embudo comercial
   Cuando se consulta la etapa "Cédula Emitida"
   Entonces tiene hired_stage = True
-  Y es la única etapa de Fase B que dispara la conversión
+  Y es la única etapa del embudo comercial que dispara la conversión
 ```
 
 **Tareas Técnicas (EDEP/TT)**
@@ -162,18 +162,16 @@ TT - Crear etapas del embudo comercial (Recibido → En Desarrollo Comercial) ·
 [ ] 12 etapas del SDD §4.1 creadas en el orden correcto
 [ ] Etapa "Recibido" como default
 
-TT - Marcar etapas de Fase B como job-specific (job_reclutamiento_agente) · UX
-[ ] Las etapas 7–12 solo aparecen para el puesto comercial
-[ ] Un puesto interno NO las ve
+TT - Marcar las 12 etapas como job-specific de ambas figuras comerciales · UX
+[ ] Las 12 etapas (Fase A + Fase B) tienen job_ids = [job_reclutamiento_agente, job_captacion_promotoria]
+[ ] Un puesto interno NO ve ninguna de ellas (usa el embudo nativo de Odoo)
 
-TT - Crear etapa terminal interna "Contratado (Alta Interna)" · UX
-[ ] Etapa job-specific del puesto interno
-
-TT - Marcar hired_stage=True en "Cédula Emitida" y "Contratado (Alta Interna)" · UX
-[ ] "Cédula Emitida" (comercial) y "Contratado (Alta Interna)" (interno) con hired_stage=True
-[ ] Ninguna otra etapa de Fase B tiene hired_stage=True
+TT - Marcar hired_stage=True solo en "Cédula Emitida" · UX
+[ ] "Cédula Emitida" con hired_stage=True (dispara la conversión: agente o promotoría según job_id)
+[ ] Ninguna otra etapa del embudo comercial tiene hired_stage=True
+[ ] La etapa BCA "Contratado (Alta Interna)" queda retirada (D-20): los internos cierran con la etapa hired nativa
 ```
-- **Criterio de éxito:** un candidato comercial ve Fase A+B; un puesto interno solo ve Fase A + su etapa terminal.
+- **Criterio de éxito:** los candidatos comerciales (agentes y promotorías) ven Fase A+B; un puesto interno usa el embudo nativo de Odoo, sin etapas BCA.
 
 ---
 
@@ -332,8 +330,8 @@ Escenario: Guarda de datos mínimos
   Entonces el sistema la impide y exige los datos faltantes
 
 Escenario: Puesto interno no crea agente ni puente
-  Dado un candidato a puesto interno
-  Cuando llega a "Contratado (Alta Interna)"
+  Dado un candidato a puesto interno (embudo nativo de Odoo)
+  Cuando llega a la etapa hired nativa ("Contract Signed")
   Entonces se da de alta hr.employee nativo
   Pero sin partner agente, sin puente y sin cédula
 ```
@@ -379,32 +377,33 @@ TT - Suite de pruebas de conversión · Backend
 
 ---
 
-### HU-1.5 — Cerrar puestos internos sin Fase B · 🟧 UI / IMPLEMENTADOR
-*HU - Cerrar puestos internos sin Fase B - Capital Humano*
+### HU-1.5 — Cerrar puestos internos por el embudo nativo de Odoo · 🟧 UI / IMPLEMENTADOR
+*HU - Cerrar puestos internos por el embudo nativo - Capital Humano*
 
-- **Por qué UI:** se apoya en el **alta nativa de empleado** al llegar a `hired`; la ramificación por `job_id` (interno = sin puente/cédula) ya queda cubierta en el método de HU-1.4.
+- **Por qué UI:** se apoya en el **embudo y el alta nativa de empleado** de Odoo al llegar a la etapa hired nativa; la ramificación por `job_id` (job no BCA = sin puente/cédula) ya queda cubierta en el método de HU-1.4.
 
 **Criterios de aceptación**
 ```gherkin
-Característica: Cerrar puestos internos sin Fase B
+Característica: Cerrar puestos internos por el embudo nativo de Odoo
 
 Escenario: Alta interna sin partner agente ni puente
   Dado un candidato a puesto interno (ej. Auxiliar administrativa)
-  Cuando llega a "Contratado (Alta Interna)"
+  Cuando llega a la etapa hired nativa de Odoo ("Contract Signed")
   Entonces se da de alta como hr.employee nativo
   Y no se crea partner agente, ni puente, ni cédula
-  Y no ve ninguna etapa de Fase B
+  Y no ve ninguna etapa del embudo comercial BCA (ni Fase A ni Fase B)
 ```
 
 **Tareas Técnicas (EDEP/TT)**
 ```
-TT - Configurar etapa terminal interna como hired_stage · UX
-[ ] "Contratado (Alta Interna)" con hired_stage=True (cubierto también en HU-1.1)
+TT - Verificar que los puestos internos usan el embudo nativo · UX
+[ ] Un job no BCA no muestra ninguna de las 12 etapas comerciales
+[ ] Cierra con la etapa hired nativa de Odoo (no hay etapa BCA "Alta Interna")
 
 TT - Validar que el alta interna NO crea puente ni cédula (ramificación por job_id de L2) · Backend (dep. HU-1.4)
 [ ] Test: candidato interno → hr.employee sí; partner agente/puente no
 ```
-- **Criterio de éxito:** un auxiliar/reclutador/gerencial se da de alta como empleado nativo, sin partner agente ni Fase B.
+- **Criterio de éxito:** un auxiliar/reclutador/gerencial se recluta por el embudo nativo y se da de alta como empleado nativo, sin partner agente ni Fase B.
 
 ---
 

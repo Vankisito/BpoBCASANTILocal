@@ -1,10 +1,16 @@
 ---
 titulo: BDD — Proceso de Reclutamiento y Habilitación de Agentes (Grupo BCA)
-fecha: 2026-06-26
+fecha: 2026-07-03
 autor: Hábitat Digital
-version: v1.3
+version: v1.4
 area: Entrega
 ---
+
+> **Cambio v1.4 (D-20):** el embudo BCA (Fase A + Fase B) es exclusivo de las **figuras
+> comerciales** —**Agentes y Promotorías**—, que comparten el mismo embudo. Los **puestos
+> internos** ya **no** recorren la Fase A: se reclutan por el **flujo nativo de Odoo** y
+> cierran con su etapa hired nativa. Se corrige la versión previa, que hacía pasar a los
+> puestos internos por la Fase A.
 
 # BDD — Proceso de Reclutamiento y Habilitación de Agentes
 ## Grupo BCA · Documento de Comportamiento a nivel Negocio
@@ -17,8 +23,8 @@ area: Entrega
 
 **Propósito:** dejar por escrito, sin ambigüedad y con ejemplos concretos, cómo se comporta el proceso de reclutamiento y habilitación de agentes de BCA, para que todos —Dirección, Capital Humano y quien lo implemente— estemos de acuerdo antes de tocar nada.
 
-- **Cubre:** desde que se recibe o identifica a un candidato hasta que el agente tiene su **cédula emitida** y entra a Desarrollo Comercial. Incluye también los **puestos internos**, que se cierran como contratados sin pasar por cédula.
-- **No cubre:** la productividad y ventas del agente una vez habilitado (es otro proceso).
+- **Cubre:** el embudo de las **figuras comerciales** (Agentes y Promotorías), desde que se recibe o identifica al candidato hasta que tiene su **cédula emitida** y entra a Desarrollo Comercial.
+- **No cubre:** los **puestos internos** (Auxiliar administrativa, Reclutador, Gerencial, etc.), que se reclutan por el **embudo nativo de Odoo** y cierran con su etapa hired nativa —sin Fase A/B ni cédula—; tampoco la productividad y ventas del agente una vez habilitado (es otro proceso).
 - **A quién sirve:** Dirección y Capital Humano de BCA (validan que esto es su realidad) y el equipo que lo implementa.
 
 ---
@@ -60,18 +66,19 @@ area: Entrega
 
 ## 4. Mapa del proceso
 
+> Este embudo (Fase A + Fase B) es el de las **figuras comerciales**: aplica por igual a
+> **Agentes** y **Promotorías**, que lo recorren completo. Los **puestos internos** no entran
+> aquí: se reclutan por el **embudo nativo de Odoo** (ver §1 y §8).
+
 **Fase A — Atracción y Reclutamiento** *(Reclutadora / Promotor)*
 Recibido → Prospección → Primer contacto → **Café** → **Entrevista** → Evaluación PDA → Cena (acuerdo de arranque)
 
-**Al cerrar la Fase A, el camino se bifurca:**
-- Si el puesto es **figura comercial** → pasa a la Fase B (habilitación).
-- Si es **puesto interno** → se cierra como Contratado y alta interna, sin Fase B.
+**Al cerrar la Fase A:**
+- La figura comercial (Agente o Promotoría) pasa a la **Fase B** (habilitación), con el **acuerdo de arranque aceptado**.
 - Si el candidato no tiene perfil para **Vida** → se le puede ofrecer **Autos**: cambia de ramo y continúa por el mismo embudo, sin reiniciar su historial.
 
-**Fase B — Habilitación** *(Capital Humano, solo figuras comerciales)*
+**Fase B — Habilitación** *(Capital Humano, figuras comerciales)*
 Clave de arranque → Inscripción a CIA → Curso de cédula → Pago y examen → Cédula emitida → Desarrollo Comercial
-
-El paso de la Fase A a la Fase B ocurre con el **acuerdo de arranque aceptado**.
 
 ---
 
@@ -84,7 +91,7 @@ El paso de la Fase A a la Fase B ocurre con el **acuerdo de arranque aceptado**.
 | **Stand by (On Hold)** | Sin decisión, queda en espera; conserva su historial | On Hold |
 | **Declinado Prospecto** | El candidato decidió no continuar | Cerrados |
 | **Declinado BCA** | BCA decidió no continuar con el candidato | Cerrados |
-| **Contratado** | Aceptó el acuerdo de arranque (o alta interna) | Convertidos |
+| **Contratado** | Aceptó el acuerdo de arranque | Convertidos |
 | **En Desarrollo Comercial** | Ya reclutado, en entrenamiento | Convertidos |
 
 ---
@@ -168,10 +175,12 @@ El paso de la Fase A a la Fase B ocurre con el **acuerdo de arranque aceptado**.
 - **Entonces** cambia a "Contratado" y se entrega a Capital Humano para habilitación
 - **Y** se avisa a Capital Humano que hay un candidato nuevo para curso de cédula
 
-**▸ Acuerdo aceptado — puesto interno**
-- **Dado** un candidato a puesto interno (ej. Auxiliar administrativa)
-- **Cuando** acepta la oferta
-- **Entonces** cambia a "Contratado" y se cierra como alta interna, sin pasar por cédula
+**▸ Acuerdo aceptado — promotoría (misma bifurcación que el agente)**
+- **Dado** un candidato de **Captación de Promotoría** con PDA apto
+- **Cuando** se registra la cena y acepta el acuerdo de arranque
+- **Entonces** cambia a "Contratado" y pasa a Fase B por el mismo embudo comercial
+
+> Los **puestos internos** no aparecen en este proceso: se reclutan por el **embudo nativo de Odoo** y cierran con su etapa hired nativa, sin pasar por Fase A/B ni cédula.
 
 **▸ El candidato se baja**
 - **Dado** un candidato en cualquier etapa
@@ -220,7 +229,7 @@ El paso de la Fase A a la Fase B ocurre con el **acuerdo de arranque aceptado**.
 
 ## 8. Reglas de negocio
 
-- Solo las figuras comerciales que requieren cédula pasan por la Fase B; los puestos internos se cierran como Contratado sin habilitación.
+- El embudo BCA (Fase A + Fase B) es exclusivo de las figuras comerciales (Agentes y Promotorías), que lo recorren completo. Los puestos internos no entran a este embudo: se reclutan por el flujo nativo de Odoo y cierran con su etapa hired nativa, sin Fase A/B ni cédula (D-20).
 - Un candidato no puede entregarse a Capital Humano sin acuerdo de arranque aceptado.
 - "Declinado Prospecto" y "Declinado BCA" siempre exigen motivo.
 - PDA Excelente, Muy buena o Aceptable avanzan; Baja o No ideal requieren el visto bueno del promotor, y la continuación final queda a consideración de Gerencia.

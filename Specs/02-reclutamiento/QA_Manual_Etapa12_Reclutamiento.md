@@ -119,21 +119,23 @@ tipo: UAT / Pruebas de interfaz (Odoo backend)
 
 ---
 
-## 8. T5 — Idempotencia y Alta Interna (Fase C)
+## 8. T5 — Idempotencia, promotoría y puestos internos (Fase C)
 
 - [ ] **T5.1 (Reutilización por RFC+CURP):** creo un **segundo** candidato de "Reclutamiento de Agente" con **el mismo RFC y CURP** del T4, pero **otra Aseguradora** (creo "Aseguradora QA 2") y otra Clave (ej. "QA-CLV-002"). Lo llevo a "Cédula Emitida".
   - **Esperado:** **NO** se crea un agente duplicado. En **Agentes** sigue existiendo **un solo** agente con ese RFC/CURP, pero ahora tiene **2 líneas** en *Claves por Aseguradora* (una por aseguradora), ambas en estado **Clave de Arranque**.
-- [ ] **T5.2 (Alta interna no crea agente):** en la app **Reclutamiento**, en un puesto **que NO sea** de agentes/promotoría (ej. un puesto interno de RH cualquiera), creo un candidato y lo llevo a la etapa **"Contratado (Alta Interna)"**.
-  - **Esperado:** se realiza el alta como empleado normal, **sin** crear contacto agente ni línea de clave por aseguradora.
+- [ ] **T5.2 (Puesto interno usa el embudo nativo, no crea agente):** en la app **Reclutamiento**, en un puesto **que NO sea** de agentes/promotoría (ej. un puesto interno de RH cualquiera), creo un candidato.
+  - **Esperado:** el candidato **no** ve ninguna de las 12 etapas BCA (Recibido…En Desarrollo Comercial); ve el **embudo nativo de Odoo**. Al llevarlo a la etapa hired nativa (**"Contract Signed"**) se da de alta como empleado normal, **sin** crear contacto agente ni línea de clave por aseguradora. Nota: ya **no** existe la etapa "Contratado (Alta Interna)".
+- [ ] **T5.3 (Promotoría recorre el embudo comercial):** creo un candidato de **"Captación de Promotoría"**.
+  - **Esperado:** ve las **mismas 12 etapas** que un agente (Fase A + Fase B). Al llevarlo a **"Cédula Emitida"** se crea el **contacto Promotoría** (bajo Grupo BCA), sin exigir los 5 datos de habilitación del agente.
 
-**Resultado esperado:** la misma persona no se duplica (se le suman claves); las altas internas no generan agentes ni puentes.
+**Resultado esperado:** la misma persona no se duplica (se le suman claves); la promotoría comparte el embudo comercial; los puestos internos usan el embudo nativo y no generan agentes ni puentes.
 
 ---
 
 ## 9. T6 — Motivos de rechazo, aviso por etapa y pivote SIC (Fase D)
 
 - [ ] **T6.1 (Motivos de rechazo):** abro un candidato y uso el botón **Rechazar / Refuse**. En la lista de motivos deben aparecer **"Declinado por Prospecto"** y **"Declinado por BCA"**. Selecciono uno y confirmo. El candidato queda rechazado.
-- [ ] **T6.2 (Aviso por cambio de etapa):** muevo un candidato de "Reclutamiento de Agente" de una etapa a otra. En el **historial (chatter)** del candidato aparece una nota tipo "El candidato avanzó a la etapa: …".
+- [ ] **T6.2 (Aviso por cambio de etapa):** muevo un candidato del embudo comercial ("Reclutamiento de Agente" **o** "Captación de Promotoría") de una etapa a otra. En el **historial (chatter)** del candidato aparece una nota tipo "El candidato avanzó a la etapa: …".
 - [ ] **T6.3 (Pivote SIC):** voy a **BCA Seguros → Reportes → SIC Reclutamiento**. Se abre una **tabla dinámica (pivote)** sobre los candidatos. Puedo agrupar por **Sede, Reclutadora, Puesto, Ramo, Evento, Etapa** y cambiar a vista **Gráfica**. No debe dar error.
 
 **Resultado esperado:** rechazar exige y ofrece los 2 motivos; los cambios de etapa dejan nota; el pivote agrupa por las dimensiones sin error.

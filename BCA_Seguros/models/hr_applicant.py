@@ -188,8 +188,9 @@ class HrApplicant(models.Model):
     def _check_habilitacion_datos(self) -> None:
         """L2: no se llega a una etapa hired del embudo de agentes sin los 5 datos.
 
-        Solo para `job_reclutamiento_agente`; NO aplica a "Alta Interna" ni a otros
-        jobs. Los 5 datos: clave de arranque, fecha de cédula, aseguradora, RFC, CURP.
+        Solo para `job_reclutamiento_agente`; NO aplica a las promotorías ni a los
+        puestos internos (embudo nativo). Los 5 datos: clave de arranque, fecha de
+        cédula, aseguradora, RFC, CURP.
         """
         job_recl = self.env.ref(
             'BCA_Seguros.job_reclutamiento_agente', raise_if_not_found=False,
@@ -242,8 +243,9 @@ class HrApplicant(models.Model):
         """Enruta la conversión según el hr.job del applicant contratado.
 
         Idempotente: si ya hay partner_id con bca_tipo coherente, no hace nada.
-        Solo actúa sobre los dos jobs BCA; ignora silenciosamente cualquier otro
-        (ej. "Alta Interna" u otros puestos de RH → alta nativa, sin agente/puente).
+        Solo actúa sobre los dos jobs comerciales BCA (agente/promotoría); ignora
+        silenciosamente cualquier otro (puestos internos por embudo nativo → alta
+        nativa, sin agente/puente).
         """
         self.ensure_one()
         job_captacion = self.env.ref(

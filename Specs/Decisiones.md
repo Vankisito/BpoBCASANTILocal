@@ -284,3 +284,14 @@ Es el mismo patrón que ya usaban `test_pca_metlife`, `test_reportes`, `test_pol
 Se **conservan y reubican**: `bca_folio_cv` → pestaña Identificación; `bca_ramo`/`bca_perfil_laboral`/`bca_tipo_candidato` → grupo "Perfil BCA" inyectado en la pestaña **Detalles** nativa. Migración `19.0.1.7.5/post-migrate.py` elimina las 7 columnas huérfanas.
 
 **Razón:** Principio "reusar antes que crear" (§2.6). El origen y el nivel académico ya son nativos; el seguimiento de contacto/entrevista es redundante con el `stage_id` (doble fuente de verdad); la cédula previa es un paso manual innecesario. Menos campos, formulario coherente, sin duplicar el estándar de Odoo. Ajusta —sin invalidar— el inventario de campos de Fase A y la decisión D-16 (el "evento" ya no es campo de texto propio; se modela con `campaign_id`).
+
+---
+
+## D-20 — El embudo BCA (Fase A+B) es exclusivo de figuras comerciales; los internos usan el embudo nativo
+
+**Fecha:** 2026-07-03 (Etapa 12, post-cierre · corrección de alcance con el usuario)
+**Contexto:** El BDD v1.3 y los specs derivados modelaban el embudo como si los **puestos internos** recorrieran la **Fase A** y cerraran en una etapa BCA "Contratado (Alta Interna)". Además, en código las 12 etapas solo estaban scopeadas a `job_reclutamiento_agente`, dejando fuera a las **promotorías** (`job_captacion_promotoria`) pese a que el BDD dice que "la promotoría sigue el mismo embudo".
+
+**Decisión:** El embudo BCA (Fase A + Fase B, 12 etapas) es **exclusivo de las figuras comerciales** y **compartido** por **Agentes y Promotorías**: las 12 etapas llevan `job_ids = [job_reclutamiento_agente, job_captacion_promotoria]`. Los **puestos internos** (cualquier otro `hr.job`) se reclutan por el **embudo nativo de Odoo** (`hr_recruitment`) y cierran con su etapa hired nativa ("Contract Signed"). Se **retira** la etapa BCA `stage_alta_interna` (migración `19.0.1.7.7/pre-migration.py`, que reasigna candidatos antes de borrarla). El ruteo de conversión sigue siendo **por `job_id`** en `_bca_crear_partner_desde_contratado()` (sin cambios de lógica): agente → habilitación, promotoría → alta de promotoría, cualquier otro job → nada.
+
+**Razón:** Un solo embudo por tipo de puesto, más limpio y fiel al negocio: los internos no tienen Fase A/B ni cédula, así que no deben ver etapas comerciales; y las promotorías, que sí son figuras comerciales, deben compartir el mismo embudo que los agentes. Corrige el error documental (internos en Fase A) y el hueco de código (promotorías fuera del embudo). Bump `19.0.1.7.6` → **`19.0.1.7.7`**.

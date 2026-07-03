@@ -77,7 +77,7 @@ Prevalecen sobre cualquier conveniencia de implementación:
 | `models/bca_sede.py` | Modelo `bca.sede`: `name` (Char req, `_rec_name`), `codigo` (Char), `active` (Boolean default True). |
 | `views/bca_sede_views.xml` | list/form + `action_bca_sede` + menú en Configuración. |
 | `data/bca_sedes_iniciales.xml` | Catálogo seed (`noupdate="1"`) — **lista oficial pendiente de SI-Sede; placeholder mínimo**. |
-| `data/hr_recruitment_stages.xml` | 12 etapas comerciales + "Contratado (Alta Interna)" como datos del módulo. |
+| `data/hr_recruitment_stages.xml` | 12 etapas comerciales (agente + promotoría) como datos del módulo. |
 | `tests/test_bca_sede.py` | CRUD sede, `_rec_name`, archivado. |
 
 **Archivos a modificar:**
@@ -94,12 +94,12 @@ Prevalecen sobre cualquier conveniencia de implementación:
 
 > **Revisión post-cierre (D-19, `19.0.1.7.5`):** tras revisar la UI se eliminaron 7 de estos campos por redundancia con lo nativo/embudo: `bca_perfil_academico` (→ `type_id`/Grado nativo), `bca_evento` (→ `campaign_id`), `bca_referido_por` (→ `source_id`), `bca_tiene_cedula_previa` (→ se infiere de Habilitación), y `bca_contactado`/`bca_entrevistado`/`bca_reagendaciones` (→ embudo de etapas + actividades). Se conservan `bca_folio_cv` (Identificación) y `bca_ramo`/`bca_perfil_laboral`/`bca_tipo_candidato` (pestaña Detalles nativa). Las pestañas propias "Perfil" y "Origen" desaparecen.
 
-**Las 12 etapas (embudo comercial, `job_reclutamiento_agente`):** 1 Recibido · 2 Prospección · 3 Café · 4 Entrevista · 5 Evaluación PDA · 6 Acuerdo de Arranque · 7 Clave de Arranque · 8 Inscripción CIA · 9 Curso de Cédula · 10 Examen · 11 **Cédula Emitida** (`hired_stage=True`) · 12 En Desarrollo Comercial. Embudo interno: Fase A + "Contratado (Alta Interna)" (`hired_stage=True`), sin Fase B.
+**Las 12 etapas (embudo comercial, `job_reclutamiento_agente` y `job_captacion_promotoria`):** 1 Recibido · 2 Prospección · 3 Café · 4 Entrevista · 5 Evaluación PDA · 6 Acuerdo de Arranque · 7 Clave de Arranque · 8 Inscripción CIA · 9 Curso de Cédula · 10 Examen · 11 **Cédula Emitida** (`hired_stage=True`) · 12 En Desarrollo Comercial. Agentes y promotorías comparten este embudo (D-20). Los **puestos internos** usan el **embudo nativo de Odoo**, sin etapas BCA (la etapa "Contratado (Alta Interna)" fue retirada en `19.0.1.7.7`).
 
 **Checklist Fase A:**
 - [ ] `bca.sede` CRUD desde UI y visible como M2o en el candidato.
-- [ ] 12 etapas + "Alta Interna" cargan como datos del módulo.
-- [ ] "Cédula Emitida" y "Alta Interna" con `hired_stage=True`.
+- [ ] 12 etapas cargan como datos del módulo, scopeadas a ambos jobs comerciales.
+- [ ] "Cédula Emitida" con `hired_stage=True` (única etapa hired del embudo comercial).
 - [ ] Form del candidato muestra todos los campos sin error XML.
 - [ ] Cero campos duplicados (RFC usa `vat`; género/ramo reusan selecciones) — test `test_no_campos_duplicados`.
 
@@ -109,7 +109,7 @@ Prevalecen sobre cualquier conveniencia de implementación:
 
 **Modificar `models/hr_applicant.py`:** `bca_pda_nivel` (Selection 5 niveles), `bca_pda_correlacion` (Float), `bca_pda_perfil` (Char), `bca_pda_visto_bueno_promotor` (Boolean), `bca_pda_riesgo` (Boolean computed: nivel ∈ {baja, no_ideal}). **L1:** `@api.constrains('stage_id','bca_pda_riesgo','bca_pda_visto_bueno_promotor')` que bloquea avanzar más allá de "Evaluación PDA" si `bca_pda_riesgo and not bca_pda_visto_bueno_promotor`; al activarse el riesgo, crear `mail.activity` "Visto bueno requerido" para el promotor de la promotoría destino (consistente con SI-2: solo notificación).
 
-**Riesgo de diseño:** la etapa de corte se resuelve con `env.ref('BCA_Seguros.stage_evaluacion_pda')` comparando por `sequence` (no hardcodear ID). Las etapas de Fase B llevan `job_ids` → `job_reclutamiento_agente` para no aparecer en puestos internos.
+**Riesgo de diseño:** la etapa de corte se resuelve con `env.ref('BCA_Seguros.stage_evaluacion_pda')` comparando por `sequence` (no hardcodear ID). Las 12 etapas llevan `job_ids` → `[job_reclutamiento_agente, job_captacion_promotoria]` para no aparecer en puestos internos (D-20).
 
 **Checklist Fase B:**
 - [ ] PDA "baja"/"no_ideal" ⇒ `bca_pda_riesgo=True` y crea actividad al promotor.
@@ -122,7 +122,7 @@ Prevalecen sobre cualquier conveniencia de implementación:
 
 **Modificar `models/hr_applicant.py`:**
 - Campos: `bca_clave_arranque` (Char), `bca_fecha_cedula` (Date), `bca_aseguradora_id` (M2o `res.partner`, domain aseguradora), `bca_curp` (Char). RFC ya es `vat`.
-- **Constraint guarda L2:** `@api.constrains('stage_id')` — si la etapa es `hired_stage=True` **y** el job es `job_reclutamiento_agente`, exige los 5 datos (`bca_clave_arranque`, `bca_fecha_cedula`, `bca_aseguradora_id`, `vat`, `bca_curp`); si falta alguno ⇒ `ValidationError` con mensaje claro. No aplica a "Alta Interna".
+- **Constraint guarda L2:** `@api.constrains('stage_id')` — si la etapa es `hired_stage=True` **y** el job es `job_reclutamiento_agente`, exige los 5 datos (`bca_clave_arranque`, `bca_fecha_cedula`, `bca_aseguradora_id`, `vat`, `bca_curp`); si falta alguno ⇒ `ValidationError` con mensaje claro. No aplica a promotorías ni a puestos internos (embudo nativo).
 - **Reescribir `_bca_crear_partner_desde_contratado()`** (hoy idempotente por nombre): idempotencia **por Id interno = Nombre+RFC+CURP** — buscar partner agente por `('vat','=',vat),('bca_curp','=',curp)` (+ nombre normalizado); si existe (aunque sea en otra promotoría/aseguradora), reutilizar y solo agregar la clave de la nueva aseguradora. Luego:
   1. Crear/ubicar partner agente (`bca_tipo='agente'`, `parent_id=bca_promotoria_destino_id`, set `bca_curp`).
   2. Crear `res.partner.agente.aseguradora` con `estado='clave_arranque'` (**F1 — NO definitiva**), `clave_agente=bca_clave_arranque`, `fecha_licencia=bca_fecha_cedula`, `aseguradora_id=bca_aseguradora_id`. Los UNIQUE existentes del puente protegen contra duplicados; capturar `IntegrityError` y reutilizar.
@@ -141,7 +141,7 @@ Prevalecen sobre cualquier conveniencia de implementación:
 - [ ] Conversión crea partner + puente(`clave_arranque`) + empleado, idempotente por Id interno — `test_conversion_crea_puente_clave_arranque`, `test_conversion_crea_employee`.
 - [ ] Agente existente en otra aseguradora se reutiliza; se le agrega la nueva clave — `test_idempotencia_por_rfc_curp`.
 - [ ] Agente recién habilitado **no** aparece en reportes PCA (E9) — `test_agente_clave_arranque_no_computa_pca`.
-- [ ] Alta Interna no crea partner agente ni puente — `test_alta_interna_no_crea_puente_ni_agente`.
+- [ ] Puesto interno (embudo nativo) no crea partner agente ni puente — `test_job_interno_nativo_no_crea_puente_ni_agente`.
 
 ### Fase D — Automatizaciones + motivos + SICs (`19.0.1.7.3`)
 

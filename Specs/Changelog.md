@@ -4,6 +4,42 @@
 
 ---
 
+## Sesión 2026-07-03 — Reclutamiento: embudo comercial solo para figuras comerciales (D-20) · `19.0.1.7.7`
+
+### Qué se hizo
+Corrección de alcance del embudo de reclutamiento (D-20). El embudo BCA (Fase A + Fase B, 12 etapas)
+pasa a ser **exclusivo de figuras comerciales** y **compartido por Agentes y Promotorías**; los
+**puestos internos** usan el **embudo nativo de Odoo** y su etapa hired nativa.
+
+- **Etapas** (`data/hr_recruitment_stages.xml`): las 12 etapas ahora llevan
+  `job_ids = [job_reclutamiento_agente, job_captacion_promotoria]` (antes solo el de agente).
+  Se **retira** la etapa global `stage_alta_interna` ("Contratado (Alta Interna)").
+- **Migración** `migrations/19.0.1.7.7/pre-migration.py`: reasigna cualquier candidato en
+  `stage_alta_interna` a una etapa hired de reemplazo (preferente nativa) y borra el record.
+- **Automatización** (`data/base_automation_reclutamiento.xml`): el aviso de cambio de etapa (L6)
+  ahora aplica a ambos jobs comerciales (agente y promotoría).
+- **Código** (`models/hr_applicant.py`): solo docstrings/comentarios (Alta Interna → embudo nativo);
+  el ruteo por `job_id` en `_bca_crear_partner_desde_contratado()` no cambió.
+- **Tests** (`tests/test_hr_applicant.py`): `test_embudo_12_etapas_cargadas` exige ambos jobs
+  comerciales; `test_hired_stages_flag` sin Alta Interna; `test_alta_interna_no_crea_puente_ni_agente`
+  → renombrado `test_job_interno_nativo_no_crea_puente_ni_agente`; nuevo
+  `test_promotoria_hired_en_cedula_emitida_crea_promotoria`.
+- **Docs:** BDD v1.3 → **v1.4**; corregidos `hu-tt-criterios`, `sdd`, `spec-etapa-12`, `analisis`,
+  `QA_Manual` (nuevos casos T5.2/T5.3). Decisión **D-20** registrada.
+- **Bump** `19.0.1.7.6` → **`19.0.1.7.7`**.
+
+### Archivos
+- Nuevos: `migrations/19.0.1.7.7/pre-migration.py`.
+- Modificados: `data/hr_recruitment_stages.xml`, `data/base_automation_reclutamiento.xml`,
+  `models/hr_applicant.py`, `tests/test_hr_applicant.py`, `__manifest__.py`, y docs de
+  `Specs/02-reclutamiento/` + `Specs/Decisiones.md`, `Specs/TESTS_COVERAGE.md`.
+
+### Decisión registrada
+- **D-20** — el embudo BCA (Fase A+B) es exclusivo de figuras comerciales (Agentes y Promotorías);
+  los puestos internos usan el embudo nativo de Odoo; se retira `stage_alta_interna`.
+
+---
+
 ## Sesión 2026-07-03 — Etapa 12 Depuración de pestañas del postulante · `19.0.1.7.5`
 
 ### Qué se hizo

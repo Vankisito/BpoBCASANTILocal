@@ -40,9 +40,10 @@ Traducir el comportamiento del BDD a una especificación construible **sin inter
 reusando al máximo lo de fábrica de Odoo y lo que ya existe en `BCA_Seguros`, con **cero
 campos duplicados**.
 
-- **Cubre:** el embudo de reclutamiento de **figuras comerciales (Agente)** de Fase A a Fase B
-  hasta cédula emitida y conversión, más el cierre simple de **puestos internos**.
-- **No cubre (fuera de alcance):** ver §10.
+- **Cubre:** el embudo de reclutamiento de **figuras comerciales (Agente y Promotoría)** de Fase A a
+  Fase B hasta cédula emitida y conversión. Ambas figuras comparten el mismo embudo (D-20).
+- **No cubre (fuera de alcance):** los **puestos internos**, que se reclutan por el **embudo nativo de
+  Odoo** (sin Fase A/B ni cédula); demás puntos en §10.
 
 ---
 
@@ -78,10 +79,11 @@ campos duplicados**.
 
 ### 4.1 Etapas del embudo
 
-Las etapas son **configuración** (sin código). Las de **Fase B** se marcan *job-specific* para que
-solo aparezcan en figuras comerciales; los puestos internos no las ven.
+Las etapas son **configuración** (sin código). Las **12 etapas** (Fase A + Fase B) se marcan
+*job-specific* de **ambas figuras comerciales** (`job_reclutamiento_agente` y `job_captacion_promotoria`),
+para que solo aparezcan ahí; los **puestos internos no las ven** —usan el embudo nativo de Odoo (D-20).
 
-**Embudo COMERCIAL (Agente — `job_reclutamiento_agente`):**
+**Embudo COMERCIAL (Agente y Promotoría — `job_reclutamiento_agente`, `job_captacion_promotoria`):**
 
 | # | Etapa | Fase | `hired_stage` | Notas |
 |---|---|---|---|---|
@@ -98,13 +100,12 @@ solo aparezcan en figuras comerciales; los puestos internos no las ven.
 | 11 | **Cédula Emitida** | B | ✅ **True** | **Dispara conversión** (§5 · L2) |
 | 12 | En Desarrollo Comercial | B | — | Post-conversión (entrenamiento) |
 
-**Embudo INTERNO (Auxiliar admin., Reclutador, Gerencial):**
+**Puestos INTERNOS (Auxiliar admin., Reclutador, Gerencial, cualquier otro `hr.job`):**
 
-Usa las etapas de Fase A y una etapa terminal *job-specific*:
-
-| Etapa terminal | `hired_stage` | Notas |
-|---|---|---|
-| Contratado (Alta Interna) | ✅ **True** | Alta nativa de empleado. **Sin** Fase B, **sin** cédula, **sin** partner agente |
+Usan el **embudo nativo de Odoo** (`hr_recruitment`): las etapas nativas (New … Contract Signed) y
+su etapa hired nativa. **No** ven ninguna de las 12 etapas comerciales. Al llegar a la etapa hired
+nativa se da de alta el `hr.employee`; el ruteo por `job_id` (§5 · L2) **no** crea partner agente,
+puente ni cédula. La etapa BCA "Contratado (Alta Interna)" queda **retirada** (D-20, `19.0.1.7.7`).
 
 > Las etapas de Stand by y rechazo **no** son columnas: Stand by = **archivar** el candidato
 > (conserva historial, reactivable); rechazo = **motivo de rechazo** nativo (§4.5).
@@ -207,7 +208,7 @@ de correo.
 | Declinado Prospecto | Rechazo + motivo "Declinado por Prospecto" |
 | Declinado BCA | Rechazo + motivo "Declinado por BCA" |
 | Contratado (figura comercial) | Etapa "Acuerdo de Arranque" (hito) + conversión real en "Cédula Emitida" |
-| Contratado (interno) | Etapa "Contratado (Alta Interna)" = `hired` |
+| Contratado (interno) | Etapa hired nativa de Odoo ("Contract Signed") en el embudo nativo |
 | En Desarrollo Comercial | Etapa post-conversión |
 
 ---
@@ -242,8 +243,9 @@ viven en `BCA_Seguros` (código); los recordatorios/avisos pueden ir como reglas
      (proceso interno, §11 · SI-4).
   3. Crear `hr.employee` (gestión vía módulo de Empleados) **vinculado** al partner agente.
   4. Notificar a reclutadora y promotor: "agente habilitado (Clave de Arranque)".
-- **Acción (puesto interno):** alta nativa de `hr.employee` al llegar a "Contratado (Alta Interna)".
-  **Sin** partner agente, **sin** puente, **sin** cédula.
+- **Acción (puesto interno):** alta nativa de `hr.employee` al llegar a la etapa hired nativa de Odoo
+  (embudo nativo). **Sin** partner agente, **sin** puente, **sin** cédula. El ruteo por `job_id` ignora
+  cualquier job no comercial (D-20).
 - **Dónde:** código en `BCA_Seguros` (extiende el método existente).
 
 > **Nota de vínculo agente↔empleado:** el `hr.employee` del agente referencia al partner agente BCA

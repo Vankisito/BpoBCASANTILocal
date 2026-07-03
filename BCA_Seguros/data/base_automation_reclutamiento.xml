@@ -6,7 +6,7 @@
          (conversión) vive en el override de write() en Python.
 
          L6 — Aviso al cambiar de etapa (on_stage_set): publica una nota en el
-         candidato del embudo de agentes cuando avanza de etapa.
+         candidato del embudo comercial (agentes y promotorías) cuando avanza de etapa.
 
          Diferidos (SOP/HU futura): L3 (recordatorio a 3 días / no localizado) y
          L5 (no-show → Stand by) requieren triggers on_time por campo de fecha y
@@ -26,9 +26,11 @@
             <field name="base_automation_id" ref="automation_aviso_cambio_etapa"/>
             <field name="state">code</field>
             <field name="code">
-job = env.ref('BCA_Seguros.job_reclutamiento_agente', raise_if_not_found=False)
+job_agente = env.ref('BCA_Seguros.job_reclutamiento_agente', raise_if_not_found=False)
+job_promotoria = env.ref('BCA_Seguros.job_captacion_promotoria', raise_if_not_found=False)
+jobs_comerciales = [j for j in (job_agente, job_promotoria) if j]
 for rec in records:
-    if job and rec.job_id == job and rec.stage_id:
+    if rec.job_id in jobs_comerciales and rec.stage_id:
         rec.message_post(body="El candidato avanzó a la etapa: %s" % rec.stage_id.name)
             </field>
         </record>

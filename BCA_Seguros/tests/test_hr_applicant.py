@@ -95,6 +95,20 @@ class TestHrApplicant(TransactionCase):
         self.assertEqual(applicant.partner_id.parent_id, self.holding)
         self.assertEqual(applicant.partner_id.name, 'Nueva Promotoría SA')
 
+    def test_promotoria_hired_en_cedula_emitida_crea_promotoria(self) -> None:
+        """D-20: la promotoría comparte el embudo comercial; al llegar a la etapa
+        hired real "Cédula Emitida" se crea el res.partner promotoría (ruteo por job)."""
+        cedula = self.env.ref('BCA_Seguros.stage_cedula_emitida')
+        self.assertIn(self.job_captacion, cedula.job_ids,
+                      'La promotoría debe ver la etapa "Cédula Emitida".')
+        applicant = self._crear_applicant(
+            self.job_captacion, partner_name='Promotoría Embudo SA',
+        )
+        applicant.stage_id = cedula
+        self.assertTrue(applicant.partner_id)
+        self.assertEqual(applicant.partner_id.bca_tipo, 'promotoria')
+        self.assertEqual(applicant.partner_id.parent_id, self.holding)
+
     def test_reclutamiento_sin_promotoria_destino_error(self) -> None:
         """Reclutamiento con 5 datos pero sin promotoría destino → UserError."""
         datos = self._datos_habilitacion(bca_promotoria_destino_id=False)
@@ -130,9 +144,9 @@ class TestHrApplicant(TransactionCase):
     # Etapa 12 Fase A — cimientos (HU-1.0/1.1/1.2)
     # ---------------------------------------------------------------
     def test_embudo_12_etapas_cargadas(self) -> None:
-        """Las 12 etapas comerciales + Alta Interna cargan como datos del módulo."""
-        Stage = self.env['hr.recruitment.stage']
+        """Las 12 etapas comerciales cargan scopeadas a AMBOS jobs comerciales (D-20)."""
         job_recl = self.job_reclutamiento
+        job_capt = self.job_captacion
         xmlids_seq = [
             ('stage_recibido', 1), ('stage_prospeccion', 2), ('stage_cafe', 3),
             ('stage_entrevista', 4), ('stage_evaluacion_pda', 5),
@@ -146,17 +160,23 @@ class TestHrApplicant(TransactionCase):
             self.assertEqual(stage.sequence, seq, f'{xmlid} sequence != {seq}')
             self.assertIn(job_recl, stage.job_ids,
                           f'{xmlid} debe estar scopeada a job_reclutamiento_agente.')
+            self.assertIn(job_capt, stage.job_ids,
+                          f'{xmlid} debe estar scopeada a job_captacion_promotoria.')
 
     def test_hired_stages_flag(self) -> None:
-        """Cédula Emitida y Alta Interna tienen hired_stage=True; el resto no."""
+        """Cédula Emitida es la etapa hired del embudo comercial; Recibido no lo es."""
         cedula = self.env.ref('BCA_Seguros.stage_cedula_emitida')
-        alta = self.env.ref('BCA_Seguros.stage_alta_interna')
         recibido = self.env.ref('BCA_Seguros.stage_recibido')
         self.assertTrue(cedula.hired_stage, 'Cédula Emitida debe ser hired_stage.')
-        self.assertTrue(alta.hired_stage, 'Alta Interna debe ser hired_stage.')
         self.assertFalse(recibido.hired_stage, 'Recibido NO debe ser hired_stage.')
-        # Alta Interna es global (sin job_ids): disponible a jobs internos.
-        self.assertFalse(alta.job_ids, 'Alta Interna debe ser global (sin job_ids).')
+        # D-20: la etapa hired del embudo aplica a ambas figuras comerciales.
+        self.assertIn(self.job_reclutamiento, cedula.job_ids)
+        self.assertIn(self.job_captacion, cedula.job_ids)
+        # La etapa BCA "Contratado (Alta Interna)" fue retirada (embudo nativo).
+        self.assertFalse(
+            self.env.ref('BCA_Seguros.stage_alta_interna', raise_if_not_found=False),
+            'stage_alta_interna debe estar retirada (D-20).',
+        )
 
     def test_campos_identificacion_capturables(self) -> None:
         """Los campos bca_ de identificación/perfil se capturan y persisten.
@@ -339,16 +359,19 @@ class TestHrApplicant(TransactionCase):
         self.assertEqual(
             set(agente1.agente_aseguradora_ids.mapped('estado')), {'clave_arranque'})
 
-    def test_alta_interna_no_crea_puente_ni_agente(self) -> None:
-        """Alta interna (job no BCA) ⇒ sin partner agente ni puente (HU-1.5)."""
-        stage_alta = self.env.ref('BCA_Seguros.stage_alta_interna')
+    def test_job_interno_nativo_no_crea_puente_ni_agente(self) -> None:
+        """Puesto interno (job no BCA) en etapa hired ⇒ sin partner agente ni puente.
+
+        Los internos cierran por el embudo nativo (etapa hired nativa). El ruteo por
+        job en _bca_crear_partner_desde_contratado no crea agente/promotoría (D-20).
+        """
         antes = self.env['res.partner.agente.aseguradora'].search_count([])
         applicant = self._crear_applicant(self.job_estandar)
-        applicant.stage_id = stage_alta
+        applicant.stage_id = self.stage_hired
         if applicant.partner_id:
             self.assertNotEqual(applicant.partner_id.bca_tipo, 'agente')
         despues = self.env['res.partner.agente.aseguradora'].search_count([])
-        self.assertEqual(antes, despues, 'Alta interna no debe crear puentes.')
+        self.assertEqual(antes, despues, 'El alta interna no debe crear puentes.')
 
     # ---------------------------------------------------------------
     # Etapa 12 Fase D — motivos de rechazo + automatización + SIC (HU-1.7/1.9)

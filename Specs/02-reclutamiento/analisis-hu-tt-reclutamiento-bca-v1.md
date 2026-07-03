@@ -72,10 +72,9 @@ La pregunta central que respondemos por cada HU es: **¿quién la ejecuta y dón
 - **Por qué UI:** el SDD §4.1 es explícito: **las etapas son configuración (sin código)**.
 - **TTs:**
   - `DEV - Crear etapas del embudo comercial (Recibido → En Desarrollo Comercial)` · UX
-  - `DEV - Marcar etapas de Fase B como job-specific (job_reclutamiento_agente)` · UX
-  - `DEV - Crear etapa terminal interna "Contratado (Alta Interna)"` · UX
-  - `DEV - Marcar hired_stage=True en "Cédula Emitida" y "Alta Interna"` · UX
-- **Criterio de éxito:** un candidato comercial ve Fase A+B; un puesto interno solo ve Fase A + su etapa terminal.
+  - `DEV - Marcar las 12 etapas como job-specific de ambas figuras comerciales (job_reclutamiento_agente, job_captacion_promotoria)` · UX
+  - `DEV - Marcar hired_stage=True solo en "Cédula Emitida"` · UX
+- **Criterio de éxito:** los candidatos comerciales (agentes y promotorías) ven Fase A+B; un puesto interno usa el embudo nativo de Odoo, sin etapas BCA (D-20).
 
 ---
 
@@ -122,14 +121,14 @@ La pregunta central que respondemos por cada HU es: **¿quién la ejecuta y dón
 
 ---
 
-### HU-1.5 — Cerrar puestos internos sin Fase B · 🟧 UI / IMPLEMENTADOR
-*HU - Cerrar puestos internos sin Fase B - Capital Humano*
+### HU-1.5 — Cerrar puestos internos por el embudo nativo de Odoo · 🟧 UI / IMPLEMENTADOR
+*HU - Cerrar puestos internos por el embudo nativo - Capital Humano*
 
-- **Por qué UI:** se apoya en el **alta nativa de empleado** al llegar a `hired`; la ramificación por `job_id` (interno = sin puente/cédula) ya queda cubierta en el método de HU-1.4.
+- **Por qué UI:** se apoya en el **embudo y el alta nativa de empleado** de Odoo al llegar a la etapa hired nativa; la ramificación por `job_id` (job no BCA = sin puente/cédula) ya queda cubierta en el método de HU-1.4.
 - **TTs:**
-  - `DEV - Configurar etapa terminal interna como hired_stage` · UX
+  - `DEV - Verificar que los puestos internos usan el embudo nativo (sin etapas BCA)` · UX
   - `DEV - Validar que el alta interna NO crea puente ni cédula (ramificación por job_id de L2)` · Backend *(dependencia de HU-1.4)*
-- **Criterio de éxito:** un auxiliar/reclutador/gerencial se da de alta como empleado nativo, sin partner agente ni Fase B.
+- **Criterio de éxito:** un auxiliar/reclutador/gerencial se recluta por el embudo nativo y se da de alta como empleado nativo, sin partner agente ni Fase B (D-20).
 
 ---
 

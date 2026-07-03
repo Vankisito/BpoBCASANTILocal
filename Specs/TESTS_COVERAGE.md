@@ -45,9 +45,9 @@
 | Archivo | Tests previstos | Fase |
 |---|---|---|
 | `test_bca_sede.py` (nuevo) ✅ | `test_crud_y_rec_name`, `test_archivado`, `test_codigo_unico`, `test_codigo_nulo_permite_varias` | A |
-| `test_hr_applicant.py` (ext.) ✅ | `test_embudo_12_etapas_cargadas`, `test_hired_stages_flag`, `test_campos_identificacion_capturables`, `test_edad_computed_no_almacenada`, `test_no_campos_duplicados` (género/ramo reusan selección; RFC=`vat` diferido a Fase C) | A |
+| `test_hr_applicant.py` (ext.) ✅ | `test_embudo_12_etapas_cargadas` (scopeadas a ambos jobs comerciales, D-20), `test_hired_stages_flag` (sin Alta Interna), `test_campos_identificacion_capturables`, `test_edad_computed_no_almacenada`, `test_no_campos_duplicados` (género/ramo reusan selección; RFC=`vat` diferido a Fase C) | A |
 | `test_hr_applicant.py` (ext.) ✅ | `test_pda_riesgo_computed`, `test_pda_riesgo_crea_actividad_promotor`, `test_pda_avance_sin_vobo_bloquea`, `test_pda_con_vobo_avanza` | B |
-| `test_hr_applicant.py` (ext.) ✅ | `test_hired_sin_5_datos_bloquea`, `test_conversion_crea_puente_clave_arranque` (estado clave_arranque = no-PCA), `test_conversion_crea_employee`, `test_idempotencia_por_rfc_curp`, `test_alta_interna_no_crea_puente_ni_agente` (+ tests de conversión actualizados con 5 datos) | C |
+| `test_hr_applicant.py` (ext.) ✅ | `test_hired_sin_5_datos_bloquea`, `test_conversion_crea_puente_clave_arranque` (estado clave_arranque = no-PCA), `test_conversion_crea_employee`, `test_idempotencia_por_rfc_curp`, `test_job_interno_nativo_no_crea_puente_ni_agente` (D-20), `test_promotoria_hired_en_cedula_emitida_crea_promotoria` (D-20) (+ tests de conversión actualizados con 5 datos) | C |
 | `test_hr_applicant.py` (ext.) ✅ | `test_refuse_reasons_seed`, `test_automation_aviso_etapa_seed`, `test_sic_action_pivote_seed` (L3/L5 diferidos a SOP) | D |
 | `test_record_rules.py` (ext.) ✅ | `TestReclutamientoRecordRules`: `test_reclutadora_ve_solo_sus_candidatos`, `test_director_ve_todos_los_candidatos` (separación por job_id → refinamiento futuro) | E |
 
