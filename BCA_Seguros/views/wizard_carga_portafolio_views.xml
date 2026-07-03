@@ -21,8 +21,8 @@
                             <li><strong>Hojas:</strong> <code>VIDA</code> y/o
                                 <code>GMM</code> (otras hojas como AUTOS se omiten).</li>
                             <li><strong>Estructura:</strong> encabezados en la
-                                <strong>fila 2</strong>, datos desde la
-                                <strong>fila 4</strong>.</li>
+                                <strong>fila 1</strong>, datos desde la
+                                <strong>fila 2</strong>.</li>
                             <li><strong>Columnas obligatorias:</strong> número de póliza
                                 (<code>Póliza</code> en VIDA, <code>Poliza actual</code>
                                 en GMM), <code>Producto</code>,

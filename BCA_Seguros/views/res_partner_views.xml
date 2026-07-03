@@ -7,12 +7,11 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
 
-            <!-- Identidad BCA: la pestaña insignia va justo DESPUÉS de las
-                 nativas core (Contactos, Ventas y compras, Facturación, Notas),
-                 no al final. Ancla robusto en 'internal_notes' (página de
-                 `base`, siempre presente); account inserta "Facturación" antes
-                 de Notas, así que BCA queda inmediatamente tras Notas. -->
-            <xpath expr="//page[@name='internal_notes']" position="after">
+            <!-- Identidad BCA: la pestaña insignia es la PRIMERA pestaña del
+                 form de contacto (antes de "Contactos"), para máxima identidad
+                 BCA. Ancla robusto en 'contact_addresses' (página de `base`,
+                 siempre presente). -->
+            <xpath expr="//page[@name='contact_addresses']" position="before">
                 <page name="bca_seguros" string="BCA Seguros">
                     <group>
                         <group name="bca_clasificacion" string="Clasificación">
