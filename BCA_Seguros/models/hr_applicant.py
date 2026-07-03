@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from dateutil.relativedelta import relativedelta
 from psycopg2 import IntegrityError
@@ -24,6 +25,15 @@ PDA_NIVEL_SELECTION = [
     ('baja', 'Baja Compatibilidad'),
 ]
 _PDA_NIVELES_RIESGO = ('no_ideal', 'baja')
+
+# Validación de formato de identidad mexicana (Etapa 12, HU-1.4). Se valida el
+# patrón sobre el valor en mayúsculas/sin espacios; el contenido vacío se permite
+# (los campos se capturan en etapas tempranas). RFC: física (13) o moral (12).
+_RFC_REGEX = re.compile(r'^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$')
+# CURP: 18 posiciones con dígito verificador (patrón oficial RENAPO).
+_CURP_REGEX = re.compile(
+    r'^[A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{2}[B-DF-HJ-NP-TV-Z]{3}[A-Z0-9]\d$'
+)
 
 
 class HrApplicant(models.Model):
@@ -59,14 +69,14 @@ class HrApplicant(models.Model):
              'No se almacena (cambia con el tiempo); para segmentar por edad '
              'en reportes use rangos de fecha de nacimiento.',
     )
-    bca_institucion: str = fields.Char(string='Institución')
+    bca_institucion: str = fields.Char(string='Institución Educativa')
     bca_folio_cv: str = fields.Char(string='Folio CV', copy=False)
     # Campos de perfil que se muestran en la pestaña nativa "Detalles" (D-19).
     # Perfil académico se cubre con el nativo `type_id` (Grado); el origen del
     # candidato con `source_id`/`medium_id`/`campaign_id` nativos; el seguimiento
     # (contactado/entrevistado/reagendaciones) con el embudo de etapas + actividades.
+    # El "tipo de candidato" también se cubre con el origen nativo (D-21, retirado).
     bca_perfil_laboral: str = fields.Char(string='Perfil Laboral')
-    bca_tipo_candidato: str = fields.Char(string='Tipo de Candidato')
 
     @api.depends('bca_fecha_nacimiento')
     def _compute_bca_edad(self) -> None:
@@ -173,6 +183,11 @@ class HrApplicant(models.Model):
     # RFC → bca_rfc (hr.applicant NO tiene `vat` nativo); se mapea a partner.vat
     # en la conversión. CURP → bca_curp; ambos forman el Id interno PCA (D-15).
     bca_clave_arranque: str = fields.Char(string='Clave de Arranque', copy=False)
+    # Clave definitiva: se captura al llegar a la etapa "Clave Definitiva" y es
+    # requisito para crear el empleado (Fase 3). NO promueve el estado del agente
+    # a `clave_definitiva` en res.partner.agente.aseguradora (D-14/SI-4: eso es un
+    # proceso interno posterior que sí computa PCA).
+    bca_clave_definitiva: str = fields.Char(string='Clave Definitiva', copy=False)
     bca_fecha_cedula: fields.Date = fields.Date(string='Fecha de Cédula', copy=False)
     bca_aseguradora_id: int = fields.Many2one(
         'res.partner',
@@ -183,6 +198,52 @@ class HrApplicant(models.Model):
     )
     bca_rfc: str = fields.Char(string='RFC', copy=False)
     bca_curp: str = fields.Char(string='CURP', index=True, copy=False)
+
+    # Habilita el botón nativo "Create Employee" solo cuando el agente llega a la
+    # etapa "Clave Definitiva" (#9). Para el resto de puestos deja el criterio
+    # nativo intacto (True aquí; la vista mantiene el `date_closed` nativo).
+    bca_puede_crear_empleado: bool = fields.Boolean(
+        string='Puede crear empleado',
+        compute='_compute_bca_puede_crear_empleado',
+        store=False,
+    )
+
+    @api.depends('job_id', 'stage_id')
+    def _compute_bca_puede_crear_empleado(self) -> None:
+        job_recl = self.env.ref(
+            'BCA_Seguros.job_reclutamiento_agente', raise_if_not_found=False,
+        )
+        stage_def = self.env.ref(
+            'BCA_Seguros.stage_clave_definitiva', raise_if_not_found=False,
+        )
+        for applicant in self:
+            if job_recl and applicant.job_id == job_recl:
+                applicant.bca_puede_crear_empleado = bool(
+                    stage_def and applicant.stage_id
+                    and applicant.stage_id.sequence >= stage_def.sequence
+                )
+            else:
+                applicant.bca_puede_crear_empleado = True
+
+    @api.constrains('bca_rfc', 'bca_curp')
+    def _check_identidad_formato(self) -> None:
+        """Valida el formato de RFC y CURP mexicanos (solo si tienen valor)."""
+        for applicant in self:
+            if applicant.bca_rfc:
+                rfc = applicant.bca_rfc.upper().strip()
+                if not _RFC_REGEX.match(rfc):
+                    raise ValidationError(_(
+                        'El RFC "%s" no tiene un formato válido. Debe ser un RFC '
+                        'mexicano (12 caracteres para persona moral o 13 para '
+                        'persona física).'
+                    ) % applicant.bca_rfc)
+            if applicant.bca_curp:
+                curp = applicant.bca_curp.upper().strip()
+                if not _CURP_REGEX.match(curp):
+                    raise ValidationError(_(
+                        'La CURP "%s" no tiene un formato válido. Debe ser una CURP '
+                        'mexicana de 18 caracteres.'
+                    ) % applicant.bca_curp)
 
     @api.constrains('stage_id')
     def _check_habilitacion_datos(self) -> None:
@@ -223,52 +284,135 @@ class HrApplicant(models.Model):
         return [label for field_name, label in requeridos if not self[field_name]]
 
     def write(self, vals: dict) -> bool:
-        """Detecta paso a stage hired y dispara creación de res.partner BCA.
+        """Dispara la conversión por CRUCE de umbral de etapa (3 fases).
 
-        Solo cuando stage_id cambia a uno con hired_stage=True. Idempotente:
-        si el applicant ya tiene partner_id asignado por este flujo, no recrea.
-        También notifica al promotor cuando la evaluación PDA marca riesgo (L1).
+        Captura la secuencia de etapa previa por registro para detectar el cruce
+        de cada umbral (Acuerdo de Arranque → contacto; Cédula Emitida → clave;
+        Clave Definitiva → empleado) y disparar cada fase una sola vez, robusto a
+        saltos de etapa. También notifica al promotor cuando el PDA marca riesgo.
         """
+        prev_seq = {
+            applicant.id: (applicant.stage_id.sequence if applicant.stage_id else None)
+            for applicant in self
+        }
         result = super().write(vals)
         if 'stage_id' in vals:
             for applicant in self:
-                if applicant.stage_id and applicant.stage_id.hired_stage:
-                    applicant._bca_crear_partner_desde_contratado()
+                applicant._bca_procesar_transicion_etapa(prev_seq.get(applicant.id))
         if {'bca_pda_nivel', 'bca_pda_visto_bueno_promotor'} & vals.keys():
             for applicant in self:
                 applicant._bca_notificar_riesgo_pda()
         return result
 
-    def _bca_crear_partner_desde_contratado(self) -> None:
-        """Enruta la conversión según el hr.job del applicant contratado.
+    def _bca_procesar_transicion_etapa(self, prev_seq) -> None:
+        """Despacha la conversión por umbral de `sequence` de la etapa (D-13).
 
-        Idempotente: si ya hay partner_id con bca_tipo coherente, no hace nada.
-        Solo actúa sobre los dos jobs comerciales BCA (agente/promotoría); ignora
-        silenciosamente cualquier otro (puestos internos por embudo nativo → alta
-        nativa, sin agente/puente).
+        Tres fases idempotentes en el embudo comercial, cada una disparada al
+        CRUZAR su umbral desde una etapa inferior (una sola vez, robusto a saltos):
+          - Acuerdo de Arranque: traspaso Reclutamiento→Capital Humano (#11) +
+            creación del contacto res.partner (#10).
+          - Cédula Emitida (hired): asienta la clave por aseguradora (clave_arranque).
+          - Clave Definitiva: crea el hr.employee (exige bca_clave_definitiva, #9).
+        Ignora silenciosamente los jobs no comerciales (puestos internos).
         """
         self.ensure_one()
+        if not self.stage_id:
+            return
         job_captacion = self.env.ref(
             'BCA_Seguros.job_captacion_promotoria', raise_if_not_found=False,
         )
         job_reclutamiento = self.env.ref(
             'BCA_Seguros.job_reclutamiento_agente', raise_if_not_found=False,
         )
-
         if not self.job_id or self.job_id not in (job_captacion, job_reclutamiento):
             return
 
-        if self.partner_id and self.partner_id.bca_tipo in ('promotoria', 'agente'):
-            _logger.info(
-                'hr.applicant %s ya tiene partner BCA (%s); no se recrea.',
-                self.id, self.partner_id.id,
+        stage_acuerdo = self.env.ref(
+            'BCA_Seguros.stage_acuerdo_arranque', raise_if_not_found=False,
+        )
+        stage_cedula = self.env.ref(
+            'BCA_Seguros.stage_cedula_emitida', raise_if_not_found=False,
+        )
+        stage_definitiva = self.env.ref(
+            'BCA_Seguros.stage_clave_definitiva', raise_if_not_found=False,
+        )
+        new_seq = self.stage_id.sequence
+
+        def _cruza(threshold_stage) -> bool:
+            if not threshold_stage:
+                return False
+            thr = threshold_stage.sequence
+            return (prev_seq is None or prev_seq < thr) and new_seq >= thr
+
+        # Fase 1 — Acuerdo de Arranque: traspaso de equipo + creación del contacto.
+        if _cruza(stage_acuerdo):
+            self._bca_traspaso_capital_humano()
+            ya_tiene_partner = (
+                self.partner_id and self.partner_id.bca_tipo in ('promotoria', 'agente')
             )
+            if not ya_tiene_partner:
+                if self.job_id == job_captacion:
+                    self._bca_crear_promotoria()
+                else:
+                    self._bca_crear_partner_agente_basico()
+
+        # Fase 2 — Cédula Emitida (hired): asienta la clave por aseguradora.
+        if (self.job_id == job_reclutamiento and _cruza(stage_cedula)
+                and self.partner_id and self.partner_id.bca_tipo == 'agente'):
+            self._bca_crear_clave_aseguradora(self.partner_id)
+            self._bca_actividad_habilitacion(self.partner_id)
+
+        # Fase 3 — Clave Definitiva: crea el empleado (exige la clave definitiva).
+        if self.job_id == job_reclutamiento and _cruza(stage_definitiva):
+            if not self.bca_clave_definitiva:
+                raise ValidationError(_(
+                    'No se puede crear el empleado del agente "%s": debe capturar '
+                    'primero la Clave Definitiva en la pestaña Habilitación.'
+                ) % (self.partner_name or self.display_name))
+            if self.partner_id and self.partner_id.bca_tipo == 'agente':
+                empleado = self._bca_crear_empleado(self.partner_id)
+                if empleado and not self.employee_id:
+                    self.sudo().employee_id = empleado.id
+
+    def _bca_traspaso_capital_humano(self) -> None:
+        """Fase B (#11): traspasa la gestión de Reclutamiento a Capital Humano.
+
+        Nativo, sin campos custom: preserva a la reclutadora actual como
+        entrevistadora (`interviewer_ids`) y reasigna el responsable (`user_id`)
+        al usuario de Capital Humano del parámetro
+        `bca_reclutamiento.capital_humano_user_id`. Si el parámetro no está
+        configurado, solo deja constancia en el chatter. Idempotente.
+        """
+        self.ensure_one()
+        ch_param = self.env['ir.config_parameter'].sudo().get_param(
+            'bca_reclutamiento.capital_humano_user_id',
+        )
+        ch_user = self.env['res.users']
+        if ch_param and str(ch_param).isdigit():
+            ch_user = self.env['res.users'].browse(int(ch_param)).exists()
+
+        # Ya traspasado: el responsable actual ya es el de Capital Humano.
+        if ch_user and self.user_id == ch_user:
             return
 
-        if self.job_id == job_captacion:
-            self._bca_crear_promotoria()
+        reclutadora = self.user_id
+        if reclutadora and reclutadora not in self.interviewer_ids:
+            self.interviewer_ids = [(4, reclutadora.id)]
+
+        if ch_user:
+            self.user_id = ch_user
+            self.message_post(body=_(
+                'Traspaso a Capital Humano: responsable reasignado a '
+                '<b>%(ch)s</b>; la reclutadora <b>%(recl)s</b> se conserva como '
+                'entrevistadora.'
+            ) % {'ch': ch_user.name, 'recl': reclutadora.name or '—'})
         else:
-            self._bca_habilitar_agente()
+            self.message_post(body=_(
+                'El candidato llegó a "Acuerdo de Arranque" (Fase B). Capital '
+                'Humano debe tomar la gestión. Configure el parámetro '
+                '<code>bca_reclutamiento.capital_humano_user_id</code> para la '
+                'reasignación automática del responsable.'
+            ))
 
     def _bca_crear_promotoria(self) -> None:
         """Captación: crea el res.partner promotoría bajo el holding Grupo BCA."""
@@ -293,25 +437,25 @@ class HrApplicant(models.Model):
         self.partner_id = partner
         self._bca_log_partner_vinculado(partner)
 
-    def _bca_habilitar_agente(self) -> None:
-        """L2: habilita al agente al emitir cédula (HU-1.4).
+    def _bca_crear_partner_agente_basico(self) -> None:
+        """Fase 1 (#10): crea/reutiliza el res.partner agente en Acuerdo de Arranque.
 
-        Crea/reutiliza el partner agente (idempotente por Id interno = Nombre+RFC+
-        CURP, D-15), asienta la clave por aseguradora en `clave_arranque` (F1 — NO
-        `clave_definitiva`, no computa PCA) y crea el hr.employee. Atómico: valida
-        los 5 datos antes de crear nada.
+        Exige identidad completa (Promotoría destino + Sede + RFC + CURP, #5) para
+        identificar al agente de forma idempotente (Id interno = RFC+CURP, D-15).
+        NO asienta clave ni crea empleado: eso ocurre después (Fases 2 y 3).
         """
         self.ensure_one()
-        if not self.bca_promotoria_destino_id:
-            raise UserError(_(
-                'Para contratar a un agente debe especificar la '
-                'Promotoría destino en el candidato.'
-            ))
-        faltantes = self._bca_datos_habilitacion_faltantes()
+        requeridos = [
+            (self.bca_promotoria_destino_id, _('Promotoría destino')),
+            (self.bca_sede_id, _('Sede / Plaza')),
+            (self.bca_rfc, _('RFC')),
+            (self.bca_curp, _('CURP')),
+        ]
+        faltantes = [label for value, label in requeridos if not value]
         if faltantes:
             raise ValidationError(_(
-                'No se puede habilitar al agente "%(nombre)s": faltan datos de '
-                'habilitación: %(faltantes)s.'
+                'No se puede generar el contacto del agente "%(nombre)s" al llegar '
+                'a "Acuerdo de Arranque": faltan datos: %(faltantes)s.'
             ) % {
                 'nombre': self.partner_name or self.display_name,
                 'faltantes': ', '.join(faltantes),
@@ -319,7 +463,7 @@ class HrApplicant(models.Model):
 
         Partner = self.env['res.partner'].sudo()
         # Idempotencia por Id interno: reutiliza el agente aunque exista en otra
-        # promotoría/aseguradora; solo se le agrega la clave de la nueva (D-15).
+        # promotoría; se vincula al candidato sin duplicar (D-15).
         agente = Partner.search([
             ('bca_tipo', '=', 'agente'),
             ('vat', '=', self.bca_rfc),
@@ -337,11 +481,7 @@ class HrApplicant(models.Model):
                 'bca_curp': self.bca_curp,
             })
         self.partner_id = agente
-
-        self._bca_crear_clave_aseguradora(agente)
-        self._bca_crear_empleado(agente)
         self._bca_log_partner_vinculado(agente)
-        self._bca_actividad_habilitacion(agente)
 
     def _bca_crear_clave_aseguradora(self, agente):
         """Asienta la clave por aseguradora en `clave_arranque` (F1). Idempotente."""
@@ -413,7 +553,7 @@ class HrApplicant(models.Model):
         self.ensure_one()
         self.message_post(body=_(
             'Se creó/vinculó el contacto BCA <a href="#" data-oe-model="res.partner" '
-            'data-oe-id="%(id)s">%(name)s</a> (%(tipo)s) al cerrar el candidato como Contratado.'
+            'data-oe-id="%(id)s">%(name)s</a> (%(tipo)s).'
         ) % {'id': partner.id, 'name': partner.name, 'tipo': partner.bca_tipo})
         _logger.info(
             'hr.applicant %s: partner %s (%s, bca_tipo=%s).',

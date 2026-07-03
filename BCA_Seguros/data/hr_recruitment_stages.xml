@@ -9,10 +9,13 @@
          (evita el drift D-13). Se referencian por env.ref y se comparan por
          `sequence`, NUNCA por ID hardcodeado.
 
-         Las 12 etapas llevan job_ids → [job_reclutamiento_agente, job_captacion_promotoria]
-         para NO aparecer en puestos internos. "Cédula Emitida" (seq 11) es la etapa
-         hired (hired_stage=True): dispara la conversión (agente o promotoría según el
-         job, ruteo en hr_applicant._bca_crear_partner_desde_contratado).
+         Las 13 etapas llevan job_ids → [job_reclutamiento_agente, job_captacion_promotoria]
+         para NO aparecer en puestos internos. La conversión se dispara por CRUCE de
+         umbral de `sequence` (hr_applicant._bca_procesar_transicion_etapa), en 3 fases:
+           - "Acuerdo de Arranque" (seq 6): traspaso Reclutamiento→Capital Humano +
+             creación del contacto res.partner (agente/promotoría según el job).
+           - "Cédula Emitida" (seq 11, hired_stage=True): asienta la clave por aseguradora.
+           - "Clave Definitiva" (seq 13): crea el hr.employee del agente.
          "En Desarrollo Comercial" (seq 12) es post-habilitación.
 
          Los PUESTOS INTERNOS (Auxiliar admin., Reclutador, Gerencial, cualquier otro
@@ -42,7 +45,7 @@
         </record>
 
         <record id="stage_entrevista" model="hr.recruitment.stage">
-            <field name="name">Entrevista</field>
+            <field name="name">Cena</field>
             <field name="sequence">4</field>
             <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente'), ref('BCA_Seguros.job_captacion_promotoria')])]"/>
         </record>
@@ -93,6 +96,15 @@
         <record id="stage_en_desarrollo" model="hr.recruitment.stage">
             <field name="name">En Desarrollo Comercial</field>
             <field name="sequence">12</field>
+            <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente'), ref('BCA_Seguros.job_captacion_promotoria')])]"/>
+        </record>
+
+        <!-- Clave Definitiva (seq 13, post-desarrollo): dispara la creación del
+             hr.employee del agente (Fase 3). Exige el dato bca_clave_definitiva.
+             NO es hired_stage (la etapa hired sigue siendo "Cédula Emitida"). -->
+        <record id="stage_clave_definitiva" model="hr.recruitment.stage">
+            <field name="name">Clave Definitiva</field>
+            <field name="sequence">13</field>
             <field name="job_ids" eval="[(6, 0, [ref('BCA_Seguros.job_reclutamiento_agente'), ref('BCA_Seguros.job_captacion_promotoria')])]"/>
         </record>
 
