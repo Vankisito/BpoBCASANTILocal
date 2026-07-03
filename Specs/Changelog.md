@@ -4,6 +4,40 @@
 
 ---
 
+## Sesión 2026-07-03 — Etapa 12 Depuración de pestañas del postulante · `19.0.1.7.5`
+
+### Qué se hizo
+Refactor de UI: las pestañas propias **"Perfil"** y **"Origen"** de `hr.applicant` duplicaban
+funcionalidad nativa o del embudo. El arch nativo (v19) confirma que la pestaña **"Detalles"**
+(`application_details`) ya trae el **Grado** (`type_id`, académico) y la **Búsqueda de talentos**
+(`source_id`/`medium_id`/`campaign_id`, origen). Se depuran ambas (D-19).
+
+- **Eliminados 7 campos** de `hr.applicant`: `bca_referido_por`, `bca_evento`, `bca_contactado`,
+  `bca_entrevistado`, `bca_reagendaciones` (pestaña Origen) + `bca_perfil_academico`,
+  `bca_tiene_cedula_previa` (pestaña Perfil). Migración `19.0.1.7.5/post-migrate.py` hace
+  `DROP COLUMN IF EXISTS` de las 7 columnas huérfanas.
+- **Conservados y reubicados:** `bca_folio_cv` → pestaña **Identificación**; `bca_ramo`,
+  `bca_perfil_laboral`, `bca_tipo_candidato` → grupo **"Perfil BCA"** inyectado en la pestaña
+  **Detalles** nativa (`xpath` sobre `application_details`).
+- **Reuso de nativo:** académico = `type_id` (Grado); origen = source/medium/campaign; el
+  seguimiento (contactado/entrevistado/reagendaciones) lo cubre el embudo de etapas + actividades.
+- **Pestañas eliminadas:** "Perfil" y "Origen" desaparecen del formulario.
+- **SIC:** el filtro `bca_evento` se reemplaza por `campaign_id` (nativo) en el pivote.
+- **Tests:** `test_campos_identificacion_capturables` actualizado. Local `Devlocal`: 150 tests, 0 failed.
+- **Bump** `19.0.1.7.4` → **`19.0.1.7.5`**.
+
+### Archivos
+- Nuevos: `migrations/19.0.1.7.5/post-migrate.py`.
+- Modificados: `models/hr_applicant.py`, `views/hr_applicant_views.xml`,
+  `views/reclutamiento_views.xml`, `tests/test_hr_applicant.py`, `__manifest__.py`, docs +
+  `Specs/02-reclutamiento/QA_Manual_Etapa12_Reclutamiento.md`.
+
+### Decisión registrada
+- **D-19** — depuración de pestañas Perfil/Origen; reuso de `type_id`/UTM nativos; seguimiento
+  vía embudo + actividades; cédula previa se infiere de Habilitación.
+
+---
+
 ## Sesión 2026-07-02 — Etapa 12 Fase E: Visibilidad por reclutadora (CIERRE) · `19.0.1.7.4`
 
 ### Qué se hizo

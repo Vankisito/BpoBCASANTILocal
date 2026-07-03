@@ -269,3 +269,18 @@ Es el mismo patrón que ya usaban `test_pca_metlife`, `test_reportes`, `test_pol
 **Decisión:** Record rule sobre `hr.applicant`: la reclutadora ve sus candidatos (`user_id == uid`); Director Comercial y Director ven todo (regla `[(1,'=',1)]` explícita, A3). El **Promotor** es solo destino + notificación (SI-2), no opera el embudo. Los grupos nuevos (`group_bca_reclutadora`, `group_bca_capital_humano`) se declaran como **hermanos**, fuera de la cadena `implied_ids` de los 5 grupos existentes.
 
 **Razón:** Modelo de visibilidad por responsable, simple y nativo a `hr_recruitment`. Encadenar los grupos por `implied_ids` rompería la semántica de visibilidad no lineal (§2.4.3, corrección A3).
+
+---
+
+## D-19 — Depuración de pestañas Perfil/Origen del postulante (reuso de lo nativo)
+
+**Fecha:** 2026-07-03 (Etapa 12, post-cierre · revisión de UI con el usuario)
+**Contexto:** Las pestañas propias "Perfil" y "Origen" que se agregaron en Fase A a `hr.applicant` duplicaban campos nativos o del embudo. El arch nativo v19 tiene la pestaña **"Detalles"** (`application_details`) con Grado (`type_id`), Búsqueda de talentos (`source_id`/`medium_id`/`campaign_id`), Puesto y Paquete salarial.
+
+**Decisión:** Se eliminan ambas pestañas propias y **7 campos**:
+- Origen: `bca_evento` (→ `campaign_id` nativo), `bca_referido_por` (→ `source_id`), `bca_contactado`/`bca_entrevistado`/`bca_reagendaciones` (→ embudo de etapas + actividades nativas).
+- Perfil: `bca_perfil_academico` (→ `type_id`/Grado nativo), `bca_tiene_cedula_previa` (→ se infiere de la pestaña Habilitación: si tiene cédula, se captura ahí).
+
+Se **conservan y reubican**: `bca_folio_cv` → pestaña Identificación; `bca_ramo`/`bca_perfil_laboral`/`bca_tipo_candidato` → grupo "Perfil BCA" inyectado en la pestaña **Detalles** nativa. Migración `19.0.1.7.5/post-migrate.py` elimina las 7 columnas huérfanas.
+
+**Razón:** Principio "reusar antes que crear" (§2.6). El origen y el nivel académico ya son nativos; el seguimiento de contacto/entrevista es redundante con el `stage_id` (doble fuente de verdad); la cédula previa es un paso manual innecesario. Menos campos, formulario coherente, sin duplicar el estándar de Odoo. Ajusta —sin invalidar— el inventario de campos de Fase A y la decisión D-16 (el "evento" ya no es campo de texto propio; se modela con `campaign_id`).

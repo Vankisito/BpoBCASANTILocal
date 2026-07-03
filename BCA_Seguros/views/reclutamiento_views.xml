@@ -38,7 +38,7 @@
                 <field name="job_id"/>
                 <field name="bca_sede_id"/>
                 <field name="user_id"/>
-                <field name="bca_evento"/>
+                <field name="campaign_id"/>
                 <group>
                     <filter name="bca_group_sede" string="Sede"
                             context="{'group_by': 'bca_sede_id'}"/>
@@ -48,8 +48,8 @@
                             context="{'group_by': 'job_id'}"/>
                     <filter name="bca_group_ramo" string="Ramo"
                             context="{'group_by': 'bca_ramo'}"/>
-                    <filter name="bca_group_evento" string="Evento"
-                            context="{'group_by': 'bca_evento'}"/>
+                    <filter name="bca_group_campana" string="Campaña"
+                            context="{'group_by': 'campaign_id'}"/>
                     <filter name="bca_group_etapa" string="Etapa"
                             context="{'group_by': 'stage_id'}"/>
                 </group>

@@ -159,7 +159,11 @@ class TestHrApplicant(TransactionCase):
         self.assertFalse(alta.job_ids, 'Alta Interna debe ser global (sin job_ids).')
 
     def test_campos_identificacion_capturables(self) -> None:
-        """Los campos bca_ de identificación/perfil se capturan y persisten."""
+        """Los campos bca_ de identificación/perfil se capturan y persisten.
+
+        Tras D-19: académico=type_id nativo, origen=UTM nativo, seguimiento=embudo;
+        se conservan folio_cv (Identificación) y ramo/perfil_laboral/tipo (Detalles).
+        """
         sede = self.env['bca.sede'].create({'name': 'Sede Test', 'codigo': 'TST'})
         applicant = self._crear_applicant(
             self.job_reclutamiento,
@@ -167,22 +171,16 @@ class TestHrApplicant(TransactionCase):
             bca_ramo='vida',
             bca_genero='femenino',
             bca_institucion='Universidad X',
-            bca_perfil_academico='Licenciatura',
             bca_perfil_laboral='Ventas',
-            bca_tiene_cedula_previa=True,
             bca_tipo_candidato='Referido',
-            bca_referido_por='Ana',
             bca_folio_cv='CV-001',
-            bca_evento='Feria de Empleo',
-            bca_contactado=True,
-            bca_entrevistado=False,
-            bca_reagendaciones=2,
         )
         self.assertEqual(applicant.bca_sede_id, sede)
         self.assertEqual(applicant.bca_ramo, 'vida')
         self.assertEqual(applicant.bca_genero, 'femenino')
-        self.assertEqual(applicant.bca_reagendaciones, 2)
-        self.assertEqual(applicant.bca_evento, 'Feria de Empleo')
+        self.assertEqual(applicant.bca_perfil_laboral, 'Ventas')
+        self.assertEqual(applicant.bca_tipo_candidato, 'Referido')
+        self.assertEqual(applicant.bca_folio_cv, 'CV-001')
 
     def test_edad_computed_no_almacenada(self) -> None:
         """bca_edad se calcula desde la fecha de nacimiento y NO se almacena."""

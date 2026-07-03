@@ -60,18 +60,13 @@ class HrApplicant(models.Model):
              'en reportes use rangos de fecha de nacimiento.',
     )
     bca_institucion: str = fields.Char(string='Institución')
-    bca_perfil_academico: str = fields.Char(string='Perfil Académico')
-    bca_perfil_laboral: str = fields.Char(string='Perfil Laboral')
-    bca_tiene_cedula_previa: bool = fields.Boolean(string='¿Tiene Cédula Previa?')
-    bca_tipo_candidato: str = fields.Char(string='Tipo de Candidato')
-    bca_referido_por: str = fields.Char(string='Referido Por')
     bca_folio_cv: str = fields.Char(string='Folio CV', copy=False)
-    # SI-3: "Evento" (efectividad) como campo de texto simple; el modelo
-    # relacional bca.evento queda como mejora futura (D-16).
-    bca_evento: str = fields.Char(string='Evento')
-    bca_contactado: bool = fields.Boolean(string='Contactado')
-    bca_entrevistado: bool = fields.Boolean(string='Entrevistado')
-    bca_reagendaciones: int = fields.Integer(string='Reagendaciones', default=0)
+    # Campos de perfil que se muestran en la pestaña nativa "Detalles" (D-19).
+    # Perfil académico se cubre con el nativo `type_id` (Grado); el origen del
+    # candidato con `source_id`/`medium_id`/`campaign_id` nativos; el seguimiento
+    # (contactado/entrevistado/reagendaciones) con el embudo de etapas + actividades.
+    bca_perfil_laboral: str = fields.Char(string='Perfil Laboral')
+    bca_tipo_candidato: str = fields.Char(string='Tipo de Candidato')
 
     @api.depends('bca_fecha_nacimiento')
     def _compute_bca_edad(self) -> None:

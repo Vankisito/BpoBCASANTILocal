@@ -92,6 +92,8 @@ Prevalecen sobre cualquier conveniencia de implementación:
 
 **Campos nuevos en `hr.applicant`:** `bca_sede_id` (M2o `bca.sede`), `bca_ramo` (reusa `RAMO`), `bca_genero` (reusa `GENERO`), `bca_fecha_nacimiento` (Date), `bca_edad` (Integer computed), `bca_institucion` (Char), `bca_perfil_academico` (Char/Selection), `bca_perfil_laboral` (Char/Selection), `bca_tiene_cedula_previa` (Boolean), `bca_tipo_candidato` (Selection), `bca_referido_por` (Char/M2o), `bca_folio_cv` (Char), `bca_evento` (Char — SI-3), `bca_contactado` (Boolean), `bca_entrevistado` (Boolean), `bca_reagendaciones` (Integer default 0).
 
+> **Revisión post-cierre (D-19, `19.0.1.7.5`):** tras revisar la UI se eliminaron 7 de estos campos por redundancia con lo nativo/embudo: `bca_perfil_academico` (→ `type_id`/Grado nativo), `bca_evento` (→ `campaign_id`), `bca_referido_por` (→ `source_id`), `bca_tiene_cedula_previa` (→ se infiere de Habilitación), y `bca_contactado`/`bca_entrevistado`/`bca_reagendaciones` (→ embudo de etapas + actividades). Se conservan `bca_folio_cv` (Identificación) y `bca_ramo`/`bca_perfil_laboral`/`bca_tipo_candidato` (pestaña Detalles nativa). Las pestañas propias "Perfil" y "Origen" desaparecen.
+
 **Las 12 etapas (embudo comercial, `job_reclutamiento_agente`):** 1 Recibido · 2 Prospección · 3 Café · 4 Entrevista · 5 Evaluación PDA · 6 Acuerdo de Arranque · 7 Clave de Arranque · 8 Inscripción CIA · 9 Curso de Cédula · 10 Examen · 11 **Cédula Emitida** (`hired_stage=True`) · 12 En Desarrollo Comercial. Embudo interno: Fase A + "Contratado (Alta Interna)" (`hired_stage=True`), sin Fase B.
 
 **Checklist Fase A:**

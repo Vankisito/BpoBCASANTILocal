@@ -75,13 +75,13 @@ tipo: UAT / Pruebas de interfaz (Odoo backend)
 - [ ] **T2.1** Abro la app **Reclutamiento** → entro al puesto **"Reclutamiento de Agente"**. La vista kanban muestra las **12 columnas en este orden**:
   1. Recibido · 2. Prospección · 3. Café · 4. Entrevista · 5. Evaluación PDA · 6. Acuerdo de Arranque · 7. Clave de Arranque · 8. Inscripción CIA · 9. Curso de Cédula · 10. Examen · 11. **Cédula Emitida** · 12. En Desarrollo Comercial.
 - [ ] **T2.2** Creo un candidato nuevo (*Nuevo*): Nombre del candidato "Juan Pérez QA". Guardo. Se abre el formulario sin error.
-- [ ] **T2.3** En el formulario del candidato, confirmo que aparece el campo **Promotoría destino** y las pestañas nuevas: **Identificación**, **Perfil**, **Evaluación PDA**, **Habilitación**, **Origen**.
-- [ ] **T2.4** Pestaña **Identificación**: relleno **Sede / Plaza** (elijo "Matriz"), **Género**, **Fecha de Nacimiento** (ej. 01/01/1990). Verifico que el campo **Edad** se calcula solo (≈ la edad correcta) y **no es editable**.
-- [ ] **T2.5** Pestaña **Perfil**: relleno **Ramo**, **Perfil Académico**, **Perfil Laboral**, **Tipo de Candidato**, marco **¿Tiene Cédula Previa?**.
-- [ ] **T2.6** Pestaña **Origen**: relleno **Referido Por**, **Folio CV**, **Evento**, marco **Contactado** / **Entrevistado**, pongo **Reagendaciones** = 2.
+- [ ] **T2.3** En el formulario del candidato confirmo que aparece el campo **Promotoría destino** y las pestañas: **Nota** y **Detalles** (nativas) + **Identificación**, **Evaluación PDA**, **Habilitación** (BCA). **NO** deben existir pestañas "Perfil" ni "Origen" (se depuraron por reuso de lo nativo — D-19).
+- [ ] **T2.4** Pestaña **Identificación**: relleno **Sede / Plaza** (elijo "Matriz"), **Género**, **Fecha de Nacimiento** (ej. 01/01/1990), **Institución**, **Folio CV**. Verifico que el campo **Edad** se calcula solo (≈ la edad correcta) y **no es editable**.
+- [ ] **T2.5** Pestaña **Detalles** (nativa) → grupo **"Perfil BCA"**: relleno **Ramo**, **Perfil Laboral**, **Tipo de Candidato**. En el mismo tab, el **Grado** (nativo, "Postulante") cumple el rol de perfil académico, y **Búsqueda de talentos** (Fuente/Medio/Campaña) es el origen del candidato.
+- [ ] **T2.6** *(Verificación de depuración)* Confirmo que **NO** hay checks "Contactado/Entrevistado" ni "Reagendaciones" ni "¿Tiene Cédula Previa?" — el avance del candidato se refleja moviéndolo de **etapa** en el embudo, y la cédula (si la tiene) se captura en la pestaña **Habilitación**.
 - [ ] **T2.7** Guardo. Todo persiste sin error. Reabro el candidato y los datos siguen ahí.
 
-**Resultado esperado:** 12 etapas visibles y ordenadas; formulario con las 5 pestañas; edad calculada; todos los campos se guardan.
+**Resultado esperado:** 12 etapas visibles y ordenadas; el formulario muestra Identificación / Detalles (con "Perfil BCA") / Evaluación PDA / Habilitación, **sin** pestañas Perfil ni Origen; edad calculada; todo se guarda.
 
 ---
 
