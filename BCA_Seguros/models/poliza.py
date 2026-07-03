@@ -104,21 +104,23 @@ class BcaPoliza(models.Model):
         store=False,
         search='_search_promotoria_id',
     )
+    # Contratante y asegurado son ROLES de póliza, no tipos de red: cualquier
+    # contacto que no sea una entidad de red (aseguradora/promotoria/holding)
+    # puede serlo, sea persona o empresa. Un mismo contacto puede acumular ambos
+    # roles y hasta ser agente; los flags bca_es_contratante/bca_es_asegurado se
+    # derivan de estas relaciones.
     contratante_id: int = fields.Many2one(
         'res.partner',
         string='Contratante',
         required=True,
         ondelete='restrict',
-        domain=[('bca_tipo', '=', 'contratante')],
+        domain=[('bca_tipo', 'not in', ('aseguradora', 'promotoria', 'holding'))],
     )
-    # La persona cuya vida está asegurada puede coincidir con el contratante
-    # (caso más común). bca_tipo es de valor único, así que el domain admite
-    # tanto el tipo dedicado 'asegurado' como un contratante existente.
     asegurado_id: int = fields.Many2one(
         'res.partner',
         string='Asegurado',
         ondelete='restrict',
-        domain=['|', ('bca_tipo', '=', 'asegurado'), ('bca_tipo', '=', 'contratante')],
+        domain=[('bca_tipo', 'not in', ('aseguradora', 'promotoria', 'holding'))],
         help='Persona asegurada titular cuando es distinta del contratante. '
              'Aplica para ramo Vida y GMM.',
     )

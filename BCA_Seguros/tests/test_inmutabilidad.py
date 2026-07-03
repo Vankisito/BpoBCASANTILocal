@@ -26,7 +26,6 @@ class TestInmutabilidad(TransactionCase):
         })
         cls.contratante = Partner.create({
             'name': 'Cliente Test',
-            'bca_tipo': 'contratante',
         })
         cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
         # Rollup bca_estado_agente: clave definitiva vía puente (fuente de verdad).

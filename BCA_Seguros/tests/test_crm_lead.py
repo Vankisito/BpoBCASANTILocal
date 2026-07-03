@@ -13,7 +13,6 @@ class TestCrmLead(TransactionCase):
         cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
         cls.partner_cliente = cls.env['res.partner'].create({
             'name': 'Cliente Prospecto',
-            'bca_tipo': 'contratante',
         })
         cls.producto_seguro = cls.env['product.template'].create({
             'name': 'Vida LSP Lead Test',

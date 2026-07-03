@@ -88,7 +88,6 @@ class TestRecordRules(TransactionCase):
         })
         cls.contratante = Partner.create({
             'name': 'Cliente Test',
-            'bca_tipo': 'contratante',
         })
         cls.producto = Product.create({
             'name': 'Seguro Test',

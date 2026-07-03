@@ -41,7 +41,7 @@ class _CobranzaFixtures(TransactionCase):
             'estado': 'clave_definitiva',
         })
         cls.contratante = Partner.create({
-            'name': 'Contratante C', 'bca_tipo': 'contratante',
+            'name': 'Contratante C',
         })
         cls.producto_vida = cls.env['product.template'].create({
             'name': 'TempoLife Cobranza',

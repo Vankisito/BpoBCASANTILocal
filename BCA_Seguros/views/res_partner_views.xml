@@ -7,7 +7,12 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
 
-            <xpath expr="//notebook" position="inside">
+            <!-- Identidad BCA: la pestaña insignia va justo DESPUÉS de las
+                 nativas core (Contactos, Ventas y compras, Facturación, Notas),
+                 no al final. Ancla robusto en 'internal_notes' (página de
+                 `base`, siempre presente); account inserta "Facturación" antes
+                 de Notas, así que BCA queda inmediatamente tras Notas. -->
+            <xpath expr="//page[@name='internal_notes']" position="after">
                 <page name="bca_seguros" string="BCA Seguros">
                     <group>
                         <group name="bca_clasificacion" string="Clasificación">
@@ -28,6 +33,12 @@
                             <field name="bca_promotoria_id"
                                    readonly="1"
                                    invisible="bca_tipo != 'agente'"/>
+                            <!-- Roles de póliza (no excluyentes, derivados de
+                                 las pólizas). Readonly: un contacto puede ser
+                                 contratante y asegurado a la vez, además de su
+                                 posición de red. -->
+                            <field name="bca_es_contratante" readonly="1"/>
+                            <field name="bca_es_asegurado" readonly="1"/>
                         </group>
                         <group name="bca_agente" string="Datos de Agente"
                                invisible="bca_tipo != 'agente'">
@@ -51,7 +62,9 @@
                             </list>
                         </field>
                     </group>
-                    <group invisible="bca_tipo != 'contratante'">
+                    <!-- Datos de contratante: visibles para individuos y para
+                         cualquier contacto que ya tenga un rol de póliza. -->
+                    <group invisible="is_company and not bca_es_contratante and not bca_es_asegurado">
                         <group name="bca_demograficos" string="Datos Demográficos">
                             <!-- RFC → vat, domicilio → street/city/zip/state_id ya
                                  están en el form estándar de res.partner. -->
@@ -59,7 +72,7 @@
                             <field name="bca_estado_civil"/>
                             <field name="bca_genero"/>
                         </group>
-                        <group name="bca_referencias_pago" string="Referencias de Pago">
+                        <group name="bca_referencias_pago" string="Referencias de Pago (MetLife)">
                             <field name="bca_ref_prima_basica_trad"/>
                             <field name="bca_ref_prima_medica"/>
                             <field name="bca_fondo_variable"/>
@@ -73,22 +86,23 @@
                 </page>
             </xpath>
 
-            <!-- C1: smart buttons de Pólizas y Recibos en contratantes y agentes.
-                 bca_tipo está presente en la vista (tab BCA Seguros), por lo que
-                 las expresiones invisible= resuelven. -->
+            <!-- C1: smart buttons de Pólizas y Recibos. Visibles cuando el
+                 contacto tiene rol de póliza (contratante/asegurado) o es
+                 agente. bca_es_contratante/bca_es_asegurado están en la vista
+                 (grupo Clasificación), por lo que las expresiones resuelven. -->
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_bca_polizas"
                         type="object"
                         class="oe_stat_button"
                         icon="fa-file-text-o"
-                        invisible="bca_tipo not in ('contratante', 'agente')">
+                        invisible="not bca_es_contratante and not bca_es_asegurado and bca_tipo != 'agente'">
                     <field name="bca_poliza_count" widget="statinfo" string="Pólizas"/>
                 </button>
                 <button name="action_view_bca_recibos"
                         type="object"
                         class="oe_stat_button"
                         icon="fa-money"
-                        invisible="bca_tipo not in ('contratante', 'agente')">
+                        invisible="not bca_es_contratante and not bca_es_asegurado and bca_tipo != 'agente'">
                     <field name="bca_recibo_count" widget="statinfo" string="Recibos"/>
                 </button>
             </xpath>
@@ -117,14 +131,17 @@
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
                 <separator/>
-                <filter name="filter_aseguradoras" string="Aseguradoras"
+                <filter name="filter_clientes_aseguradoras" string="Clientes (Aseguradoras)"
                         domain="[('bca_tipo', '=', 'aseguradora')]"/>
                 <filter name="filter_promotorias" string="Promotorías"
                         domain="[('bca_tipo', '=', 'promotoria')]"/>
                 <filter name="filter_agentes" string="Agentes"
                         domain="[('bca_tipo', '=', 'agente')]"/>
+                <separator/>
                 <filter name="filter_contratantes" string="Contratantes"
-                        domain="[('bca_tipo', '=', 'contratante')]"/>
+                        domain="[('bca_es_contratante', '=', True)]"/>
+                <filter name="filter_asegurados" string="Asegurados"
+                        domain="[('bca_es_asegurado', '=', True)]"/>
                 <separator/>
                 <filter name="filter_agente_definitiva" string="Agentes con Clave Definitiva"
                         domain="[('bca_tipo', '=', 'agente'),

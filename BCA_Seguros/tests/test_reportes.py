@@ -33,7 +33,7 @@ class TestReportes(TransactionCase):
             'Agente Rep Arranque', 'CLV-REP-ARR', 'clave_arranque')
 
         cls.contratante = Partner.create({
-            'name': 'Contratante Rep', 'bca_tipo': 'contratante',
+            'name': 'Contratante Rep',
         })
         cls.conducto = cls.env['bca.conducto'].create({
             'name': 'Conducto Rep',

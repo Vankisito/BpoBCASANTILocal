@@ -36,7 +36,6 @@ class TestPolizaGMM(TransactionCase):
         })
         cls.contratante = Partner.create({
             'name': 'Contratante G',
-            'bca_tipo': 'contratante',
         })
         cls.dependiente_1 = Partner.create({'name': 'Dependiente 1'})
         cls.dependiente_2 = Partner.create({'name': 'Dependiente 2'})

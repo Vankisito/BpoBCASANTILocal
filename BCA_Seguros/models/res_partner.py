@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+import re
+import unicodedata
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+# Eje "posición en la RED de distribución de BCA" (excluyente por contacto). El
+# cliente de BCA es la ASEGURADORA (a quien BCA cobra comisiones); contratante y
+# asegurado NO viven aquí: son roles de póliza (no excluyentes) expresados en los
+# flags computados bca_es_contratante / bca_es_asegurado.
 TIPO_SELECTION = [
     ('holding', 'Holding'),
     ('aseguradora', 'Aseguradora'),
     ('promotoria', 'Promotoría'),
     ('agente', 'Agente'),
-    ('contratante', 'Contratante'),
-    ('asegurado', 'Asegurado'),
 ]
+# Entidades estructurales de la red que NUNCA pueden ser contratante/asegurado de
+# una póliza; se excluyen de la deduplicación de personas y del domain de póliza.
+TIPOS_RED_EXCLUIDOS_POLIZA = ('aseguradora', 'promotoria', 'holding')
 # Nomenclatura de carrera del agente (BDD §"Agentes — identidad y nomenclatura").
 # Es el estado POR ASEGURADORA y vive en el modelo puente
 # res.partner.agente.aseguradora. En res.partner, bca_estado_agente es un
@@ -83,25 +91,77 @@ class ResPartner(models.Model):
         copy=False,
     )
 
-    # Referencias de pago del contratante (MetLife Vida).
+    # Referencias BANCARIAS de cobro que MetLife entrega en el layout de
+    # portafolio: son las referencias con las que el CONTRATANTE paga a MetLife
+    # cada concepto/fondo de su póliza (no importes, son cadenas de referencia).
+    # NO son inventadas: cada campo se alimenta 1:1 de una columna del layout
+    # (ver _datos_contratante en wizards/carga_portafolio.py). Se conservan como
+    # Char por decisión de negocio (mantener el desglose por concepto que trae la
+    # aseguradora); no se migran a res.partner.bank porque ese modelo no tiene
+    # concepto/fondo nativo y se perdería el detalle.
     bca_ref_prima_basica_trad: str = fields.Char(
         string='Referencia Prima Básica (TRAD)',
+        help="Layout MetLife Vida, columna 'Referencia Prima Básica (TRAD)'.",
     )
-    # Referencia de cobro de la prima médica (MetLife GMM).
     bca_ref_prima_medica: str = fields.Char(
         string='Referencia Prima (MÉDICA)',
+        help="Layout MetLife GMM, columna 'Referencia de cobro Prima (MEDICA)'.",
     )
-    bca_fondo_variable: str = fields.Char(string='Fondo Variable')
-    bca_fondo_fijo: str = fields.Char(string='Fondo Fijo')
-    bca_fondo_variable_ppr: str = fields.Char(string='Fondo Variable PPR')
-    bca_fondo_fijo_ppr: str = fields.Char(string='Fondo Fijo PPR')
-    bca_fondo_variable_cpea: str = fields.Char(string='Fondo Variable CPEA')
-    bca_fondo_fijo_cpea: str = fields.Char(string='Fondo Fijo CPEA')
+    bca_fondo_variable: str = fields.Char(
+        string='Fondo Variable',
+        help="Layout MetLife Vida, columna 'Fondo Variable'.",
+    )
+    bca_fondo_fijo: str = fields.Char(
+        string='Fondo Fijo',
+        help="Layout MetLife Vida, columna 'Fondo Fijo'.",
+    )
+    bca_fondo_variable_ppr: str = fields.Char(
+        string='Fondo Variable PPR',
+        help="Layout MetLife Vida, 'Fondo Variable Plan Personal de Retiro (PPR)'.",
+    )
+    bca_fondo_fijo_ppr: str = fields.Char(
+        string='Fondo Fijo PPR',
+        help="Layout MetLife Vida, 'Fondo Fijo Plan Personal de Retiro (PPR)'.",
+    )
+    bca_fondo_variable_cpea: str = fields.Char(
+        string='Fondo Variable CPEA',
+        help="Layout MetLife Vida, 'Fondo Variable Cuenta Personal Especial de "
+             "Ahorro (CPEA)'.",
+    )
+    bca_fondo_fijo_cpea: str = fields.Char(
+        string='Fondo Fijo CPEA',
+        help="Layout MetLife Vida, 'Fondo Fijo Cuenta Especial de Ahorro (CPEA)'.",
+    )
 
     agente_aseguradora_ids: list[int] = fields.One2many(
         'res.partner.agente.aseguradora',
         'agente_id',
         string='Claves por Aseguradora',
+    )
+
+    # Roles de PÓLIZA (no excluyentes): un mismo contacto puede ser contratante
+    # y asegurado a la vez, y además tener posición de red (p. ej. agente). Se
+    # derivan de las pólizas (fuente única de verdad) vía estas relaciones
+    # inversas; los flags almacenados sirven para filtros/visibilidad.
+    bca_polizas_como_contratante: list[int] = fields.One2many(
+        'bca.poliza',
+        'contratante_id',
+        string='Pólizas como Contratante',
+    )
+    bca_polizas_como_asegurado: list[int] = fields.One2many(
+        'bca.poliza',
+        'asegurado_id',
+        string='Pólizas como Asegurado',
+    )
+    bca_es_contratante: bool = fields.Boolean(
+        string='Es Contratante',
+        compute='_compute_bca_roles_poliza',
+        store=True,
+    )
+    bca_es_asegurado: bool = fields.Boolean(
+        string='Es Asegurado',
+        compute='_compute_bca_roles_poliza',
+        store=True,
     )
 
     # C2: computed SIN store — retorna parent_id en tiempo real, nunca stale data.
@@ -119,8 +179,9 @@ class ResPartner(models.Model):
         compute='_compute_categoria_id',
     )
 
-    # C1: contadores para smart buttons de Pólizas y Recibos. Aplican a
-    # contratantes (vía contratante_id) y agentes (vía agente vigente).
+    # C1: contadores para smart buttons de Pólizas y Recibos. Un mismo contacto
+    # puede acumular pólizas por rol de contratante (vía contratante_id) y/o de
+    # agente (vía agente vigente); el contador es la unión de ambos.
     bca_poliza_count: int = fields.Integer(
         string='# Pólizas',
         compute='_compute_bca_counts',
@@ -155,6 +216,25 @@ class ResPartner(models.Model):
     def _search_promotoria_id(self, operator: str, value: object) -> list:
         return [('parent_id', operator, value)]
 
+    @api.depends('bca_polizas_como_contratante', 'bca_polizas_como_asegurado')
+    def _compute_bca_roles_poliza(self) -> None:
+        """Deriva los roles de póliza (no excluyentes) desde las relaciones."""
+        for rec in self:
+            rec.bca_es_contratante = bool(rec.bca_polizas_como_contratante)
+            rec.bca_es_asegurado = bool(rec.bca_polizas_como_asegurado)
+
+    @staticmethod
+    def _bca_norm_nombre(valor: str) -> str:
+        """Normaliza un nombre para deduplicación: sin acentos, mayúsculas,
+        espacios colapsados. 'Juan  Pérez ' y 'JUAN PEREZ' → 'JUAN PEREZ'."""
+        if not valor:
+            return ''
+        sin_acentos = ''.join(
+            c for c in unicodedata.normalize('NFKD', valor)
+            if not unicodedata.combining(c)
+        )
+        return re.sub(r'\s+', ' ', sin_acentos).strip().upper()
+
     @api.depends('bca_tipo')
     def _compute_categoria_id(self) -> None:
         """Asigna categoría de contacto según bca_tipo.
@@ -168,7 +248,6 @@ class ResPartner(models.Model):
             'aseguradora': 'BCA_Seguros.partner_cat_aseguradora',
             'promotoria':  'BCA_Seguros.partner_cat_promotoria',
             'agente':      'BCA_Seguros.partner_cat_agente',
-            'contratante': 'BCA_Seguros.partner_cat_contratante',
         }
         for rec in self:
             xmlid = xmlid_map.get(rec.bca_tipo)
@@ -177,36 +256,32 @@ class ResPartner(models.Model):
             else:
                 rec.bca_categoria_id = False
 
-    @api.depends('bca_tipo')
+    @api.depends(
+        'bca_polizas_como_contratante', 'bca_polizas_como_asegurado', 'bca_tipo')
     def _compute_bca_counts(self) -> None:
         Poliza = self.env['bca.poliza']
         Recibo = self.env['bca.recibo']
         for rec in self:
-            if rec.bca_tipo == 'contratante':
-                rec.bca_poliza_count = Poliza.search_count(
-                    [('contratante_id', '=', rec.id)]
-                )
-                rec.bca_recibo_count = Recibo.search_count(
-                    [('poliza_id.contratante_id', '=', rec.id)]
-                )
-            elif rec.bca_tipo == 'agente':
-                rec.bca_poliza_count = Poliza.search_count(
-                    [('agente_id', '=', rec.id)]
-                )
-                rec.bca_recibo_count = Recibo.search_count(
-                    [('agente_poliza_id', '=', rec.id)]
-                )
-            else:
-                rec.bca_poliza_count = 0
-                rec.bca_recibo_count = 0
+            # Unión de roles: pólizas donde es contratante y/o agente.
+            rec.bca_poliza_count = Poliza.search_count([
+                '|', ('contratante_id', '=', rec.id), ('agente_id', '=', rec.id),
+            ])
+            rec.bca_recibo_count = Recibo.search_count([
+                '|',
+                ('poliza_id.contratante_id', '=', rec.id),
+                ('agente_poliza_id', '=', rec.id),
+            ])
 
     def action_view_bca_polizas(self) -> dict:
         self.ensure_one()
-        if self.bca_tipo == 'agente':
-            domain = [('agente_id', '=', self.id)]
+        domain = [
+            '|', ('contratante_id', '=', self.id), ('agente_id', '=', self.id),
+        ]
+        # Contexto de creación: prioriza el rol de contratante; si es un agente
+        # puro, precarga el agente.
+        if self.bca_tipo == 'agente' and not self.bca_es_contratante:
             context = {'default_agente_id': self.id}
         else:
-            domain = [('contratante_id', '=', self.id)]
             context = {'default_contratante_id': self.id}
         return {
             'type': 'ir.actions.act_window',
@@ -219,10 +294,11 @@ class ResPartner(models.Model):
 
     def action_view_bca_recibos(self) -> dict:
         self.ensure_one()
-        if self.bca_tipo == 'agente':
-            domain = [('agente_poliza_id', '=', self.id)]
-        else:
-            domain = [('poliza_id.contratante_id', '=', self.id)]
+        domain = [
+            '|',
+            ('poliza_id.contratante_id', '=', self.id),
+            ('agente_poliza_id', '=', self.id),
+        ]
         return {
             'type': 'ir.actions.act_window',
             'name': _('Recibos de %s') % self.display_name,

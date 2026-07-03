@@ -113,7 +113,6 @@ class TestParserMetLifeVida(TransactionCase):
         })
         cls.contratante = Partner.create({
             'name': 'Cliente Vida Test',
-            'bca_tipo': 'contratante',
         })
         cls.producto = cls.env['product.template'].create({
             'name': 'Vida LSP Test',
@@ -247,7 +246,6 @@ class TestParserMetLifeGMM(TransactionCase):
         })
         cls.contratante = Partner.create({
             'name': 'Cliente GMM Test',
-            'bca_tipo': 'contratante',
         })
         cls.producto = cls.env['product.template'].create({
             'name': 'GMM GCAYE Test',

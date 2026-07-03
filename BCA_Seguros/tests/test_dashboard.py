@@ -34,7 +34,7 @@ class TestDashboard(TransactionCase):
         cls.prospecto = cls._crear_agente('Prospecto DB', 'CLV-DB-P', 'prospecto')
 
         cls.contratante = Partner.create({
-            'name': 'Contratante DB', 'bca_tipo': 'contratante',
+            'name': 'Contratante DB',
         })
         cls.conducto = cls.env['bca.conducto'].create({
             'name': 'Conducto DB',

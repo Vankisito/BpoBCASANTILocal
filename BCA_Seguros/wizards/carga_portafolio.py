@@ -8,6 +8,10 @@ from datetime import date, datetime
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from odoo.addons.BCA_Seguros.models.res_partner import (
+    TIPOS_RED_EXCLUIDOS_POLIZA,
+)
+
 from . import plantilla_portafolio
 
 try:
@@ -17,10 +21,12 @@ except ImportError:  # pragma: no cover - declarado en external_dependencies
 
 _logger = logging.getLogger(__name__)
 
-# Estructura del layout LAY_OUT_-_Portafolio_BCA: encabezados en fila 2, tipos en
-# fila 3, datos desde fila 4 (ver Specs/01-cobranza-polizas/diccionario-campos-{vida,gmm}-*).
-FILA_ENCABEZADOS = 2
-FILA_INICIO_DATOS = 4
+# Estructura de la plantilla: encabezados en la fila 1, datos desde la fila 2.
+# El emparejamiento de columnas es POR NOMBRE de encabezado, no por posición
+# (ver _extraer_filas), así que cada aseguradora puede entregar sus columnas en
+# cualquier orden mientras respete los títulos en la primera fila.
+FILA_ENCABEZADOS = 1
+FILA_INICIO_DATOS = 2
 
 # Hojas soportadas → ramo operativo. AUTOS (Qualitas) queda fuera de alcance.
 HOJAS_RAMO = {
@@ -373,15 +379,15 @@ class BcaWizardCargaPortafolio(models.TransientModel):
         corte = vals.get('pagado_hasta_inicial')
         estado_destino = vals.pop('estado')  # se aplica tras generar el plan
 
-        contratante = self._find_or_create_partner(contratante_data, 'contratante')
+        contratante = self._find_or_create_partner(contratante_data)
         vals['contratante_id'] = contratante.id
         if asegurado_nombre and asegurado_nombre != contratante_data.get('name'):
-            asegurado = self._find_or_create_partner({'name': asegurado_nombre}, 'asegurado')
+            asegurado = self._find_or_create_partner({'name': asegurado_nombre})
             vals['asegurado_id'] = asegurado.id
 
         poliza = self.env['bca.poliza'].create(vals)
         for b in beneficiarios:
-            partner = self._find_or_create_partner({'name': b['nombre']}, False)
+            partner = self._find_or_create_partner({'name': b['nombre']})
             self.env['bca.poliza.beneficiario'].create({
                 'poliza_id': poliza.id,
                 'beneficiario_id': partner.id,
@@ -494,24 +500,45 @@ class BcaWizardCargaPortafolio(models.TransientModel):
             ('aseguradora_id', '=', self.aseguradora_id.id),
         ], limit=1)
 
-    def _find_or_create_partner(self, datos: dict, bca_tipo):
-        """Busca por RFC (vat) o nombre exacto; crea si no existe. Idempotente."""
+    def _find_or_create_partner(self, datos: dict):
+        """Busca una persona (contratante/asegurado/beneficiario) de forma
+        ROLE-AGNÓSTICA y la crea si no existe. Idempotente.
+
+        Un mismo res.partner puede acumular varios roles de póliza (contratante
+        y asegurado a la vez) e incluso una posición de red (p. ej. agente), así
+        que NO se segrega por rol ni se fija bca_tipo: los roles se derivan de
+        las pólizas. Se excluyen las entidades de red (aseguradora/promotoria/
+        holding), que nunca son la persona de una póliza. El contratante puede
+        ser persona o empresa, por eso no se filtra por is_company.
+
+        Orden de emparejamiento: RFC (vat) → nombre case-insensitive → nombre
+        normalizado (sin acentos ni dobles espacios).
+        """
         nombre = datos.get('name')
         if not nombre:
             raise UserError(_('Falta el nombre de un contacto requerido.'))
         Partner = self.env['res.partner']
-        dominio = [('name', '=', nombre)]
-        if datos.get('vat'):
-            dominio = ['|', ('vat', '=', datos['vat']), ('name', '=', nombre)]
-        if bca_tipo:
-            dominio = [('bca_tipo', '=', bca_tipo)] + dominio
-        partner = Partner.search(dominio, limit=1)
+        base = [('bca_tipo', 'not in', list(TIPOS_RED_EXCLUIDOS_POLIZA))]
+        # 1) Por RFC: identificador más fuerte cuando viene en el layout.
+        vat = datos.get('vat')
+        if vat:
+            partner = Partner.search(base + [('vat', '=ilike', vat)], limit=1)
+            if partner:
+                return partner
+        # 2) Por nombre case-insensitive (captura mayúsculas/espacios laterales).
+        partner = Partner.search(base + [('name', '=ilike', nombre)], limit=1)
         if partner:
             return partner
-        vals = dict(datos)
-        if bca_tipo:
-            vals['bca_tipo'] = bca_tipo
-        return Partner.create(vals)
+        # 3) Red final: normalización fuerte en Python (acentos, dobles espacios).
+        #    Se acota la búsqueda por el primer token para no barrer toda la tabla.
+        objetivo = Partner._bca_norm_nombre(nombre)
+        primer_token = objetivo.split(' ')[0] if objetivo else ''
+        if primer_token:
+            candidatos = Partner.search(base + [('name', 'ilike', primer_token)])
+            for cand in candidatos:
+                if Partner._bca_norm_nombre(cand.name) == objetivo:
+                    return cand
+        return Partner.create(dict(datos))
 
     # ------------------------------------------------------------------ #
     # Construcción de datos auxiliares

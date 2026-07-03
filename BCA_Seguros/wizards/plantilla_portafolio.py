@@ -13,9 +13,10 @@ carácter, con las claves leídas en ``wizards/carga_portafolio.py``
 viceversa — descarta silenciosamente la columna. El test round-trip de
 ``tests/test_carga_portafolio.py`` protege contra esa deriva.
 
-Las columnas marcadas ``REQUERIDO`` en la fila de ayuda son las validadas por
-``COLUMNAS_REQUERIDAS``: su ausencia aborta la hoja completa. El resto son
-opcionales/informativas y una celda vacía es válida.
+Las columnas marcadas ``REQUERIDO`` en la ayuda (comentario de celda del
+encabezado) son las validadas por ``COLUMNAS_REQUERIDAS``: su ausencia aborta
+la hoja completa. El resto son opcionales/informativas y una celda vacía es
+válida.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from __future__ import annotations
 import io
 
 import openpyxl
+from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -209,51 +211,40 @@ EJEMPLOS_GMM = [
 # --------------------------------------------------------------------------- #
 # Renderizado
 # --------------------------------------------------------------------------- #
-FILL_TITULO = PatternFill('solid', fgColor='1F4E78')
 FILL_HEADER = PatternFill('solid', fgColor='2E75B6')
-FILL_HINT = PatternFill('solid', fgColor='DEEBF7')
-FONT_TITULO = Font(color='FFFFFF', bold=True, size=12)
 FONT_HEADER = Font(color='FFFFFF', bold=True, size=10)
-FONT_HINT = Font(color='1F4E78', italic=True, size=8)
 WRAP = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
 
 def _construir_hoja(wb, nombre: str, columnas: list, ejemplos: list) -> None:
     """Crea una hoja con la estructura que espera el wizard.
 
-    Fila 1: título libre · fila 2: encabezados (los que lee el wizard) ·
-    fila 3: ayuda de formato (ignorada por el wizard) · fila 4+: ejemplos.
+    Fila 1: encabezados (los que lee el wizard) · fila 2+: datos/ejemplos.
+    La ayuda de formato de cada columna se adjunta como COMENTARIO de celda
+    sobre su encabezado, para no ocupar una fila y no romper el layout
+    "títulos en la primera fila, datos en la segunda".
     """
     ws = wb.create_sheet(nombre)
     headers = [c[0] for c in columnas]
     hints = [c[1] for c in columnas]
 
-    titulo = ws.cell(row=1, column=1, value='Portafolio BCA — Ramo %s' % nombre)
-    titulo.font = FONT_TITULO
-    titulo.fill = FILL_TITULO
-
-    for col, header in enumerate(headers, start=1):
-        celda = ws.cell(row=2, column=col, value=header)
+    for col, (header, hint) in enumerate(zip(headers, hints), start=1):
+        celda = ws.cell(row=1, column=col, value=header)
         celda.font = FONT_HEADER
         celda.fill = FILL_HEADER
         celda.alignment = WRAP
+        if hint:
+            celda.comment = Comment(hint, 'Plantilla BCA')
 
-    for col, hint in enumerate(hints, start=1):
-        celda = ws.cell(row=3, column=col, value=hint)
-        celda.font = FONT_HINT
-        celda.fill = FILL_HINT
-        celda.alignment = WRAP
-
-    for fila_idx, ejemplo in enumerate(ejemplos, start=4):
+    for fila_idx, ejemplo in enumerate(ejemplos, start=2):
         for col, header in enumerate(headers, start=1):
             ws.cell(row=fila_idx, column=col, value=ejemplo.get(header, ''))
 
     for col, header in enumerate(headers, start=1):
         ancho = min(max(len(header) + 2, 14), 40)
         ws.column_dimensions[get_column_letter(col)].width = ancho
-    ws.row_dimensions[2].height = 42
-    ws.row_dimensions[3].height = 42
-    ws.freeze_panes = 'B4'
+    ws.row_dimensions[1].height = 42
+    ws.freeze_panes = 'B2'
 
 
 def construir_workbook() -> openpyxl.Workbook:

@@ -36,11 +36,9 @@ class TestPolizaVida(TransactionCase):
         })
         cls.contratante = Partner.create({
             'name': 'Contratante V',
-            'bca_tipo': 'contratante',
         })
         cls.asegurado = Partner.create({
             'name': 'Asegurado V',
-            'bca_tipo': 'asegurado',
         })
         cls.benef_1 = Partner.create({'name': 'Beneficiario 1'})
         cls.benef_2 = Partner.create({'name': 'Beneficiario 2'})

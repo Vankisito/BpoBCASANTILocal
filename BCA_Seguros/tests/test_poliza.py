@@ -39,7 +39,6 @@ class TestPoliza(TransactionCase):
         })
         cls.contratante = Partner.create({
             'name': 'Cliente Test',
-            'bca_tipo': 'contratante',
         })
         cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
         # bca_estado_agente es un rollup computed: para que los agentes "jueguen"

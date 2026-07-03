@@ -29,16 +29,14 @@ HEADERS_GMM = [
 
 
 def _build_xlsx(sheets: dict) -> bytes:
-    """sheets = {nombre: (headers, [fila_dict, ...])}. Encabezados en fila 2,
-    tipos en fila 3, datos desde fila 4 (estructura del layout real)."""
+    """sheets = {nombre: (headers, [fila_dict, ...])}. Encabezados en fila 1,
+    datos desde fila 2 (estructura del layout real)."""
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     for nombre, (headers, filas) in sheets.items():
         ws = wb.create_sheet(nombre)
-        ws.append(['Layout %s' % nombre])              # fila 1: título
-        ws.append(headers)                              # fila 2: encabezados
-        ws.append(['tipo'] * len(headers))              # fila 3: tipos
-        for fila in filas:                              # fila 4+: datos
+        ws.append(headers)                              # fila 1: encabezados
+        for fila in filas:                              # fila 2+: datos
             ws.append([fila.get(h, '') for h in headers])
     buffer = io.BytesIO()
     wb.save(buffer)
@@ -237,6 +235,46 @@ class TestCargaPortafolioGrabado(_PortafolioFixtures):
         self.assertTrue(self.env['bca.poliza'].search([('name', '=', 'PV-OK')]))
         self.assertFalse(self.env['bca.poliza'].search([('name', '=', 'PV-MAL')]))
 
+    def test_persona_con_doble_rol_es_un_solo_contacto(self) -> None:
+        """B1: una misma persona como asegurado en una póliza y contratante en
+        otra debe ser UN solo res.partner con ambos flags, aunque el nombre
+        venga con distinta grafía (acentos/mayúsculas)."""
+        fila_x = self._fila_vida(**{
+            'Póliza': 'PV-X', 'Nombre del Contratante': 'Carlos Ruiz',
+            'R.F.C. Contratante': 'RUIC800101AAA',
+            'Nombre del Asegurado': 'Marta Solís',
+        })
+        fila_y = self._fila_vida(**{
+            'Póliza': 'PV-Y', 'Nombre del Contratante': 'MARTA SOLIS',
+            'R.F.C. Contratante': '', 'Nombre del Asegurado': 'MARTA SOLIS',
+        })
+        self._grabar({'VIDA': (HEADERS_VIDA, [fila_x, fila_y])})
+        martas = self.env['res.partner'].search([('name', 'ilike', 'Marta')])
+        self.assertEqual(len(martas), 1, 'No debe duplicarse por grafía distinta.')
+        self.assertTrue(martas.bca_es_contratante)
+        self.assertTrue(martas.bca_es_asegurado)
+
+    def test_agente_existente_reutilizado_como_contratante(self) -> None:
+        """Un agente (posición de red) que aparece como contratante en el
+        portafolio se reutiliza: mismo contacto, conserva bca_tipo='agente' y
+        gana el flag de contratante."""
+        roberto = self.env['res.partner'].create({
+            'name': 'Roberto Agente', 'bca_tipo': 'agente',
+            'parent_id': self.promotoria.id,
+        })
+        fila = self._fila_vida(**{
+            'Póliza': 'PV-AG', 'Nombre del Contratante': 'Roberto Agente',
+            'R.F.C. Contratante': '', 'Nombre del Asegurado': 'Roberto Agente',
+        })
+        self._grabar({'VIDA': (HEADERS_VIDA, [fila])})
+        robertos = self.env['res.partner'].search([('name', '=', 'Roberto Agente')])
+        self.assertEqual(len(robertos), 1, 'No debe crearse un segundo contacto.')
+        self.assertEqual(robertos, roberto)
+        self.assertEqual(robertos.bca_tipo, 'agente')
+        self.assertTrue(robertos.bca_es_contratante)
+        pol = self.env['bca.poliza'].search([('name', '=', 'PV-AG')])
+        self.assertEqual(pol.contratante_id, roberto)
+
 
 @tagged('BCA_Seguros')
 class TestPlantillaDescarga(_PortafolioFixtures):
@@ -291,7 +329,7 @@ class TestEstatusPagoComputed(_PortafolioFixtures):
             'name': 'POL-EST', 'aseguradora_id': self.aseguradora.id,
             'producto_id': self.producto_vida.id, 'agente_id': self.agente.id,
             'contratante_id': self.env['res.partner'].create({
-                'name': 'C Est', 'bca_tipo': 'contratante'}).id,
+                'name': 'C Est'}).id,
             'fecha_inicio': date(2025, 1, 1), 'fecha_fin': date(2027, 1, 1),
             'periodicidad': 'mensual', 'prima_anual': 12000.0,
         }
@@ -305,7 +343,7 @@ class TestEstatusPagoComputed(_PortafolioFixtures):
             'name': 'POL-BORR', 'aseguradora_id': self.aseguradora.id,
             'producto_id': self.producto_vida.id, 'agente_id': self.agente.id,
             'contratante_id': self.env['res.partner'].create({
-                'name': 'C Borr', 'bca_tipo': 'contratante'}).id,
+                'name': 'C Borr'}).id,
             'fecha_inicio': date(2025, 1, 1), 'fecha_fin': date(2027, 1, 1),
             'periodicidad': 'anual', 'prima_anual': 1000.0,
         })

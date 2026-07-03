@@ -40,7 +40,6 @@ class TestPcaMetLife(TransactionCase):
         })
         cls.contratante = Partner.create({
             'name': 'Contratante PCA',
-            'bca_tipo': 'contratante',
         })
         cls.conducto = cls.env['bca.conducto'].create({
             'name': 'Conducto PCA',
