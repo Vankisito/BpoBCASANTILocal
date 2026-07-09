@@ -102,24 +102,18 @@ _GMM_ESPECIFICO = [
 ]
 
 
-def _beneficiarios_vida() -> list[tuple[str, str]]:
-    """Hasta 7 beneficiarios con porcentaje de reparto (deben sumar 100%)."""
-    cols: list[tuple[str, str]] = []
-    for n in range(1, 8):
-        cols.append(('Nombre del Beneficiario %d' % n, 'nombre completo'))
-        cols.append(('Parentesco %d' % n, 'Cónyuge/Hijo/Padre/Madre/Hermano'))
-        cols.append(('%% al que tiene Derecho %d' % n, 'porcentaje (suma = 100)'))
-    return cols
-
-
-def _asegurados_gmm() -> list[tuple[str, str]]:
-    """Hasta 5 asegurados adicionales (dependientes), con fecha de nacimiento."""
-    cols: list[tuple[str, str]] = []
-    for n in range(1, 6):
-        cols.append(('Nombre del Asegurado %d' % n, 'nombre del dependiente'))
-        cols.append(('Parentesco %d' % n, 'Cónyuge/Hijo/Padre/Madre/Hermano'))
-        cols.append(('Fecha de nacimiento (Asegurado %d)' % n, 'fecha dd/mm/aaaa'))
-    return cols
+# Beneficiarios (Vida) y asegurados adicionales/dependientes (GMM) viven en una
+# hoja PROPIA en formato largo (una fila por persona), no como columnas anchas de
+# las hojas de póliza: BCA los entrega en un documento distinto y una póliza puede
+# tener hasta 10. La hoja se referencia contra la póliza por su folio (columna
+# "Póliza") + la aseguradora seleccionada en el wizard. Ver B05.
+_BENEFICIARIOS = [
+    ('Póliza', 'REQUERIDO · folio de la póliza a la que pertenece'),
+    ('Nombre del Beneficiario', 'REQUERIDO · nombre completo'),
+    ('Parentesco', 'Cónyuge/Hijo/Padre/Madre/Hermano'),
+    ('% al que tiene Derecho', 'Vida: porcentaje (por póliza debe sumar 100)'),
+    ('Fecha de Nacimiento', 'GMM (dependiente): fecha dd/mm/aaaa'),
+]
 
 
 COLUMNAS_VIDA: list[tuple[str, str]] = (
@@ -128,7 +122,6 @@ COLUMNAS_VIDA: list[tuple[str, str]] = (
     + _COMUNES_PRIMAS
     + _CONTRATANTE
     + _VIDA_ESPECIFICO
-    + _beneficiarios_vida()
 )
 
 COLUMNAS_GMM: list[tuple[str, str]] = (
@@ -138,8 +131,9 @@ COLUMNAS_GMM: list[tuple[str, str]] = (
     + _COMUNES_PRIMAS
     + _CONTRATANTE
     + _GMM_ESPECIFICO
-    + _asegurados_gmm()
 )
+
+COLUMNAS_BENEFICIARIOS: list[tuple[str, str]] = _BENEFICIARIOS
 
 # --------------------------------------------------------------------------- #
 # Filas de ejemplo (indexadas por encabezado). Los encabezados ausentes se
@@ -161,10 +155,6 @@ EJEMPLOS_VIDA = [
         'Población (Alcaldía o Municipio)': 'Cuauhtémoc', 'C.P': '06000',
         'Teléfono o Celular': '5512345678', 'e-mail del Contratante': 'juan@example.com',
         'Nombre del Asegurado': 'Juan Pérez García',
-        'Nombre del Beneficiario 1': 'María Pérez', 'Parentesco 1': 'Hija',
-        '% al que tiene Derecho 1': '50',
-        'Nombre del Beneficiario 2': 'Pedro Pérez', 'Parentesco 2': 'Hijo',
-        '% al que tiene Derecho 2': '50',
     },
     {
         'Póliza': 'PV-0002', 'Producto': 'TempoLife', 'Clave de Agente': 'A100',
@@ -174,8 +164,6 @@ EJEMPLOS_VIDA = [
         'Estatus de Póliza': 'Vigente', 'Estatus de Pago': 'Al corriente',
         'Nombre del Contratante': 'Ana Torres Ruiz',
         'R.F.C. Contratante': 'TORA900202BBB', 'Género': 'Femenino',
-        'Nombre del Beneficiario 1': 'Luis Torres', 'Parentesco 1': 'Cónyuge',
-        '% al que tiene Derecho 1': '100',
     },
 ]
 
@@ -191,10 +179,6 @@ EJEMPLOS_GMM = [
         'Estatus de Póliza': 'Vigente', 'Estatus de Pago': 'Al corriente',
         'Pagado Hasta': '01/01/2025', 'Nombre del Contratante': 'Ana López Díaz',
         'R.F.C. Contratante': 'LODA850303CCC', 'Género': 'Femenino',
-        'Nombre del Asegurado 1': 'Carlos López', 'Parentesco 1': 'Cónyuge',
-        'Fecha de nacimiento (Asegurado 1)': '15/05/1984',
-        'Nombre del Asegurado 2': 'Sofía López', 'Parentesco 2': 'Hija',
-        'Fecha de nacimiento (Asegurado 2)': '20/09/2012',
     },
     {
         'Poliza actual': 'PG-0002', 'Producto': 'GMM Integral',
@@ -206,6 +190,23 @@ EJEMPLOS_GMM = [
         'Nombre del Contratante': 'Roberto Gómez Sánchez',
         'R.F.C. Contratante': 'GOSR780404DDD', 'Género': 'Masculino',
     },
+]
+
+# Formato largo: una fila por beneficiario/dependiente, referenciando la póliza
+# por su folio. VIDA usa "% al que tiene Derecho" (suma 100 por póliza); GMM usa
+# "Fecha de Nacimiento" (dependientes). PV-0001/PG-0001 refieren a los ejemplos
+# de las hojas VIDA/GMM.
+EJEMPLOS_BENEFICIARIOS = [
+    {'Póliza': 'PV-0001', 'Nombre del Beneficiario': 'María Pérez',
+     'Parentesco': 'Hija', '% al que tiene Derecho': '50'},
+    {'Póliza': 'PV-0001', 'Nombre del Beneficiario': 'Pedro Pérez',
+     'Parentesco': 'Hijo', '% al que tiene Derecho': '50'},
+    {'Póliza': 'PV-0002', 'Nombre del Beneficiario': 'Luis Torres',
+     'Parentesco': 'Cónyuge', '% al que tiene Derecho': '100'},
+    {'Póliza': 'PG-0001', 'Nombre del Beneficiario': 'Carlos López',
+     'Parentesco': 'Cónyuge', 'Fecha de Nacimiento': '15/05/1984'},
+    {'Póliza': 'PG-0001', 'Nombre del Beneficiario': 'Sofía López',
+     'Parentesco': 'Hija', 'Fecha de Nacimiento': '20/09/2012'},
 ]
 
 # --------------------------------------------------------------------------- #
@@ -248,11 +249,12 @@ def _construir_hoja(wb, nombre: str, columnas: list, ejemplos: list) -> None:
 
 
 def construir_workbook() -> openpyxl.Workbook:
-    """Arma el libro con las hojas VIDA y GMM. No escribe a disco."""
+    """Arma el libro con las hojas VIDA, GMM y BENEFICIARIOS. No escribe a disco."""
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     _construir_hoja(wb, 'VIDA', COLUMNAS_VIDA, EJEMPLOS_VIDA)
     _construir_hoja(wb, 'GMM', COLUMNAS_GMM, EJEMPLOS_GMM)
+    _construir_hoja(wb, 'BENEFICIARIOS', COLUMNAS_BENEFICIARIOS, EJEMPLOS_BENEFICIARIOS)
     return wb
 
 

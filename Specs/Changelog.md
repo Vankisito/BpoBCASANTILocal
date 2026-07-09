@@ -4,6 +4,41 @@
 
 ---
 
+## Sesión 2026-07-09 — Cobranza/Pólizas: carga de beneficiarios por hoja separada (B05) · `19.0.1.7.9`
+
+### Qué se hizo
+Se resuelve **B05** (carga de cartera histórica): faltaba una vía para importar los beneficiarios,
+que BCA entrega en un **documento distinto** al de pólizas (formato largo, hasta 10 por póliza),
+mientras el wizard solo los contemplaba como columnas anchas inline de la hoja VIDA (máx. 7).
+
+- Nueva **hoja `BENEFICIARIOS`** en la plantilla (formato largo: `Póliza`, `Nombre del Beneficiario`,
+  `Parentesco`, `% al que tiene Derecho`, `Fecha de Nacimiento`). Sirve tanto para beneficiarios de
+  **Vida** (con %) como para **dependientes GMM** (con fecha de nacimiento) —reúsan el mismo modelo
+  `bca.poliza.beneficiario`.
+- El wizard la procesa en una **segunda pasada tras las hojas de póliza** (así las pólizas creadas en
+  la misma corrida ya existen). Puede venir **junto** a VIDA/GMM o **sola** (para pólizas ya cargadas).
+- **Referencia por folio** de póliza + aseguradora del wizard (`_resolver_poliza`).
+- **Semántica de REEMPLAZO** por póliza (D-22): borra los beneficiarios existentes y recrea desde el
+  archivo → re-ejecución idempotente. En **Vida** valida que los porcentajes sumen 100% (por póliza);
+  cada grupo se aísla en su propio savepoint y un grupo inválido se rechaza sin frenar los demás.
+- La plantilla generada **ya no lleva** las columnas inline de beneficiarios/dependientes (se movieron
+  a la hoja nueva); el wizard **conserva** el parseo inline por retrocompatibilidad.
+- **Bump** `19.0.1.7.8` → **`19.0.1.7.9`**.
+
+### Archivos
+- Modificados: `wizards/plantilla_portafolio.py` (hoja + ejemplos BENEFICIARIOS; se retiran columnas
+  inline), `wizards/carga_portafolio.py` (`_recorrer` relajado + `_procesar_beneficiarios` /
+  `_procesar_grupo_beneficiarios` / `_resolver_poliza`), `tests/test_carga_portafolio.py`
+  (clase `TestCargaBeneficiariosHoja` + round-trip a 9 filas), `__manifest__.py`.
+
+### Tests
+- **0 failed, 0 error(s) of 171 tests** (Docker local `Devlocal`).
+- Nuevos casos: beneficiarios junto a póliza Vida, hoja sola para póliza existente, reemplazo en
+  recarga, folio inexistente rechazado, suma ≠ 100% rechazada, dependientes GMM sin regla 100%,
+  VALIDAR no toca BD.
+
+---
+
 ## Sesión 2026-07-03 — Reclutamiento: correcciones QA + flujo de conversión en 3 fases (D-21) · `19.0.1.7.8`
 
 ### Qué se hizo

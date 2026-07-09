@@ -26,6 +26,11 @@ HEADERS_GMM = [
     'Pagado Hasta', 'Nombre del Asegurado 1', 'Parentesco 1',
     'Fecha de nacimiento (Asegurado 1)',
 ]
+# Hoja de beneficiarios en formato largo (B05).
+HEADERS_BENEFICIARIOS = [
+    'Póliza', 'Nombre del Beneficiario', 'Parentesco',
+    '% al que tiene Derecho', 'Fecha de Nacimiento',
+]
 
 
 def _build_xlsx(sheets: dict) -> bytes:
@@ -277,6 +282,110 @@ class TestCargaPortafolioGrabado(_PortafolioFixtures):
 
 
 @tagged('BCA_Seguros')
+class TestCargaBeneficiariosHoja(_PortafolioFixtures):
+    """B05: hoja BENEFICIARIOS en formato largo (una fila por persona),
+    referenciada a la póliza por folio. Puede venir junto a las hojas de
+    póliza o sola, para pólizas ya cargadas. Semántica de REEMPLAZO."""
+
+    def _grabar(self, sheets: dict, modo: str = 'crear_actualizar'):
+        wizard = self._wizard(_build_xlsx(sheets), modo=modo)
+        wizard.action_validar()
+        wizard.action_grabar()
+        return wizard
+
+    def _benef(self, poliza: str, nombre: str, **ov) -> dict:
+        base = {
+            'Póliza': poliza, 'Nombre del Beneficiario': nombre,
+            'Parentesco': 'Hijo', '% al que tiene Derecho': '',
+            'Fecha de Nacimiento': '',
+        }
+        base.update(ov)
+        return base
+
+    def test_beneficiarios_junto_a_poliza_vida(self) -> None:
+        wizard = self._grabar({
+            'VIDA': (HEADERS_VIDA, [self._fila_vida()]),
+            'BENEFICIARIOS': (HEADERS_BENEFICIARIOS, [
+                self._benef('PV-001', 'Hijo Uno', **{'% al que tiene Derecho': '60'}),
+                self._benef('PV-001', 'Hija Dos', **{'% al que tiene Derecho': '40'}),
+            ]),
+        })
+        self.assertEqual(wizard.creadas, 1)
+        self.assertEqual(wizard.rechazadas, 0)
+        vida = self.env['bca.poliza'].search([('name', '=', 'PV-001')])
+        self.assertEqual(len(vida.beneficiario_ids), 2)
+        self.assertAlmostEqual(
+            sum(vida.beneficiario_ids.mapped('porcentaje')), 100.0, places=2)
+
+    def test_beneficiarios_hoja_sola_para_poliza_existente(self) -> None:
+        # 1ª carga: solo la póliza.
+        self._grabar({'VIDA': (HEADERS_VIDA, [self._fila_vida()])})
+        vida = self.env['bca.poliza'].search([('name', '=', 'PV-001')])
+        self.assertFalse(vida.beneficiario_ids)
+        # 2ª carga: solo la hoja de beneficiarios (archivo distinto).
+        wizard = self._grabar({'BENEFICIARIOS': (HEADERS_BENEFICIARIOS, [
+            self._benef('PV-001', 'Único', **{'% al que tiene Derecho': '100'}),
+        ])})
+        self.assertEqual(wizard.rechazadas, 0)
+        self.assertEqual(len(vida.beneficiario_ids), 1)
+        self.assertEqual(vida.beneficiario_ids.beneficiario_id.name, 'Único')
+
+    def test_beneficiarios_reemplaza_en_recarga(self) -> None:
+        self._grabar({'VIDA': (HEADERS_VIDA, [self._fila_vida()])})
+        self._grabar({'BENEFICIARIOS': (HEADERS_BENEFICIARIOS, [
+            self._benef('PV-001', 'Viejo Uno', **{'% al que tiene Derecho': '50'}),
+            self._benef('PV-001', 'Viejo Dos', **{'% al que tiene Derecho': '50'}),
+        ])})
+        vida = self.env['bca.poliza'].search([('name', '=', 'PV-001')])
+        self.assertEqual(len(vida.beneficiario_ids), 2)
+        # Recarga con un solo beneficiario: reemplaza (no acumula).
+        self._grabar({'BENEFICIARIOS': (HEADERS_BENEFICIARIOS, [
+            self._benef('PV-001', 'Nuevo Único', **{'% al que tiene Derecho': '100'}),
+        ])})
+        self.assertEqual(len(vida.beneficiario_ids), 1)
+        self.assertEqual(vida.beneficiario_ids.beneficiario_id.name, 'Nuevo Único')
+
+    def test_beneficiarios_folio_inexistente_rechaza(self) -> None:
+        wizard = self._grabar({'BENEFICIARIOS': (HEADERS_BENEFICIARIOS, [
+            self._benef('NO-EXISTE', 'Fulano', **{'% al que tiene Derecho': '100'}),
+        ])})
+        self.assertEqual(wizard.rechazadas, 1)
+        self.assertEqual(wizard.creadas, 0)
+
+    def test_beneficiarios_vida_suma_distinta_100_rechaza(self) -> None:
+        self._grabar({'VIDA': (HEADERS_VIDA, [self._fila_vida()])})
+        wizard = self._grabar({'BENEFICIARIOS': (HEADERS_BENEFICIARIOS, [
+            self._benef('PV-001', 'Uno', **{'% al que tiene Derecho': '50'}),
+            self._benef('PV-001', 'Dos', **{'% al que tiene Derecho': '30'}),
+        ])})
+        self.assertEqual(wizard.rechazadas, 1)
+        vida = self.env['bca.poliza'].search([('name', '=', 'PV-001')])
+        self.assertFalse(vida.beneficiario_ids, 'El grupo inválido no debe grabarse.')
+
+    def test_dependientes_gmm_por_folio_sin_regla_100(self) -> None:
+        self._grabar({'GMM': (HEADERS_GMM, [self._fila_gmm()])})
+        wizard = self._grabar({'BENEFICIARIOS': (HEADERS_BENEFICIARIOS, [
+            self._benef('PG-001', 'Dependiente Uno', **{
+                'Parentesco': 'Cónyuge', 'Fecha de Nacimiento': '15/05/1990'}),
+        ])})
+        self.assertEqual(wizard.rechazadas, 0)
+        gmm = self.env['bca.poliza'].search([('name', '=', 'PG-001')])
+        self.assertEqual(len(gmm.beneficiario_ids), 1)
+        self.assertEqual(gmm.beneficiario_ids.fecha_nacimiento, date(1990, 5, 15))
+
+    def test_validar_beneficiarios_no_toca_bd(self) -> None:
+        self._grabar({'VIDA': (HEADERS_VIDA, [self._fila_vida()])})
+        wizard = self._wizard(_build_xlsx({'BENEFICIARIOS': (HEADERS_BENEFICIARIOS, [
+            self._benef('PV-001', 'Solo Validar', **{'% al que tiene Derecho': '100'}),
+        ])}))
+        wizard.action_validar()
+        self.assertEqual(wizard.state, 'validado')
+        self.assertEqual(wizard.rechazadas, 0)
+        vida = self.env['bca.poliza'].search([('name', '=', 'PV-001')])
+        self.assertFalse(vida.beneficiario_ids, 'VALIDAR no debe crear beneficiarios.')
+
+
+@tagged('BCA_Seguros')
 class TestPlantillaDescarga(_PortafolioFixtures):
     """Descarga de la plantilla y round-trip: lo que genera el wizard debe
     ser re-validable por el propio wizard sin errores estructurales."""
@@ -316,8 +425,8 @@ class TestPlantillaDescarga(_PortafolioFixtures):
         wizard = self._wizard(datas)
         wizard.action_validar()
         self.assertEqual(wizard.state, 'validado')
-        # 2 filas de ejemplo por hoja (VIDA + GMM).
-        self.assertEqual(wizard.total_filas, 4)
+        # 2 filas de ejemplo VIDA + 2 GMM + 5 BENEFICIARIOS (formato largo).
+        self.assertEqual(wizard.total_filas, 9)
 
 
 @tagged('BCA_Seguros')

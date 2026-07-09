@@ -6,7 +6,8 @@ import logging
 from datetime import date, datetime
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
 
 from odoo.addons.BCA_Seguros.models.res_partner import (
     TIPOS_RED_EXCLUIDOS_POLIZA,
@@ -51,6 +52,18 @@ COLUMNAS_REQUERIDAS = {
 
 # Nombre de la columna que contiene el número de póliza, por ramo.
 COL_NUMERO_POLIZA = {'vida': 'Póliza', 'gmm': 'Poliza actual'}
+
+# Hoja de beneficiarios (formato largo, una fila por persona) — B05. Es
+# independiente de las hojas de póliza: puede venir sola (para pólizas ya
+# cargadas) o junto a VIDA/GMM en el mismo archivo. Se referencia contra la
+# póliza por su folio (COL_BENEF_POLIZA) + la aseguradora del wizard.
+HOJA_BENEFICIARIOS = 'BENEFICIARIOS'
+COL_BENEF_POLIZA = 'Póliza'
+COL_BENEF_NOMBRE = 'Nombre del Beneficiario'
+COL_BENEF_PARENTESCO = 'Parentesco'
+COL_BENEF_PORCENTAJE = '% al que tiene Derecho'
+COL_BENEF_FECHA_NAC = 'Fecha de Nacimiento'
+COLUMNAS_REQUERIDAS_BENEFICIARIOS = [COL_BENEF_POLIZA, COL_BENEF_NOMBRE]
 
 PERIODICIDAD_MAP = {
     'mensual': 'mensual',
@@ -222,21 +235,28 @@ class BcaWizardCargaPortafolio(models.TransientModel):
         resultados: list[dict] = []
         total = 0
         hojas_presentes = set(wb.sheetnames)
-        # Estructura: al menos una hoja soportada debe existir.
+        # Estructura: al menos una hoja soportada (póliza o beneficiarios) debe existir.
         soportadas = [h for h in HOJAS_RAMO if h in hojas_presentes]
-        if not soportadas:
+        tiene_beneficiarios = HOJA_BENEFICIARIOS in hojas_presentes
+        if not soportadas and not tiene_beneficiarios:
             raise UserError(_(
                 'El archivo no contiene ninguna hoja soportada (%s). Hojas '
                 'encontradas: %s'
-            ) % (', '.join(HOJAS_RAMO), ', '.join(wb.sheetnames)))
-        # AUTOS u otras hojas: se reportan como fuera de alcance, no abortan.
-        for hoja in hojas_presentes - set(HOJAS_RAMO):
+            ) % (', '.join(list(HOJAS_RAMO) + [HOJA_BENEFICIARIOS]),
+                 ', '.join(wb.sheetnames)))
+        # AUTOS u otras hojas no reconocidas: se reportan como fuera de alcance.
+        reconocidas = set(HOJAS_RAMO) | {HOJA_BENEFICIARIOS}
+        for hoja in hojas_presentes - reconocidas:
             if hoja.strip().upper() == 'AUTOS':
                 resultados.append({
                     'hoja': hoja, 'fila': '-', 'poliza': '-', 'accion': '',
                     'motivo': _('Ramo AUTOS no soportado (omitido).'),
                 })
 
+        # 1) Pólizas. Se registran los folios vistos (con su ramo) para que la
+        #    hoja de beneficiarios pueda validar en fase VALIDAR pólizas que aún
+        #    no existen pero se crearán en esta misma corrida.
+        folios_en_archivo: dict[str, str] = {}
         for hoja in soportadas:
             ramo = HOJAS_RAMO[hoja]
             ws = wb[hoja]
@@ -249,7 +269,26 @@ class BcaWizardCargaPortafolio(models.TransientModel):
                 ) % (hoja, ', '.join(faltantes)))
             for numero_fila, raw in filas:
                 total += 1
+                folio = self._txt(raw.get(COL_NUMERO_POLIZA[ramo]))
+                if folio:
+                    folios_en_archivo[folio] = ramo
                 resultados.append(self._procesar_fila(hoja, ramo, numero_fila, raw, dry_run))
+
+        # 2) Beneficiarios (después de las pólizas, para que las creadas en esta
+        #    corrida ya existan al grabar).
+        if tiene_beneficiarios:
+            ws = wb[HOJA_BENEFICIARIOS]
+            encabezados, filas = self._extraer_filas(ws)
+            faltantes = [c for c in COLUMNAS_REQUERIDAS_BENEFICIARIOS
+                         if c not in encabezados]
+            if faltantes:
+                raise UserError(_(
+                    'La hoja "%s" no tiene las columnas requeridas: %s'
+                ) % (HOJA_BENEFICIARIOS, ', '.join(faltantes)))
+            res_benef, n_benef = self._procesar_beneficiarios(
+                filas, dry_run, folios_en_archivo)
+            resultados.extend(res_benef)
+            total += n_benef
         return resultados, total
 
     def _extraer_filas(self, ws) -> tuple:
@@ -269,6 +308,110 @@ class BcaWizardCargaPortafolio(models.TransientModel):
                 }
                 filas.append((idx, raw))
         return encabezados, filas
+
+    # ------------------------------------------------------------------ #
+    # Procesamiento de la hoja BENEFICIARIOS (formato largo — B05)
+    # ------------------------------------------------------------------ #
+    def _procesar_beneficiarios(self, filas: list, dry_run: bool,
+                                folios_en_archivo: dict) -> tuple:
+        """Agrupa las filas por folio de póliza y procesa un grupo por póliza.
+
+        Devuelve (resultados, total_filas). El reemplazo y la validación del
+        100%% son POR PÓLIZA (no por fila), así que se agrupa primero.
+        """
+        grupos: dict[str, list] = {}
+        total = 0
+        for numero_fila, raw in filas:
+            total += 1
+            folio = self._txt(raw.get(COL_BENEF_POLIZA))
+            grupos.setdefault(folio, []).append((numero_fila, raw))
+        resultados = [
+            self._procesar_grupo_beneficiarios(folio, items, dry_run, folios_en_archivo)
+            for folio, items in grupos.items()
+        ]
+        return resultados, total
+
+    def _procesar_grupo_beneficiarios(self, folio: str, items: list, dry_run: bool,
+                                      folios_en_archivo: dict) -> dict:
+        """Procesa (o valida) todos los beneficiarios de UNA póliza.
+
+        REEMPLAZA: borra los beneficiarios existentes y recrea desde el archivo
+        (idempotente en re-ejecuciones). En Vida valida que los porcentajes sumen
+        100%. Aísla la escritura en un savepoint para no arrastrar otras pólizas.
+        """
+        filas_num = [i[0] for i in items]
+        rango = ('%s–%s' % (filas_num[0], filas_num[-1])
+                 if len(filas_num) > 1 else str(filas_num[0]))
+        resultado = {
+            'hoja': HOJA_BENEFICIARIOS, 'fila': rango, 'poliza': folio or '-',
+            'accion': '', 'motivo': '',
+        }
+        try:
+            if not folio:
+                raise UserError(_('Falta el folio de la póliza del beneficiario.'))
+            poliza = self._resolver_poliza(folio)
+            # Ramo: de la póliza existente o, en VALIDAR, de la hoja de póliza
+            # del mismo archivo (aún no grabada).
+            ramo = poliza.ramo if poliza else folios_en_archivo.get(folio)
+            if not poliza and ramo is None:
+                raise UserError(_(
+                    'No existe la póliza "%s" para esta aseguradora.') % folio)
+
+            beneficiarios = []
+            for _numero_fila, raw in items:
+                nombre = self._txt(raw.get(COL_BENEF_NOMBRE))
+                if not nombre:
+                    continue
+                beneficiarios.append({
+                    'nombre': nombre,
+                    'parentesco': self._map_simple(
+                        raw.get(COL_BENEF_PARENTESCO), PARENTESCO_MAP),
+                    'porcentaje': self._norm_monto(raw.get(COL_BENEF_PORCENTAJE)),
+                    'fecha_nacimiento': self._norm_fecha(raw.get(COL_BENEF_FECHA_NAC)),
+                })
+            if not beneficiarios:
+                raise UserError(_(
+                    'La póliza "%s" no tiene beneficiarios con nombre válido.') % folio)
+
+            # Regla del 100% solo para Vida (en GMM el mismo modelo son
+            # dependientes, sin porcentaje de reparto).
+            if ramo == 'vida':
+                total_pct = sum(b['porcentaje'] for b in beneficiarios)
+                if float_compare(total_pct, 100.0, precision_digits=2) != 0:
+                    raise UserError(_(
+                        'Los porcentajes de los beneficiarios de la póliza "%s" '
+                        'deben sumar 100%% (actual: %.2f%%).') % (folio, total_pct))
+
+            if dry_run:
+                resultado['accion'] = 'beneficiarios'
+                return resultado
+
+            # En grabar la póliza YA debe existir (las hojas de póliza se
+            # procesan antes). Si no, es que ni existía ni se pudo crear.
+            if not poliza:
+                poliza = self._resolver_poliza(folio)
+            if not poliza:
+                raise UserError(_(
+                    'No existe la póliza "%s" (no se creó en esta carga).') % folio)
+
+            with self.env.cr.savepoint():
+                poliza.beneficiario_ids.unlink()  # reemplazo idempotente
+                for b in beneficiarios:
+                    partner = self._find_or_create_partner({'name': b['nombre']})
+                    self.env['bca.poliza.beneficiario'].create({
+                        'poliza_id': poliza.id,
+                        'beneficiario_id': partner.id,
+                        'parentesco': b['parentesco'],
+                        'porcentaje': b['porcentaje'],
+                        'fecha_nacimiento': b['fecha_nacimiento'],
+                    })
+            resultado['accion'] = 'beneficiarios'
+        except (UserError, ValidationError) as exc:
+            resultado['motivo'] = exc.args[0] if exc.args else str(exc)
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception('Error procesando beneficiarios de la póliza %s', folio)
+            resultado['motivo'] = _('Error inesperado: %s') % exc
+        return resultado
 
     # ------------------------------------------------------------------ #
     # Procesamiento por fila
@@ -497,6 +640,20 @@ class BcaWizardCargaPortafolio(models.TransientModel):
             return False
         return self.env['bca.poliza'].search([
             ('name', '=', nombre),
+            ('aseguradora_id', '=', self.aseguradora_id.id),
+        ], limit=1)
+
+    def _resolver_poliza(self, folio: str):
+        """Resuelve una póliza por folio dentro de la aseguradora del wizard.
+
+        Devuelve el recordset (vacío si no existe). El folio es único por
+        (name, aseguradora_id) — ver la restricción SQL de bca.poliza.
+        """
+        Poliza = self.env['bca.poliza']
+        if not folio:
+            return Poliza
+        return Poliza.search([
+            ('name', '=', folio),
             ('aseguradora_id', '=', self.aseguradora_id.id),
         ], limit=1)
 
