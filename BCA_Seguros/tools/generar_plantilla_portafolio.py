@@ -37,6 +37,12 @@ def main() -> str:
     print('  GMM : %d columnas, %d filas de ejemplo' % (
         len(plantilla_portafolio.COLUMNAS_GMM),
         len(plantilla_portafolio.EJEMPLOS_GMM)))
+    print('  BENEFICIARIOS: %d columnas, %d filas de ejemplo' % (
+        len(plantilla_portafolio.COLUMNAS_BENEFICIARIOS),
+        len(plantilla_portafolio.EJEMPLOS_BENEFICIARIOS)))
+    print('  COBERTURAS: %d columnas, %d filas de ejemplo' % (
+        len(plantilla_portafolio.COLUMNAS_COBERTURAS),
+        len(plantilla_portafolio.EJEMPLOS_COBERTURAS)))
     return destino
 
 

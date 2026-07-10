@@ -22,6 +22,8 @@ válida.
 from __future__ import annotations
 
 import io
+import re
+import unicodedata
 
 import openpyxl
 from openpyxl.comments import Comment
@@ -135,6 +137,81 @@ COLUMNAS_GMM: list[tuple[str, str]] = (
 
 COLUMNAS_BENEFICIARIOS: list[tuple[str, str]] = _BENEFICIARIOS
 
+
+# Coberturas adicionales por póliza (formato largo, una fila por cobertura),
+# extraídas del archivo de "beneficios suplementarios" de MetLife. Reflejan sus
+# 3 columnas para poder pegarlas directo. Se referencian contra la póliza por su
+# folio ("Póliza", tolerante a ceros a la izquierda) + la aseguradora del wizard.
+# El mapeo estructurado a la cobertura del catálogo se hace por la DESCRIPCIÓN
+# (col C) vía COBERTURA_DESC_MAP; el CÓDIGO (col B) se conserva como texto.
+_COBERTURAS = [
+    ('Póliza', 'REQUERIDO · folio de la póliza a la que pertenece'),
+    ('Cobertura Adicional', 'código de la cobertura en el archivo (ej. NVUAEP)'),
+    ('Descripción Plan Suplementario',
+     'REQUERIDO · descripción de la cobertura (ej. EXENCION DE PAGO DE PRIMAS INV.)'),
+]
+
+COLUMNAS_COBERTURAS: list[tuple[str, str]] = _COBERTURAS
+
+
+# --------------------------------------------------------------------------- #
+# Mapeo de coberturas MetLife: descripción (col C) → XML ID del valor de
+# cobertura sembrado (product.attribute.value en data/coberturas_metlife.xml).
+#
+# El archivo trae CIENTOS de códigos (col B) que varían por producto/plan/moneda,
+# pero la DESCRIPCIÓN se reduce a ~11 conceptos que ya coinciden 1:1 con los
+# valores sembrados. Se mapea por descripción normalizada con coincidencia por
+# FRAGMENTO (substring), de MÁS ESPECÍFICO A MÁS GENÉRICO: el orden importa
+# porque "MUERTE ACCIDENTAL" es substring de "DOBLE/TRIPLE ... MUERTE ACCIDENTAL"
+# y de "... PERDIDAS ORGANICAS". Los conceptos no sembrados (Cáncer/Diabetes/
+# Invalidez de Met4U) quedan sin XML ID → sólo notas (no se pierde el dato).
+# --------------------------------------------------------------------------- #
+COBERTURA_DESC_MAP: list[tuple[str, str]] = [
+    ('TRIPLE', 'val_ad_triple_muerte_accidental'),
+    ('DOBLE', 'val_ad_doble_muerte_accidental'),
+    ('PERDIDAS ORG', 'val_ad_muerte_accidental_po'),
+    ('MUERTE ACCIDENTAL', 'val_ad_muerte_accidental'),
+    ('EXENCION', 'val_ad_exencion_primas_invalidez'),
+    ('PAGO ANTICIPADO', 'val_ad_pago_anticipado_invalidez'),
+    ('GRAVES ENFERMEDADES', 'val_ad_graves_enfermedades'),
+    ('GARANTIA PAGO PRIMAS FALLECIMIENTO', 'val_ad_garantia_fallecimiento'),
+    ('GARANTIA PAGO PRIMAS POR INVALIDEZ', 'val_ad_garantia_primas_invalidez'),
+]
+
+
+def normalizar_texto_cobertura(txt) -> str:
+    """Normaliza la descripción para el mapeo: quita artefactos de padding de
+    ancho fijo (``Ê``/NBSP mal decodificados en Latin-1), acentos y puntuación;
+    colapsa espacios y pasa a mayúsculas. Deja el token de producto al final,
+    que es inocuo para la coincidencia por fragmento."""
+    if not txt:
+        return ''
+    s = str(txt).replace('Ê', ' ').replace('\xa0', ' ')
+    s = ''.join(
+        c for c in unicodedata.normalize('NFKD', s)
+        if not unicodedata.combining(c)
+    )
+    s = re.sub(r'[^A-Za-z0-9]+', ' ', s.upper())
+    return re.sub(r'\s+', ' ', s).strip()
+
+
+def normalizar_folio(txt) -> str:
+    """Normaliza un folio para emparejar ignorando ceros a la izquierda
+    (ej. ``'0008312115'`` y ``'8312115'`` colisionan)."""
+    return str(txt or '').strip().lstrip('0')
+
+
+def mapear_cobertura(descripcion) -> str | None:
+    """Devuelve el XML ID (dentro de ``BCA_Seguros``) del valor de cobertura para
+    la descripción dada, o ``None`` si no hay coincidencia (→ sólo notas)."""
+    norm = normalizar_texto_cobertura(descripcion)
+    if not norm:
+        return None
+    for fragmento, xmlid in COBERTURA_DESC_MAP:
+        if fragmento in norm:
+            return xmlid
+    return None
+
 # --------------------------------------------------------------------------- #
 # Filas de ejemplo (indexadas por encabezado). Los encabezados ausentes se
 # renderizan como celdas vacías.
@@ -209,6 +286,18 @@ EJEMPLOS_BENEFICIARIOS = [
      'Parentesco': 'Hija', 'Fecha de Nacimiento': '20/09/2012'},
 ]
 
+# Formato largo: una fila por cobertura adicional, referenciando la póliza por su
+# folio. PV-0001 refiere al ejemplo de la hoja VIDA. La descripción es la que se
+# mapea al catálogo (el código es informativo/auditoría).
+EJEMPLOS_COBERTURAS = [
+    {'Póliza': 'PV-0001', 'Cobertura Adicional': 'NVUAEP',
+     'Descripción Plan Suplementario': 'EXENCION DE PAGO DE PRIMAS INV.'},
+    {'Póliza': 'PV-0001', 'Cobertura Adicional': 'NVUAPA',
+     'Descripción Plan Suplementario': 'PAGO ANTICIPADO SA POR INVALIDEZ'},
+    {'Póliza': 'PV-0001', 'Cobertura Adicional': 'NVUAGE',
+     'Descripción Plan Suplementario': 'GRAVES ENFERMEDADES'},
+]
+
 # --------------------------------------------------------------------------- #
 # Renderizado
 # --------------------------------------------------------------------------- #
@@ -249,12 +338,14 @@ def _construir_hoja(wb, nombre: str, columnas: list, ejemplos: list) -> None:
 
 
 def construir_workbook() -> openpyxl.Workbook:
-    """Arma el libro con las hojas VIDA, GMM y BENEFICIARIOS. No escribe a disco."""
+    """Arma el libro con las hojas VIDA, GMM, BENEFICIARIOS y COBERTURAS. No
+    escribe a disco."""
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     _construir_hoja(wb, 'VIDA', COLUMNAS_VIDA, EJEMPLOS_VIDA)
     _construir_hoja(wb, 'GMM', COLUMNAS_GMM, EJEMPLOS_GMM)
     _construir_hoja(wb, 'BENEFICIARIOS', COLUMNAS_BENEFICIARIOS, EJEMPLOS_BENEFICIARIOS)
+    _construir_hoja(wb, 'COBERTURAS', COLUMNAS_COBERTURAS, EJEMPLOS_COBERTURAS)
     return wb
 
 

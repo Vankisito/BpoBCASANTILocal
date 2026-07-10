@@ -31,6 +31,10 @@ HEADERS_BENEFICIARIOS = [
     'Póliza', 'Nombre del Beneficiario', 'Parentesco',
     '% al que tiene Derecho', 'Fecha de Nacimiento',
 ]
+# Hoja de coberturas adicionales en formato largo.
+HEADERS_COBERTURAS = [
+    'Póliza', 'Cobertura Adicional', 'Descripción Plan Suplementario',
+]
 
 
 def _build_xlsx(sheets: dict) -> bytes:
@@ -425,8 +429,8 @@ class TestPlantillaDescarga(_PortafolioFixtures):
         wizard = self._wizard(datas)
         wizard.action_validar()
         self.assertEqual(wizard.state, 'validado')
-        # 2 filas de ejemplo VIDA + 2 GMM + 5 BENEFICIARIOS (formato largo).
-        self.assertEqual(wizard.total_filas, 9)
+        # 2 filas VIDA + 2 GMM + 5 BENEFICIARIOS + 3 COBERTURAS (formato largo).
+        self.assertEqual(wizard.total_filas, 12)
 
 
 @tagged('BCA_Seguros')
@@ -472,3 +476,142 @@ class TestEstatusPagoComputed(_PortafolioFixtures):
         pol = self._poliza_activa(pagado_hasta_inicial=fields.Date.today())
         pol.pago_suspendido = True
         self.assertEqual(pol.estatus_pago, 'suspendido')
+
+
+@tagged('BCA_Seguros')
+class TestCargaCoberturasHoja(_PortafolioFixtures):
+    """Hoja COBERTURAS (formato largo): asigna coberturas adicionales
+    estructuradas (PTAV nativas) por póliza mapeando por la DESCRIPCIÓN, con
+    reemplazo. Lo no mapeable / no ofrecido por el producto se guarda en notas y
+    se omite (no aborta). Folio tolerante a ceros a la izquierda."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        from odoo import Command
+        cls.attr_adicional = cls.env.ref('BCA_Seguros.attr_cobertura_adicional')
+        cls.val_exencion = cls.env.ref(
+            'BCA_Seguros.val_ad_exencion_primas_invalidez')
+        cls.val_graves = cls.env.ref('BCA_Seguros.val_ad_graves_enfermedades')
+        # Producto Vida que OFRECE exención + graves (materializa sus PTAV), pero
+        # NO muerte accidental → sirve para probar "mapeada pero no ofrecida".
+        cls.producto_cob = cls.env['product.template'].create({
+            'name': 'Cobertura Vida Portafolio',
+            'bca_es_producto_seguro': True,
+            'bca_aseguradora_id': cls.aseguradora.id,
+            'bca_ramo': 'vida',
+            'attribute_line_ids': [Command.create({
+                'attribute_id': cls.attr_adicional.id,
+                'value_ids': [Command.set(
+                    [cls.val_exencion.id, cls.val_graves.id])],
+            })],
+        })
+
+    def _grabar(self, sheets: dict, modo: str = 'crear_actualizar'):
+        wizard = self._wizard(_build_xlsx(sheets), modo=modo)
+        wizard.action_validar()
+        wizard.action_grabar()
+        return wizard
+
+    def _crear_poliza(self, name: str):
+        return self.env['bca.poliza'].create({
+            'name': name, 'aseguradora_id': self.aseguradora.id,
+            'producto_id': self.producto_cob.id, 'agente_id': self.agente.id,
+            'contratante_id': self.env['res.partner'].create(
+                {'name': 'C %s' % name}).id,
+            'fecha_inicio': date(2025, 1, 1), 'fecha_fin': date(2027, 1, 1),
+            'periodicidad': 'anual', 'prima_anual': 1000.0,
+        })
+
+    def _cob(self, poliza: str, codigo: str, desc: str) -> dict:
+        return {
+            'Póliza': poliza, 'Cobertura Adicional': codigo,
+            'Descripción Plan Suplementario': desc,
+        }
+
+    def _ptav(self, producto, value):
+        return self.env['product.template.attribute.value'].search([
+            ('product_tmpl_id', '=', producto.id),
+            ('product_attribute_value_id', '=', value.id),
+            ('attribute_id', '=', self.attr_adicional.id),
+            ('ptav_active', '=', True),
+        ], limit=1)
+
+    def test_asigna_coberturas_ofrecidas_y_notas(self) -> None:
+        pol = self._crear_poliza('COB-001')
+        wizard = self._grabar({'COBERTURAS': (HEADERS_COBERTURAS, [
+            self._cob('COB-001', 'NVUAEP', 'EXENCION DE PAGO DE PRIMAS INV.'),
+            self._cob('COB-001', 'NVUAGE', 'GRAVES ENFERMEDADES'),
+            # Mapeada pero NO ofrecida por el producto → sólo nota.
+            self._cob('COB-001', 'NVUAIM', 'INDEMNIZACION MUERTE ACCIDENTAL'),
+        ])})
+        ptav_ex = self._ptav(self.producto_cob, self.val_exencion)
+        ptav_gr = self._ptav(self.producto_cob, self.val_graves)
+        self.assertEqual(pol.cobertura_adicional_ids, ptav_ex | ptav_gr)
+        # Todas las filas quedan en notas, la no asignada marcada.
+        self.assertIn('EXENCION', pol.coberturas_adicionales)
+        self.assertIn('INDEMNIZACION MUERTE ACCIDENTAL', pol.coberturas_adicionales)
+        self.assertIn('no ofrecida', pol.coberturas_adicionales)
+
+    def test_descripcion_sin_catalogo_solo_notas(self) -> None:
+        pol = self._crear_poliza('COB-002')
+        self._grabar({'COBERTURAS': (HEADERS_COBERTURAS, [
+            self._cob('COB-002', 'NCAM4U', 'CANCER'),
+        ])})
+        self.assertFalse(pol.cobertura_adicional_ids)
+        self.assertIn('sin catálogo', pol.coberturas_adicionales)
+        self.assertIn('CANCER', pol.coberturas_adicionales)
+
+    def test_folio_tolera_ceros_a_la_izquierda(self) -> None:
+        pol = self._crear_poliza('8312115')  # guardada sin padding
+        self._grabar({'COBERTURAS': (HEADERS_COBERTURAS, [
+            self._cob('0008312115', 'NVUAEP', 'EXENCION DE PAGO DE PRIMAS INV.'),
+        ])})
+        self.assertEqual(
+            pol.cobertura_adicional_ids, self._ptav(self.producto_cob, self.val_exencion))
+
+    def test_reemplaza_en_recarga(self) -> None:
+        pol = self._crear_poliza('COB-003')
+        self._grabar({'COBERTURAS': (HEADERS_COBERTURAS, [
+            self._cob('COB-003', 'NVUAEP', 'EXENCION DE PAGO DE PRIMAS INV.'),
+            self._cob('COB-003', 'NVUAGE', 'GRAVES ENFERMEDADES'),
+        ])})
+        self.assertEqual(len(pol.cobertura_adicional_ids), 2)
+        # Recarga con una sola cobertura → reemplaza (no acumula).
+        self._grabar({'COBERTURAS': (HEADERS_COBERTURAS, [
+            self._cob('COB-003', 'NVUAGE', 'GRAVES ENFERMEDADES'),
+        ])})
+        self.assertEqual(
+            pol.cobertura_adicional_ids, self._ptav(self.producto_cob, self.val_graves))
+
+    def test_poliza_inexistente_se_omite(self) -> None:
+        wizard = self._grabar({'COBERTURAS': (HEADERS_COBERTURAS, [
+            self._cob('NO-EXISTE', 'NVUAEP', 'EXENCION DE PAGO DE PRIMAS INV.'),
+        ])})
+        self.assertEqual(wizard.rechazadas, 1)  # omitida (reportada), no aborta
+        self.assertEqual(wizard.creadas, 0)
+
+    def test_coberturas_junto_a_poliza_vida_misma_corrida(self) -> None:
+        # La póliza se crea en la hoja VIDA y sus coberturas se asignan en la
+        # misma corrida (COBERTURAS se procesa después de las pólizas).
+        fila = self._fila_vida(**{
+            'Póliza': 'COB-004', 'Producto': 'Cobertura Vida Portafolio'})
+        self._grabar({
+            'VIDA': (HEADERS_VIDA, [fila]),
+            'COBERTURAS': (HEADERS_COBERTURAS, [
+                self._cob('COB-004', 'NVUAEP', 'EXENCION DE PAGO DE PRIMAS INV.'),
+            ]),
+        })
+        pol = self.env['bca.poliza'].search([('name', '=', 'COB-004')])
+        self.assertEqual(
+            pol.cobertura_adicional_ids, self._ptav(self.producto_cob, self.val_exencion))
+
+    def test_validar_no_toca_bd(self) -> None:
+        pol = self._crear_poliza('COB-005')
+        wizard = self._wizard(_build_xlsx({'COBERTURAS': (HEADERS_COBERTURAS, [
+            self._cob('COB-005', 'NVUAEP', 'EXENCION DE PAGO DE PRIMAS INV.'),
+        ])}))
+        wizard.action_validar()
+        self.assertEqual(wizard.state, 'validado')
+        self.assertFalse(
+            pol.cobertura_adicional_ids, 'VALIDAR no debe asignar coberturas.')

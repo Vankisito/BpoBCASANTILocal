@@ -173,7 +173,14 @@
                                        widget="boolean_toggle"/>
                             </group>
                             <group string="Coberturas">
-                                <field name="coberturas_adicionales" nolabel="1"/>
+                                <field name="cobertura_basica_attr_id" invisible="1"/>
+                                <field name="cobertura_adicional_attr_id" invisible="1"/>
+                                <field name="cobertura_basica_id"
+                                       options="{'no_create': True}"/>
+                                <field name="cobertura_adicional_ids"
+                                       widget="many2many_tags"
+                                       options="{'no_create': True}"/>
+                                <field name="coberturas_adicionales"/>
                             </group>
                         </page>
                         <page name="beneficiarios" string="Beneficiarios"
@@ -204,7 +211,10 @@
                                 </group>
                             </group>
                             <group string="Coberturas Adicionales">
-                                <field name="coberturas_adicionales" nolabel="1"/>
+                                <field name="cobertura_adicional_ids"
+                                       widget="many2many_tags"
+                                       options="{'no_create': True}"/>
+                                <field name="coberturas_adicionales"/>
                             </group>
                             <!-- Asegurados adicionales (dependientes): reúsa el
                                  One2many beneficiario_ids sin la columna porcentaje

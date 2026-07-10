@@ -27,6 +27,23 @@
                             <field name="bca_es_capitalizable" widget="boolean_toggle"/>
                         </group>
                     </group>
+                    <!-- Coberturas que ofrece el producto: se modelan con el
+                         sistema nativo de atributos (no_variant). Cada línea es
+                         un atributo agrupador (Cobertura Básica / Coberturas
+                         Adicionales) con su conjunto de valores. La póliza elige
+                         de aquí vía dominio por producto. -->
+                    <separator string="Coberturas ofrecidas"
+                               invisible="not bca_es_producto_seguro"/>
+                    <field name="attribute_line_ids" nolabel="1"
+                           invisible="not bca_es_producto_seguro"
+                           context="{'default_product_tmpl_id': id}">
+                        <list editable="bottom">
+                            <field name="attribute_id"
+                                   options="{'no_create': True}"/>
+                            <field name="value_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </list>
+                    </field>
                 </page>
             </xpath>
 

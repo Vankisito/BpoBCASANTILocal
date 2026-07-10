@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from dateutil.relativedelta import relativedelta
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare
 
@@ -275,8 +275,43 @@ class BcaPoliza(models.Model):
         help='Solo aplica para Vida capitalizable. Excluye recibo de PCA.',
     )
     coberturas_adicionales: str = fields.Text(
-        string='Coberturas Adicionales',
-        help='Coberturas adicionales incluidas en la póliza. Aplica para ramo Vida y GMM.',
+        string='Coberturas Adicionales (notas)',
+        help='Texto libre de coberturas (landing de la carga de portafolio). '
+             'La selección estructurada vive en "Coberturas Adicionales Contratadas".',
+    )
+    # Coberturas contratadas: se eligen entre las que OFRECE el producto,
+    # modeladas con product.template.attribute.value (PTAV) nativas. El dominio
+    # por `producto_id` da el selector encadenado Aseguradora → Ramo → Producto →
+    # Coberturas sin lógica de filtrado propia. Los campos *_attr_id resuelven
+    # los atributos agrupadores por env.ref (no se puede llamar env.ref dentro de
+    # un dominio estático, así que se referencian como campo del registro).
+    cobertura_basica_attr_id: int = fields.Many2one(
+        'product.attribute',
+        compute='_compute_cobertura_attrs',
+        help='Atributo agrupador "Cobertura Básica" (uso interno para el dominio).',
+    )
+    cobertura_adicional_attr_id: int = fields.Many2one(
+        'product.attribute',
+        compute='_compute_cobertura_attrs',
+        help='Atributo agrupador "Coberturas Adicionales" (uso interno para el dominio).',
+    )
+    cobertura_basica_id: int = fields.Many2one(
+        'product.template.attribute.value',
+        string='Cobertura Básica',
+        ondelete='restrict',
+        domain="[('product_tmpl_id', '=', producto_id),"
+               " ('attribute_id', '=', cobertura_basica_attr_id),"
+               " ('ptav_active', '=', True)]",
+        help='Cobertura base contratada, entre las que ofrece el producto.',
+    )
+    cobertura_adicional_ids: list[int] = fields.Many2many(
+        'product.template.attribute.value',
+        string='Coberturas Adicionales Contratadas',
+        domain="[('product_tmpl_id', '=', producto_id),"
+               " ('attribute_id', '=', cobertura_adicional_attr_id),"
+               " ('ptav_active', '=', True)]",
+        help='Coberturas adicionales/opcionales contratadas, entre las que '
+             'ofrece el producto (ramo Vida y GMM).',
     )
     beneficiario_ids: list[int] = fields.One2many(
         'bca.poliza.beneficiario',
@@ -321,6 +356,27 @@ class BcaPoliza(models.Model):
         for pol in self:
             if pol.producto_id:
                 pol.ramo = pol.producto_id.bca_ramo
+
+    @api.depends('producto_id')
+    def _compute_cobertura_attrs(self) -> None:
+        """Resuelve los atributos agrupadores de cobertura para usarlos en los
+        dominios de cobertura_basica_id / cobertura_adicional_ids. Valor
+        constante por entorno; se computa sin store."""
+        basica = self.env.ref(
+            'BCA_Seguros.attr_cobertura_basica', raise_if_not_found=False)
+        adicional = self.env.ref(
+            'BCA_Seguros.attr_cobertura_adicional', raise_if_not_found=False)
+        for pol in self:
+            pol.cobertura_basica_attr_id = basica
+            pol.cobertura_adicional_attr_id = adicional
+
+    @api.onchange('producto_id')
+    def _onchange_producto_limpiar_coberturas(self) -> None:
+        """Al cambiar de producto, las coberturas elegidas dejan de pertenecer al
+        product.template contratado; se limpian para no dejar selección inválida."""
+        for pol in self:
+            pol.cobertura_basica_id = False
+            pol.cobertura_adicional_ids = [Command.clear()]
 
     @api.onchange('aseguradora_id', 'ramo')
     def _onchange_filtros_producto(self) -> None:

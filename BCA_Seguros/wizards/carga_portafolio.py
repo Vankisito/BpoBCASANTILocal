@@ -5,7 +5,7 @@ import io
 import logging
 from datetime import date, datetime
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare
 
@@ -64,6 +64,17 @@ COL_BENEF_PARENTESCO = 'Parentesco'
 COL_BENEF_PORCENTAJE = '% al que tiene Derecho'
 COL_BENEF_FECHA_NAC = 'Fecha de Nacimiento'
 COLUMNAS_REQUERIDAS_BENEFICIARIOS = [COL_BENEF_POLIZA, COL_BENEF_NOMBRE]
+
+# Hoja de coberturas adicionales (formato largo, una fila por cobertura). Igual
+# que beneficiarios: puede venir sola (sobre pólizas ya cargadas) o junto a
+# VIDA/GMM. Se referencia contra la póliza por su folio (tolerante a ceros a la
+# izquierda) + la aseguradora del wizard. El mapeo a la cobertura del catálogo
+# nativo (PTAV) se hace por la DESCRIPCIÓN; el CÓDIGO se conserva como nota.
+HOJA_COBERTURAS = 'COBERTURAS'
+COL_COB_POLIZA = 'Póliza'
+COL_COB_CODIGO = 'Cobertura Adicional'
+COL_COB_DESCRIPCION = 'Descripción Plan Suplementario'
+COLUMNAS_REQUERIDAS_COBERTURAS = [COL_COB_POLIZA, COL_COB_DESCRIPCION]
 
 PERIODICIDAD_MAP = {
     'mensual': 'mensual',
@@ -235,17 +246,20 @@ class BcaWizardCargaPortafolio(models.TransientModel):
         resultados: list[dict] = []
         total = 0
         hojas_presentes = set(wb.sheetnames)
-        # Estructura: al menos una hoja soportada (póliza o beneficiarios) debe existir.
+        # Estructura: al menos una hoja soportada (póliza, beneficiarios o
+        # coberturas) debe existir.
         soportadas = [h for h in HOJAS_RAMO if h in hojas_presentes]
         tiene_beneficiarios = HOJA_BENEFICIARIOS in hojas_presentes
-        if not soportadas and not tiene_beneficiarios:
+        tiene_coberturas = HOJA_COBERTURAS in hojas_presentes
+        if not soportadas and not tiene_beneficiarios and not tiene_coberturas:
             raise UserError(_(
                 'El archivo no contiene ninguna hoja soportada (%s). Hojas '
                 'encontradas: %s'
-            ) % (', '.join(list(HOJAS_RAMO) + [HOJA_BENEFICIARIOS]),
+            ) % (', '.join(list(HOJAS_RAMO)
+                           + [HOJA_BENEFICIARIOS, HOJA_COBERTURAS]),
                  ', '.join(wb.sheetnames)))
         # AUTOS u otras hojas no reconocidas: se reportan como fuera de alcance.
-        reconocidas = set(HOJAS_RAMO) | {HOJA_BENEFICIARIOS}
+        reconocidas = set(HOJAS_RAMO) | {HOJA_BENEFICIARIOS, HOJA_COBERTURAS}
         for hoja in hojas_presentes - reconocidas:
             if hoja.strip().upper() == 'AUTOS':
                 resultados.append({
@@ -289,6 +303,22 @@ class BcaWizardCargaPortafolio(models.TransientModel):
                 filas, dry_run, folios_en_archivo)
             resultados.extend(res_benef)
             total += n_benef
+
+        # 3) Coberturas adicionales (después de las pólizas, para que las creadas
+        #    en esta corrida ya existan al grabar).
+        if tiene_coberturas:
+            ws = wb[HOJA_COBERTURAS]
+            encabezados, filas = self._extraer_filas(ws)
+            faltantes = [c for c in COLUMNAS_REQUERIDAS_COBERTURAS
+                         if c not in encabezados]
+            if faltantes:
+                raise UserError(_(
+                    'La hoja "%s" no tiene las columnas requeridas: %s'
+                ) % (HOJA_COBERTURAS, ', '.join(faltantes)))
+            res_cob, n_cob = self._procesar_coberturas(
+                filas, dry_run, folios_en_archivo)
+            resultados.extend(res_cob)
+            total += n_cob
         return resultados, total
 
     def _extraer_filas(self, ws) -> tuple:
@@ -412,6 +442,151 @@ class BcaWizardCargaPortafolio(models.TransientModel):
             _logger.exception('Error procesando beneficiarios de la póliza %s', folio)
             resultado['motivo'] = _('Error inesperado: %s') % exc
         return resultado
+
+    # ------------------------------------------------------------------ #
+    # Procesamiento de la hoja COBERTURAS (formato largo)
+    # ------------------------------------------------------------------ #
+    def _procesar_coberturas(self, filas: list, dry_run: bool,
+                             folios_en_archivo: dict) -> tuple:
+        """Agrupa las filas por folio y procesa un grupo por póliza (reemplazo).
+
+        Devuelve (resultados, total_filas). El índice de pólizas por folio
+        (tolerante a ceros a la izquierda) se construye una sola vez.
+        """
+        grupos: dict[str, list] = {}
+        total = 0
+        for numero_fila, raw in filas:
+            total += 1
+            folio = self._txt(raw.get(COL_COB_POLIZA))
+            grupos.setdefault(folio, []).append((numero_fila, raw))
+        indice = self._indice_polizas_por_folio()
+        resultados = [
+            self._procesar_grupo_coberturas(
+                folio, items, dry_run, indice, folios_en_archivo)
+            for folio, items in grupos.items()
+        ]
+        return resultados, total
+
+    def _procesar_grupo_coberturas(self, folio: str, items: list, dry_run: bool,
+                                   indice: dict, folios_en_archivo: dict) -> dict:
+        """Procesa (o valida) todas las coberturas adicionales de UNA póliza.
+
+        REEMPLAZA `cobertura_adicional_ids` con las coberturas mapeadas del
+        archivo que OFRECE el producto de la póliza (dominio nativo por PTAV), y
+        vuelca en las notas (`coberturas_adicionales`) un resumen de TODAS las
+        filas —incluidas las no asignables— para no perder dato. Las coberturas
+        cuyo producto no las ofrece, sin catálogo, o de una póliza inexistente,
+        se omiten (no abortan) y se reportan.
+        """
+        filas_num = [i[0] for i in items]
+        rango = ('%s–%s' % (filas_num[0], filas_num[-1])
+                 if len(filas_num) > 1 else str(filas_num[0]))
+        resultado = {
+            'hoja': HOJA_COBERTURAS, 'fila': rango, 'poliza': folio or '-',
+            'accion': '', 'motivo': '',
+        }
+        try:
+            if not folio:
+                raise UserError(_('Falta el folio de la póliza de la cobertura.'))
+            clave = plantilla_portafolio.normalizar_folio(folio)
+            poliza = indice.get(clave)
+            en_archivo = clave in {
+                plantilla_portafolio.normalizar_folio(f) for f in folios_en_archivo
+            }
+            if not poliza and not en_archivo:
+                # Este archivo NO crea cartera: si la póliza no existe, se omite.
+                resultado['motivo'] = _(
+                    'No existe la póliza "%s" para esta aseguradora '
+                    '(cobertura omitida).') % folio
+                return resultado
+
+            attr = self.env.ref(
+                'BCA_Seguros.attr_cobertura_adicional', raise_if_not_found=False)
+            ptav_ids: set[int] = set()
+            lineas_nota: list[str] = []
+            asignadas = 0
+            omitidas = 0
+            for _numero_fila, raw in items:
+                codigo = self._txt(raw.get(COL_COB_CODIGO))
+                desc = self._txt(raw.get(COL_COB_DESCRIPCION))
+                xmlid = plantilla_portafolio.mapear_cobertura(desc)
+                estado = ''
+                if not xmlid:
+                    estado = 'sin catálogo'
+                else:
+                    ptav = self._resolver_ptav_cobertura(poliza, attr, xmlid)
+                    if ptav:
+                        ptav_ids.add(ptav.id)
+                        asignadas += 1
+                    else:
+                        estado = 'no ofrecida por el producto'
+                if estado:
+                    omitidas += 1
+                etiqueta = ' — '.join(p for p in (codigo, desc) if p) or '(sin datos)'
+                lineas_nota.append(
+                    '· %s%s' % (('[%s] ' % estado) if estado else '', etiqueta))
+
+            if dry_run:
+                resultado['accion'] = 'coberturas'
+                if omitidas and not asignadas:
+                    resultado['motivo'] = _(
+                        '%s cobertura(s) sin asignación estructurada '
+                        '(se guardarán como nota).') % omitidas
+                return resultado
+
+            # Fase grabar: la póliza YA debe existir (las hojas de póliza se
+            # procesan antes). Si sigue sin existir, se omite.
+            if not poliza:
+                resultado['motivo'] = _(
+                    'No existe la póliza "%s" (no se creó en esta carga; '
+                    'cobertura omitida).') % folio
+                return resultado
+
+            nota = _('Coberturas MetLife (importadas):') + '\n' + '\n'.join(lineas_nota)
+            with self.env.cr.savepoint():
+                poliza.cobertura_adicional_ids = [Command.set(list(ptav_ids))]
+                poliza.coberturas_adicionales = nota
+            resultado['accion'] = 'coberturas'
+            if omitidas:
+                resultado['motivo'] = _(
+                    '%s cobertura(s) sin asignación estructurada '
+                    '(guardadas como nota).') % omitidas
+        except (UserError, ValidationError) as exc:
+            resultado['motivo'] = exc.args[0] if exc.args else str(exc)
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception('Error procesando coberturas de la póliza %s', folio)
+            resultado['motivo'] = _('Error inesperado: %s') % exc
+        return resultado
+
+    def _resolver_ptav_cobertura(self, poliza, attr, xmlid: str):
+        """Devuelve la PTAV (product.template.attribute.value) de la cobertura
+        `xmlid` para el producto de la póliza, o un recordset vacío si el
+        producto no la ofrece / no se resuelve. Sólo lectura."""
+        Ptav = self.env['product.template.attribute.value']
+        if not poliza or not poliza.producto_id or not attr:
+            return Ptav
+        value = self.env.ref(
+            'BCA_Seguros.%s' % xmlid, raise_if_not_found=False)
+        if not value:
+            return Ptav
+        return Ptav.search([
+            ('product_tmpl_id', '=', poliza.producto_id.id),
+            ('product_attribute_value_id', '=', value.id),
+            ('attribute_id', '=', attr.id),
+            ('ptav_active', '=', True),
+        ], limit=1)
+
+    def _indice_polizas_por_folio(self) -> dict:
+        """Índice {folio_normalizado: poliza} de la aseguradora del wizard, para
+        emparejar folios del archivo ignorando ceros a la izquierda (el archivo
+        de MetLife trae folios tipo '0008312115')."""
+        indice: dict = {}
+        polizas = self.env['bca.poliza'].search([
+            ('aseguradora_id', '=', self.aseguradora_id.id),
+        ])
+        for pol in polizas:
+            indice[plantilla_portafolio.normalizar_folio(pol.name)] = pol
+        return indice
 
     # ------------------------------------------------------------------ #
     # Procesamiento por fila
