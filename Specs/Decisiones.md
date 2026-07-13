@@ -296,6 +296,8 @@ Se **conservan y reubican**: `bca_folio_cv` → pestaña Identificación; `bca_r
 
 **Razón:** Un solo embudo por tipo de puesto, más limpio y fiel al negocio: los internos no tienen Fase A/B ni cédula, así que no deben ver etapas comerciales; y las promotorías, que sí son figuras comerciales, deben compartir el mismo embudo que los agentes. Corrige el error documental (internos en Fase A) y el hueco de código (promotorías fuera del embudo). Bump `19.0.1.7.6` → **`19.0.1.7.7`**.
 
+**Aclaración (2026-07-13, BUG-017):** el alta del `hr.employee` de un puesto interno **NO se automatiza**: se realiza con el **botón manual nativo "Create Employee"** al llegar a la etapa hired nativa ("Contract Signed"). El ruteo por `job_id` para jobs no comerciales no ejecuta ninguna acción de conversión (sin partner agente, sin puente, sin cédula). Además, **no hay puestos internos sembrados** (solo se siembran "Agentes" y "Promotores" en `data/hr_jobs.xml`); el cliente crea sus `hr.job` internos en la instancia. Para probar el flujo interno hay que crear primero un puesto no comercial.
+
 
 ---
 

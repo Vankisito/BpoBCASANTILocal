@@ -4,6 +4,34 @@
 
 ---
 
+## Sesión 2026-07-13 — Reclutamiento: reconciliación de documentación (puestos internos) · sin cambio de código
+
+### Qué se hizo
+Se atendió un reporte de QA sobre el flujo de **puesto interno** ("Contrato firmado" parecía exigir
+Sede/Promotoría/Clave; "solo Clave Definitiva crea empleados"). Tras verificar código y tests se
+concluyó que **no es un defecto de código**, sino **documentación desactualizada** (QA Manual en
+v19.0.1.7.4, pre-D-20/D-21):
+- Las constraints comerciales solo aplican a `job_reclutamiento_agente`/`job_captacion_promotoria`;
+  el test `test_job_interno_nativo_no_crea_puente_ni_agente` lo prueba y pasa. No hay puestos
+  internos sembrados (solo "Agentes"/"Promotores"), así que probar con un puesto comercial exhibe la
+  exigencia **correcta** del embudo.
+- **Decisión del usuario:** **NO** se automatiza el alta interna. Los internos siguen usando el
+  **embudo nativo** de Odoo y se dan de alta con el **botón manual "Create Employee"**.
+
+### Archivos (solo docs)
+- `Specs/02-reclutamiento/QA_Manual_Etapa12_Reclutamiento.md` — actualizado a vigente D-21: 13 etapas
+  (Cena, Clave Definitiva), empleado se crea en "Clave Definitiva" (T4.6→T4.8), interno = embudo
+  nativo + botón manual (T5.2), retiro de referencias a "Contratado (Alta Interna)" y "Tipo de
+  Candidato", sello de versión → 19.0.1.8.0.
+- `Specs/Bugs.md` — **BUG-017** registrado y resuelto por documentación (sin cambio de código).
+- `Specs/Decisiones.md` — nota aclaratoria en D-20 (interno = nativo + botón manual; sin siembra de
+  puestos internos).
+
+### Tests
+- No aplica (no se modificó código).
+
+---
+
 ## Sesión 2026-07-09 — Cobranza/Pólizas: carga de beneficiarios por hoja separada (B05) · `19.0.1.7.9`
 
 ### Qué se hizo

@@ -56,6 +56,12 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 
 ## Bugs Resueltos
 
+Resuelto el **2026-07-13** (rama `desarrollo`; **sin cambio de código** — solo documentación de referencia):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-017 | Reclutamiento (Etapa 12) — puestos internos | Divergencia **documentación ↔ código**, no defecto de código. El QA Manual (v19.0.1.7.4) describía una etapa BCA "Contratado (Alta Interna)" (retirada en 19.0.1.7.7, D-20) y que el empleado se creaba en "Cédula Emitida" (pre-D-21). En QA se interpretó que "Contrato firmado" exigía Sede/Promotoría/Clave para internos y que no había forma de dar de alta empleados internos. **Realidad verificada:** las constraints comerciales solo aplican a `job_reclutamiento_agente`/`job_captacion_promotoria` (test `test_job_interno_nativo_no_crea_puente_ni_agente` pasa); los internos usan el **embudo nativo** y se dan de alta con el **botón manual "Create Employee"**; el empleado del agente comercial se crea en **"Clave Definitiva"** (seq 13). No hay puestos internos sembrados, por lo que un candidato de prueba bajo un puesto comercial exhibe la exigencia correcta del embudo. | Datos/Doc | 🟡 Media | Reconciliación de `QA_Manual_Etapa12_Reclutamiento.md` a la conducta vigente D-21 (etapa "Alta Interna" retirada; empleado en "Clave Definitiva"; interno = embudo nativo + botón manual). **Decisión:** NO se automatiza el alta interna; se conserva el botón manual nativo. | — (docs) |
+
 Resuelto el **2026-06-05** (rama `desarrollo`; deploy a sandbox `sandbox_bca1` confirmado sin error):
 
 | ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |

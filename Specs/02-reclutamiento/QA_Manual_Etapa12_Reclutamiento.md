@@ -1,7 +1,7 @@
 ---
 titulo: Guía de Pruebas Manuales (UI) — Etapa 12 Reclutamiento BCA_Seguros
-version_modulo: 19.0.1.7.4
-fecha: 2026-07-02
+version_modulo: 19.0.1.8.0
+fecha: 2026-07-13
 dirigido_a: QA Junior
 tipo: UAT / Pruebas de interfaz (Odoo backend)
 ---
@@ -9,7 +9,8 @@ tipo: UAT / Pruebas de interfaz (Odoo backend)
 # 🧪 Guía de Pruebas Manuales — Etapa 12: Reclutamiento y Habilitación de Agentes
 
 > **Para:** QA Junior
-> **Módulo:** `BCA_Seguros` · versión **19.0.1.7.4**
+> **Módulo:** `BCA_Seguros` · versión **19.0.1.8.0**
+> **Actualización D-21 (2026-07-13):** el `hr.employee` del agente se crea al llegar a **"Clave Definitiva"** (seq 13), **no** en "Cédula Emitida". Los puestos internos usan el **embudo nativo** de Odoo y se dan de alta con el **botón manual nativo "Create Employee"**; la etapa "Contratado (Alta Interna)" fue **retirada** en 19.0.1.7.7.
 > **Objetivo:** verificar en la **interfaz de Odoo** que la Etapa 12 (Reclutamiento) funciona sin errores, antes de dar por buena la entrega.
 > **Cómo usar esta guía:** ejecuta cada prueba en orden. Marca `[x]` cuando el resultado coincida con lo esperado. Si algo falla, anótalo en la **§10 Plantilla de incidencias** con captura de pantalla.
 
@@ -22,11 +23,11 @@ tipo: UAT / Pruebas de interfaz (Odoo backend)
 | URL | `http://localhost:8069` |
 | Base de datos | `Devlocal` |
 | Usuario | Administrador (para preparar datos) + usuarios de prueba (ver §3) |
-| Versión esperada del módulo | `19.0.1.7.4` |
+| Versión esperada del módulo | `19.0.1.8.0` |
 
 **Verificación previa (obligatoria):**
 - [ ] Inicio sesión en `http://localhost:8069` sin errores.
-- [ ] En **Ajustes → Aplicaciones**, busco "BCA" y confirmo que **BCA Seguros** está **Instalada** con versión **19.0.1.7.4**.
+- [ ] En **Ajustes → Aplicaciones**, busco "BCA" y confirmo que **BCA Seguros** está **Instalada** con versión **19.0.1.8.0**.
 - [ ] Activo el **modo desarrollador** (Ajustes → al final: *Activar el modo desarrollador*). Facilita ver errores técnicos y nombres de campos.
 
 > 💡 Si aparece cualquier pantalla roja de error (traceback) en cualquier paso, **es un bug**: captúralo y regístralo. La interfaz nunca debe mostrar un traceback al usuario normal.
@@ -70,18 +71,18 @@ tipo: UAT / Pruebas de interfaz (Odoo backend)
 
 ---
 
-## 5. T2 — Embudo de 12 etapas y campos del candidato (Fase A)
+## 5. T2 — Embudo de 13 etapas y campos del candidato (Fase A)
 
-- [ ] **T2.1** Abro la app **Reclutamiento** → entro al puesto **"Reclutamiento de Agente"**. La vista kanban muestra las **12 columnas en este orden**:
-  1. Recibido · 2. Prospección · 3. Café · 4. Entrevista · 5. Evaluación PDA · 6. Acuerdo de Arranque · 7. Clave de Arranque · 8. Inscripción CIA · 9. Curso de Cédula · 10. Examen · 11. **Cédula Emitida** · 12. En Desarrollo Comercial.
+- [ ] **T2.1** Abro la app **Reclutamiento** → entro al puesto **"Reclutamiento de Agente"**. La vista kanban muestra las **13 columnas en este orden**:
+  1. Recibido · 2. Prospección · 3. Café · 4. Cena · 5. Evaluación PDA · 6. Acuerdo de Arranque · 7. Clave de Arranque · 8. Inscripción CIA · 9. Curso de Cédula · 10. Examen · 11. **Cédula Emitida** · 12. En Desarrollo Comercial · 13. **Clave Definitiva**.
 - [ ] **T2.2** Creo un candidato nuevo (*Nuevo*): Nombre del candidato "Juan Pérez QA". Guardo. Se abre el formulario sin error.
 - [ ] **T2.3** En el formulario del candidato confirmo que aparece el campo **Promotoría destino** y las pestañas: **Nota** y **Detalles** (nativas) + **Identificación**, **Evaluación PDA**, **Habilitación** (BCA). **NO** deben existir pestañas "Perfil" ni "Origen" (se depuraron por reuso de lo nativo — D-19).
 - [ ] **T2.4** Pestaña **Identificación**: relleno **Sede / Plaza** (elijo "Matriz"), **Género**, **Fecha de Nacimiento** (ej. 01/01/1990), **Institución**, **Folio CV**. Verifico que el campo **Edad** se calcula solo (≈ la edad correcta) y **no es editable**.
-- [ ] **T2.5** Pestaña **Detalles** (nativa) → grupo **"Perfil BCA"**: relleno **Ramo**, **Perfil Laboral**, **Tipo de Candidato**. En el mismo tab, el **Grado** (nativo, "Postulante") cumple el rol de perfil académico, y **Búsqueda de talentos** (Fuente/Medio/Campaña) es el origen del candidato.
+- [ ] **T2.5** Pestaña **Detalles** (nativa) → grupo **"Perfil BCA"**: relleno **Ramo** y **Perfil Laboral**. En el mismo tab, el **Grado** (nativo, "Postulante") cumple el rol de perfil académico, y **Búsqueda de talentos** (Fuente/Medio/Campaña) es el origen del candidato (el antiguo "Tipo de Candidato" se retiró en D-21 al reusar el origen nativo).
 - [ ] **T2.6** *(Verificación de depuración)* Confirmo que **NO** hay checks "Contactado/Entrevistado" ni "Reagendaciones" ni "¿Tiene Cédula Previa?" — el avance del candidato se refleja moviéndolo de **etapa** en el embudo, y la cédula (si la tiene) se captura en la pestaña **Habilitación**.
 - [ ] **T2.7** Guardo. Todo persiste sin error. Reabro el candidato y los datos siguen ahí.
 
-**Resultado esperado:** 12 etapas visibles y ordenadas; el formulario muestra Identificación / Detalles (con "Perfil BCA") / Evaluación PDA / Habilitación, **sin** pestañas Perfil ni Origen; edad calculada; todo se guarda.
+**Resultado esperado:** 13 etapas visibles y ordenadas; el formulario muestra Identificación / Detalles (con "Perfil BCA") / Evaluación PDA / Habilitación, **sin** pestañas Perfil ni Origen; edad calculada; todo se guarda.
 
 ---
 
@@ -99,9 +100,11 @@ tipo: UAT / Pruebas de interfaz (Odoo backend)
 
 ---
 
-## 7. T4 — Habilitación / Conversión en "Cédula Emitida" (Fase C) ⭐ NÚCLEO
+## 7. T4 — Habilitación / Conversión (Fase C) ⭐ NÚCLEO
 
 > Esta es la prueba **más importante**. Usa un candidato del puesto **"Reclutamiento de Agente"** con **Promotoría destino = "Promotoría QA"** y sin riesgo PDA pendiente (o con visto bueno).
+>
+> **Reparto de la conversión (D-21):** "Cédula Emitida" (seq 11) crea el **agente + la clave por aseguradora**; el **empleado** se crea después, al llegar a **"Clave Definitiva"** (seq 13).
 
 - [ ] **T4.1 (Bloqueo por datos faltantes):** intento mover el candidato a la etapa **"Cédula Emitida"** SIN llenar la pestaña Habilitación. Debe **bloquearse** con un mensaje que dice qué datos faltan (Clave de Arranque, Fecha de Cédula, Aseguradora, RFC, CURP).
 - [ ] **T4.2** Voy a la pestaña **Habilitación** y relleno los **5 datos**:
@@ -113,9 +116,11 @@ tipo: UAT / Pruebas de interfaz (Odoo backend)
 - [ ] **T4.3** Ahora muevo el candidato a **"Cédula Emitida"**. Debe **avanzar sin error** y aparecer un mensaje/nota en el historial (chatter) de que se creó/vinculó el contacto agente.
 - [ ] **T4.4 (Se creó el agente):** voy a **BCA Seguros → Configuración → Agentes**. Aparece un nuevo agente con el nombre del candidato, colgando de **"Promotoría QA"**. Al abrirlo, en **RFC** está el valor y hay un campo **CURP** con el valor capturado.
 - [ ] **T4.5 (Puente en Clave de Arranque):** en el agente, en **Claves por Aseguradora** hay **una línea** con: Aseguradora = "Aseguradora QA", Clave = "QA-CLV-001", **Estado = "Clave de Arranque"** (⚠️ **NO** debe ser "Clave Definitiva").
-- [ ] **T4.6 (Se creó el empleado):** en la app **Empleados**, busco por el nombre del candidato; existe un empleado vinculado a ese contacto.
+- [ ] **T4.6 (Aún NO hay empleado en "Cédula Emitida"):** en la app **Empleados**, busco por el nombre del candidato. **Todavía NO** debe existir un empleado (el empleado se crea hasta "Clave Definitiva", ver T4.8). El botón **"Create Employee"** en el candidato aún **no** está disponible.
+- [ ] **T4.7 (Clave Definitiva — captura del dato):** en la pestaña **Habilitación** relleno **Clave Definitiva** = "QA-DEF-001". Muevo el candidato a la etapa **"Clave Definitiva"** (seq 13). Debe **avanzar sin error**. *(Si intento llegar a "Clave Definitiva" sin capturar la Clave Definitiva, debe **bloquearse** con un mensaje que la pide.)*
+- [ ] **T4.8 (Se creó el empleado en "Clave Definitiva"):** en la app **Empleados**, busco por el nombre del candidato; ahora **sí** existe un empleado vinculado a ese contacto agente. Nota: llegar a "Clave Definitiva" **no** promueve el estado del agente a "Clave Definitiva" en *Claves por Aseguradora* (sigue en "Clave de Arranque" — proceso interno posterior, D-14/SI-4).
 
-**Resultado esperado:** no se llega a "Cédula Emitida" sin los 5 datos; al llegar, se crean automáticamente **agente + clave en estado Clave de Arranque + empleado**.
+**Resultado esperado:** no se llega a "Cédula Emitida" sin los 5 datos; al llegar se crean automáticamente **agente + clave en estado Clave de Arranque** (aún **sin** empleado). El **empleado** se crea al llegar a **"Clave Definitiva"** (exige el dato Clave Definitiva) y **sin** promover el puente a "Clave Definitiva".
 
 ---
 
@@ -123,8 +128,8 @@ tipo: UAT / Pruebas de interfaz (Odoo backend)
 
 - [ ] **T5.1 (Reutilización por RFC+CURP):** creo un **segundo** candidato de "Reclutamiento de Agente" con **el mismo RFC y CURP** del T4, pero **otra Aseguradora** (creo "Aseguradora QA 2") y otra Clave (ej. "QA-CLV-002"). Lo llevo a "Cédula Emitida".
   - **Esperado:** **NO** se crea un agente duplicado. En **Agentes** sigue existiendo **un solo** agente con ese RFC/CURP, pero ahora tiene **2 líneas** en *Claves por Aseguradora* (una por aseguradora), ambas en estado **Clave de Arranque**.
-- [ ] **T5.2 (Puesto interno usa el embudo nativo, no crea agente):** en la app **Reclutamiento**, en un puesto **que NO sea** de agentes/promotoría (ej. un puesto interno de RH cualquiera), creo un candidato.
-  - **Esperado:** el candidato **no** ve ninguna de las 12 etapas BCA (Recibido…En Desarrollo Comercial); ve el **embudo nativo de Odoo**. Al llevarlo a la etapa hired nativa (**"Contract Signed"**) se da de alta como empleado normal, **sin** crear contacto agente ni línea de clave por aseguradora. Nota: ya **no** existe la etapa "Contratado (Alta Interna)".
+- [ ] **T5.2 (Puesto interno usa el embudo nativo, no crea agente):** en la app **Reclutamiento**, en un puesto **que NO sea** de agentes/promotoría (ej. un puesto interno de RH cualquiera), creo un candidato. *(Nota: los puestos internos **no** vienen sembrados; solo existen "Agentes" y "Promotores". Para esta prueba hay que **crear primero** un `hr.job` interno, p. ej. "Auxiliar administrativa".)*
+  - **Esperado:** el candidato **no** ve ninguna de las 13 etapas BCA (Recibido…Clave Definitiva) ni se le exige Sede/Promotoría/Clave de arranque; ve el **embudo nativo de Odoo**. Al llevarlo a la etapa hired nativa (**"Contract Signed"**) el alta del empleado se realiza con el **botón manual nativo "Create Employee"** (NO es automática), **sin** crear contacto agente ni línea de clave por aseguradora. Nota: ya **no** existe la etapa "Contratado (Alta Interna)" (retirada en 19.0.1.7.7, D-20).
 - [ ] **T5.3 (Promotoría recorre el embudo comercial):** creo un candidato de **"Captación de Promotoría"**.
   - **Esperado:** ve las **mismas 12 etapas** que un agente (Fase A + Fase B). Al llevarlo a **"Cédula Emitida"** se crea el **contacto Promotoría** (bajo Grupo BCA), sin exigir los 5 datos de habilitación del agente.
 
@@ -200,7 +205,7 @@ Por cada fallo encontrado, copia este bloque:
 La Etapa 12 se considera **verificada en UI** cuando:
 
 - [ ] T1 a T8 completas sin pantallas de error.
-- [ ] El núcleo (T4) crea agente + clave **Clave de Arranque** + empleado.
+- [ ] El núcleo (T4) crea agente + clave **Clave de Arranque** en "Cédula Emitida", y el **empleado** en **"Clave Definitiva"**.
 - [ ] La idempotencia (T5.1) no duplica agentes.
 - [ ] La visibilidad por rol (T7) funciona.
 - [ ] El agente en Clave de Arranque no aparece en PCA (T8.1).
