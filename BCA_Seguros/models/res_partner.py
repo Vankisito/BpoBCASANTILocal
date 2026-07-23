@@ -5,6 +5,7 @@ import unicodedata
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools import OrderedSet
 
 # Eje "posición en la RED de distribución de BCA" (excluyente por contacto). El
 # cliente de BCA es la ASEGURADORA (a quien BCA cobra comisiones); contratante y
@@ -43,6 +44,16 @@ GENERO_SELECTION = [
     ('femenino', 'Femenino'),
     ('otro', 'Otro'),
 ]
+# Entes de la red BCA fiscalmente INDEPENDIENTES: cada uno (sea persona física o
+# moral) tiene su propio RFC (`vat`) y domicilio fiscal y NO debe heredarlos de su
+# ancestro en la jerarquía (holding/promotoría). Odoo, nativamente, sincroniza los
+# "commercial fields" (vat) desde el commercial_partner_id y los "address fields"
+# desde el padre `type='contact'`; para estos tipos se corta esa sincronización.
+# El scoping es por bca_tipo (NO por is_company): una promotoría/agente persona
+# física (is_company=False) colgaría fiscalmente del ancestro si nos apoyáramos en
+# is_company, así que ese criterio no sirve como palanca. Ver _fields_sync,
+# _commercial_sync_to_descendants y _update_address más abajo.
+TIPOS_FISCAL_INDEPENDIENTE = ('promotoria', 'agente')
 
 
 class ResPartner(models.Model):
@@ -326,3 +337,67 @@ class ResPartner(models.Model):
                         f'Una Promotoría debe pertenecer a un Holding BCA '
                         f'(parent actual: {rec.parent_id.bca_tipo or "sin tipo"}).'
                     )
+
+    # -------------------------------------------------------------------------
+    # Independencia fiscal de la red BCA (RFC/domicilio propios por ente)
+    #
+    # Se conserva `parent_id` nativo para la jerarquía (los reportes de comisiones
+    # derivan la promotoría por parent_id), pero se corta la sincronización nativa
+    # de vat/domicilio para promotorías y agentes, que son entes fiscalmente
+    # independientes. Los contactos-persona normales (sin bca_tipo) mantienen el
+    # comportamiento nativo (p. ej. un empleado de una empresa SÍ comparte su RFC).
+    # -------------------------------------------------------------------------
+    def _fields_sync(self, values):
+        """Corta el PULL y el UPSTREAM de vat/domicilio para entes independientes.
+
+        `_fields_sync` (nativo) sincroniza en create/write: jala vat del
+        commercial_partner y domicilio del padre (PULL), y empuja ambos hacia el
+        padre (UPSTREAM). Para promotorías/agentes no debe ocurrir ninguna de las
+        dos: conservan lo capturado en ellos mismos. El DOWNSTREAM (que un ancestro
+        les escriba) se corta aparte en _commercial_sync_to_descendants (vat) y
+        _update_address (domicilio), porque esas escrituras nacen en el ancestro.
+        """
+        if self.bca_tipo in TIPOS_FISCAL_INDEPENDIENTE:
+            return
+        return super()._fields_sync(values)
+
+    def _commercial_sync_to_descendants(self, fields_to_sync=None):
+        """Evita que un ancestro (holding) empuje sus commercial fields (vat) a
+        promotorías/agentes.
+
+        Reimplementa el método nativo con una sola diferencia: el recordset de
+        hijos destino excluye a los entes fiscalmente independientes. El filtro
+        nativo `not c.is_company` NO basta, porque una promotoría/agente persona
+        física (is_company=False) quedaría dentro y sería contaminada.
+        """
+        commercial_partner = self.commercial_partner_id
+        if fields_to_sync is None:
+            fields_to_sync = self._commercial_fields()
+        sync_vals = commercial_partner._convert_fields_to_values(fields_to_sync)
+        sync_children = self.child_ids.filtered(
+            lambda c: not c.is_company
+            and c.bca_tipo not in TIPOS_FISCAL_INDEPENDIENTE
+        )
+        children_ids_to_sync = OrderedSet()
+        for child in sync_children:
+            if any(
+                self.env['res.partner']._fields[fname].convert_to_write(child[fname], self)
+                != sync_vals[fname]
+                for fname in fields_to_sync
+            ):
+                children_ids_to_sync.add(child.id)
+            child._commercial_sync_to_descendants(fields_to_sync)
+        if children_ids_to_sync:
+            children_to_sync = self.env['res.partner'].browse(children_ids_to_sync)
+            children_to_sync.write(sync_vals)
+
+    def _update_address(self, vals):
+        """Evita que un ancestro escriba su domicilio sobre entes independientes.
+
+        `_update_address` es el único punto de escritura de address fields por
+        jerarquía (lo invoca _children_sync sobre los hijos type='contact', y el
+        PULL de dirección). Se excluye a promotorías/agentes para que conserven su
+        domicilio fiscal propio.
+        """
+        protegidos = self.filtered(lambda c: c.bca_tipo in TIPOS_FISCAL_INDEPENDIENTE)
+        return super(ResPartner, self - protegidos)._update_address(vals)

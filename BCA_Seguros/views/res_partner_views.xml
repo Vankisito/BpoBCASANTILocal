@@ -46,6 +46,26 @@
                             <field name="bca_estado_agente" readonly="1"/>
                         </group>
                     </group>
+                    <!-- Datos fiscales PROPIOS del ente de red (promotoría/agente).
+                         Cada ente (persona física o moral) tiene su RFC y domicilio
+                         fiscal independientes: NO se heredan del ancestro (ver los
+                         overrides _fields_sync / _commercial_sync_to_descendants /
+                         _update_address en res_partner.py). Se exponen aquí, en un
+                         solo lugar, para captura directa sin navegar el form nativo. -->
+                    <group name="bca_datos_fiscales" string="Datos Fiscales del Ente"
+                           invisible="bca_tipo not in ('promotoria', 'agente')">
+                        <group name="bca_rfc" string="Identificación">
+                            <field name="vat" string="RFC"/>
+                        </group>
+                        <group name="bca_domicilio" string="Domicilio Fiscal">
+                            <field name="street"/>
+                            <field name="street2"/>
+                            <field name="city"/>
+                            <field name="state_id" options="{'no_create': True}"/>
+                            <field name="zip"/>
+                            <field name="country_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
                     <group name="bca_claves" string="Claves por Aseguradora"
                            invisible="bca_tipo != 'agente'">
                         <field name="agente_aseguradora_ids" nolabel="1">
