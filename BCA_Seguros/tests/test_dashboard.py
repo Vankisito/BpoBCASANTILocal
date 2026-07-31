@@ -117,6 +117,51 @@ class TestDashboard(TransactionCase):
         self.assertEqual(len(data['pca']['tendencia_mensual']), 12)
         self.assertEqual(data['pca']['factores_esperados'], 17)
 
+    # --------------------------------------------------------- acceso por rol
+    def test_agente_abre_tablero_sin_access_error(self) -> None:
+        """El rol Agente carga el tablero completo. Regresión: el Agente no
+        tiene ACL sobre bca.factor.pca ni bca.bitacora.importacion, y el
+        AccessError en onWillStart dejaba TODO el módulo inaccesible (el front
+        lo reportaba como TypeError del NavBar, no como error de permisos)."""
+        user_agente = self.env['res.users'].with_context(
+            no_reset_password=True).create({
+                'name': 'Agente Tablero',
+                'login': 'bca_test_agente_tablero',
+                'group_ids': [(6, 0, [
+                    self.env.ref('base.group_user').id,
+                    self.env.ref('BCA_Seguros.group_bca_agente').id,
+                ])],
+            })
+        data = self.dashboard.with_user(user_agente).get_dashboard_data()
+
+        # Tarjeta 5 se omite (sin ACL sobre bitácoras) → el front la oculta.
+        self.assertFalse(data['importaciones'])
+        # El resto del contrato §6 sigue completo.
+        self.assertEqual(data['moneda'], 'MXN')
+        for clave in ('cartera', 'cobranza', 'pca', 'vigencia', 'agentes'):
+            self.assertTrue(isinstance(data[clave], dict), clave)
+        # Conteo de catálogo de factores: llega vía sudo(), no vía ACL.
+        self.assertEqual(
+            data['pca']['factores_cargados'],
+            self.env['bca.factor.pca'].search_count([]))
+
+    def test_operador_si_ve_importaciones(self) -> None:
+        """Operador+ conserva la tarjeta 5 con todas sus claves."""
+        user_operador = self.env['res.users'].with_context(
+            no_reset_password=True).create({
+                'name': 'Operador Tablero',
+                'login': 'bca_test_operador_tablero',
+                'group_ids': [(6, 0, [
+                    self.env.ref('base.group_user').id,
+                    self.env.ref('BCA_Seguros.group_bca_operador').id,
+                ])],
+            })
+        data = self.dashboard.with_user(user_operador).get_dashboard_data()
+        self.assertEqual(
+            set(data['importaciones']),
+            {'ultima_fecha', 'ultimo_archivo', 'aplicadas', 'no_encontradas',
+             'anuladas', 'errores'})
+
     # ------------------------------------------------------- cifras cuadran
     def test_cifras_cuadran_con_search_count(self) -> None:
         """Las cifras de cartera/cobranza/PCA coinciden con los search_count

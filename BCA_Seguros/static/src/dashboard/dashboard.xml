@@ -149,8 +149,10 @@
                         </div>
                     </section>
 
-                    <!-- ============ Tarjeta 5 — Últimas Importaciones ============ -->
-                    <section class="o_bca_card">
+                    <!-- ============ Tarjeta 5 — Últimas Importaciones ============
+                         Solo Operador+: el backend manda importaciones=False
+                         cuando el usuario no alcanza las bitácoras (Agente). -->
+                    <section class="o_bca_card" t-if="state.data.importaciones">
                         <header class="o_bca_card_head">
                             <span class="o_bca_card_kicker">Últimas Importaciones</span>
                         </header>

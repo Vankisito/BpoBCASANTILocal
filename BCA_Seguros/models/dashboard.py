@@ -52,11 +52,27 @@ class BcaDashboard(models.AbstractModel):
     def _hoy(self) -> date:
         return fields.Date.context_today(self)
 
+    def _ve_importaciones(self) -> bool:
+        """El Agente NO tiene ACL sobre bca.bitacora.importacion (por diseño:
+        las bitácoras son globales, no segmentables por agente). Sin este
+        guard, get_dashboard_data() levantaba AccessError en onWillStart del
+        client action y el tablero — es decir, TODO el módulo — quedaba
+        inaccesible para el rol Agente.
+
+        Se consulta la ACL real (has_access, v18+) en vez de un grupo
+        hardcodeado: si mañana se abre el modelo a otro rol, la tarjeta
+        aparece sola."""
+        return self.env['bca.bitacora.importacion'].has_access('read')
+
     # -------------------------------------------------------------- contrato §6
     @api.model
     def get_dashboard_data(self) -> dict:
         """Devuelve TODAS las cifras del tablero ya calculadas (contrato spec §6).
-        Las claves son estables: el componente OWL depende de ellas."""
+        Las claves son estables: el componente OWL depende de ellas.
+
+        'importaciones' es la única clave con valor dependiente del rol: False
+        para quien no alcanza las bitácoras (Agente). El front oculta la
+        tarjeta 5 con t-if en ese caso."""
         hoy = self._hoy()
         inicio_mes = hoy.replace(day=1)
         fin_mes = inicio_mes + relativedelta(months=1) - timedelta(days=1)
@@ -71,7 +87,8 @@ class BcaDashboard(models.AbstractModel):
             'cobranza': self._datos_cobranza(Recibo, hoy, inicio_mes, fin_mes),
             'pca': self._datos_pca(Recibo, inicio_mes, inicio_anio, hoy),
             'vigencia': self._datos_vigencia(Poliza, hoy),
-            'importaciones': self._datos_importaciones(),
+            'importaciones': (
+                self._datos_importaciones() if self._ve_importaciones() else False),
             'agentes': self._datos_agentes(Recibo),
         }
 
@@ -142,7 +159,11 @@ class BcaDashboard(models.AbstractModel):
                 ('estado', '=', 'pagado'), ('factor_aplicado', '>', 0)]),
             'exclusiones': Recibo.search_count([
                 ('estado', '=', 'pagado'), ('factor_aplicado', '=', 0)]),
-            'factores_cargados': self.env['bca.factor.pca'].search_count([]),
+            # sudo() acotado: es un conteo de catálogo (¿está cargada la tabla
+            # de factores del año?), sin dato de negocio ni de terceros. El
+            # Agente no tiene ACL sobre bca.factor.pca y sin sudo() el tablero
+            # entero moría con AccessError.
+            'factores_cargados': self.env['bca.factor.pca'].sudo().search_count([]),
             'factores_esperados': FACTORES_ESPERADOS,
             'tendencia_mensual': self._tendencia_mensual(hoy),
         }
