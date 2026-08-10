@@ -151,6 +151,12 @@
               action="BCA_Seguros.action_partner_agentes"
               sequence="30"/>
 
+    <menuitem id="menu_bca_config_cambios_promotoria"
+              name="Cambios de Promotoría"
+              parent="menu_bca_configuracion"
+              action="BCA_Seguros.action_agente_cambio_promotoria"
+              sequence="35"/>
+
     <menuitem id="menu_bca_config_productos"
               name="Productos de Seguro"
               parent="menu_bca_configuracion"

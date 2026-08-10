@@ -1,5 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="rule_bca_agente_cambio_promotoria_operador" model="ir.rule">
+        <field name="name">bca.agente.cambio.promotoria: lectura operador</field>
+        <field name="model_id" ref="model_bca_agente_cambio_promotoria"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_agente_cambio_promotoria_lider" model="ir.rule">
+        <field name="name">bca.agente.cambio.promotoria: lectura líder</field>
+        <field name="model_id" ref="model_bca_agente_cambio_promotoria"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_agente_cambio_promotoria_dir_comercial" model="ir.rule">
+        <field name="name">bca.agente.cambio.promotoria: director comercial</field>
+        <field name="model_id" ref="model_bca_agente_cambio_promotoria"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_agente_cambio_promotoria_director" model="ir.rule">
+        <field name="name">bca.agente.cambio.promotoria: director</field>
+        <field name="model_id" ref="model_bca_agente_cambio_promotoria"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
     <!-- ================================================================
          RECORD RULES — ETAPA 1
 

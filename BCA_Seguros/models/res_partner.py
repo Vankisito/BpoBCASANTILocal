@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools import OrderedSet
 
 # Eje "posición en la RED de distribución de BCA" (excluyente por contacto). El
@@ -149,6 +149,12 @@ class ResPartner(models.Model):
         'agente_id',
         string='Claves por Aseguradora',
     )
+    cambio_promotoria_ids: list[int] = fields.One2many(
+        'bca.agente.cambio.promotoria',
+        'agente_id',
+        string='Cambios de Promotoría',
+        readonly=True,
+    )
 
     # Roles de PÓLIZA (no excluyentes): un mismo contacto puede ser contratante
     # y asegurado a la vez, y además tener posición de red (p. ej. agente). Se
@@ -175,14 +181,15 @@ class ResPartner(models.Model):
         store=True,
     )
 
-    # C2: computed SIN store — retorna parent_id en tiempo real, nunca stale data.
-    # search= permite filtrabilidad desde domain y search_read de la API.
+    # Dimensión de red almacenada para filtros, agrupaciones y reportes.
+    # Solo los agentes tienen Promotoría; el resto de contactos queda vacío.
     bca_promotoria_id: int = fields.Many2one(
         'res.partner',
         string='Promotoría',
         compute='_compute_promotoria_id',
-        store=False,
-        search='_search_promotoria_id',
+        store=True,
+        index=True,
+        readonly=True,
     )
     bca_categoria_id: int = fields.Many2one(
         'res.partner.category',
@@ -222,10 +229,9 @@ class ResPartner(models.Model):
     @api.depends('bca_tipo', 'parent_id')
     def _compute_promotoria_id(self) -> None:
         for rec in self:
-            rec.bca_promotoria_id = rec.parent_id if rec.bca_tipo == 'agente' else False
-
-    def _search_promotoria_id(self, operator: str, value: object) -> list:
-        return [('parent_id', operator, value)]
+            rec.bca_promotoria_id = (
+                rec.parent_id if rec.bca_tipo == 'agente' else False
+            )
 
     @api.depends('bca_polizas_como_contratante', 'bca_polizas_como_asegurado')
     def _compute_bca_roles_poliza(self) -> None:
@@ -283,6 +289,64 @@ class ResPartner(models.Model):
                 ('agente_poliza_id', '=', rec.id),
             ])
 
+    def action_cambiar_promotoria(self) -> dict:
+        """Abre el flujo auditado para transferir un agente."""
+        self.ensure_one()
+        if self.bca_tipo != 'agente':
+            raise UserError(_('Solo un contacto de tipo Agente puede cambiar de Promotoría.'))
+        if not (self.env.user.has_group('BCA_Seguros.group_bca_director_comercial')
+                or self.env.user.has_group('BCA_Seguros.group_bca_director')):
+            raise AccessError(
+                _('Solo Director Comercial o Director pueden cambiar la Promotoría de un agente.')
+            )
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Cambiar Promotoría'),
+            'res_model': 'bca.wizard.cambio.promotoria',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_agente_id': self.id},
+        }
+
+    def cambiar_promotoria(self, nueva_promotoria, fecha_cambio, motivo: str) -> bool:
+        """Transfer an agent through the authorized, audited workflow."""
+        self.ensure_one()
+        if not (self.env.user.has_group('BCA_Seguros.group_bca_director_comercial')
+                or self.env.user.has_group('BCA_Seguros.group_bca_director')):
+            raise AccessError(
+                _('Solo Director Comercial o Director pueden cambiar la Promotoría.')
+            )
+        if self.bca_tipo != 'agente' or not self.parent_id:
+            raise ValidationError(
+                _('El Agente debe tener una Promotoría actual válida.')
+            )
+        if nueva_promotoria.bca_tipo != 'promotoria':
+            raise ValidationError(_('La nueva entidad debe ser una Promotoría BCA.'))
+        if (not nueva_promotoria.parent_id
+                or nueva_promotoria.parent_id.bca_tipo != 'holding'):
+            raise ValidationError(
+                _('La nueva Promotoría debe pertenecer a un Holding BCA.')
+            )
+        if nueva_promotoria == self.parent_id:
+            raise ValidationError(
+                _('La nueva Promotoría debe ser diferente de la actual.')
+            )
+        if not motivo or not motivo.strip():
+            raise ValidationError(_('El motivo del cambio es obligatorio.'))
+
+        self.env['bca.agente.cambio.promotoria'].sudo().with_context(
+            bca_from_cambio_promotoria=True,
+        ).create({
+            'agente_id': self.id,
+            'promotoria_anterior_id': self.parent_id.id,
+            'promotoria_nueva_id': nueva_promotoria.id,
+            'fecha_cambio': fecha_cambio,
+            'motivo': motivo.strip(),
+            'usuario_id': self.env.user.id,
+        })
+        super().write({'parent_id': nueva_promotoria.id})
+        return True
+
     def action_view_bca_polizas(self) -> dict:
         self.ensure_one()
         domain = [
@@ -318,24 +382,78 @@ class ResPartner(models.Model):
             'domain': domain,
         }
 
+    def write(self, vals: dict) -> bool:
+        """Protege la estructura BCA contra cambios directos silenciosos.
+
+        Los cambios de afiliación de agentes se realizan mediante el wizard
+        autorizado, que usa el contexto técnico interno y deja un registro
+        inmutable en ``bca.agente.cambio.promotoria``. Los contactos normales
+        conservan el comportamiento nativo de ``res.partner``.
+        """
+        cambios_estructura = {'bca_tipo', 'parent_id'} & set(vals)
+        if cambios_estructura and not self.env.context.get(
+                'bca_allow_network_structure_change'):
+            for rec in self:
+                if 'bca_tipo' in vals and vals['bca_tipo'] != rec.bca_tipo:
+                    if rec.bca_tipo in TIPO_SELECTION or vals['bca_tipo'] in TIPO_SELECTION:
+                        raise UserError(
+                            _('El Tipo BCA de "%s" no se puede cambiar directamente. '
+                              'Use el flujo administrativo de la red.') % rec.display_name
+                        )
+                if 'parent_id' in vals:
+                    nuevo_parent_id = vals['parent_id'] or False
+                    if rec.bca_tipo in ('agente', 'promotoria') and (
+                            nuevo_parent_id != rec.parent_id.id):
+                        raise UserError(
+                            _('La Promotoría de "%s" no se puede cambiar directamente. '
+                              'Use "Cambiar Promotoría" para dejar auditoría.')
+                            % rec.display_name
+                        )
+        return super().write(vals)
+
     @api.constrains('bca_tipo', 'parent_id')
     def _check_jerarquia(self) -> None:
-        """Valida que la jerarquía organizacional sea coherente:
-        - Agente debe tener parent de tipo 'promotoria'
-        - Promotoría debe tener parent de tipo 'holding'
+        """Valida la jerarquía BCA completa en cada alta o modificación.
+
+        - Holding y aseguradora no pertenecen a la jerarquía operativa.
+        - Promotoría debe pertenecer a un Holding.
+        - Agente debe pertenecer a una Promotoría.
+        - Los contactos sin ``bca_tipo`` conservan la jerarquía nativa.
         """
         for rec in self:
-            if rec.bca_tipo == 'agente' and rec.parent_id:
-                if rec.parent_id.bca_tipo != 'promotoria':
+            if rec.bca_tipo == 'holding':
+                if rec.parent_id:
                     raise ValidationError(
-                        f'Un agente debe pertenecer a una Promotoría BCA '
-                        f'(parent actual: {rec.parent_id.bca_tipo or "sin tipo"}).'
+                        _('El Holding BCA "%s" no puede depender de otro contacto BCA.')
+                        % rec.display_name
                     )
-            elif rec.bca_tipo == 'promotoria' and rec.parent_id:
+            elif rec.bca_tipo == 'aseguradora':
+                if rec.parent_id:
+                    raise ValidationError(
+                        _('La Aseguradora "%s" no puede tener un parent BCA operativo.')
+                        % rec.display_name
+                    )
+            elif rec.bca_tipo == 'promotoria':
+                if not rec.parent_id:
+                    raise ValidationError(
+                        _('La Promotoría "%s" debe pertenecer a un Holding BCA.')
+                        % rec.display_name
+                    )
                 if rec.parent_id.bca_tipo != 'holding':
                     raise ValidationError(
-                        f'Una Promotoría debe pertenecer a un Holding BCA '
-                        f'(parent actual: {rec.parent_id.bca_tipo or "sin tipo"}).'
+                        _('La Promotoría "%s" debe pertenecer a un Holding BCA.')
+                        % rec.display_name
+                    )
+            elif rec.bca_tipo == 'agente':
+                if not rec.parent_id:
+                    raise ValidationError(
+                        _('El Agente "%s" debe pertenecer a una Promotoría BCA.')
+                        % rec.display_name
+                    )
+                if rec.parent_id.bca_tipo != 'promotoria':
+                    raise ValidationError(
+                        _('El Agente "%s" debe pertenecer a una Promotoría BCA.')
+                        % rec.display_name
                     )
 
     # -------------------------------------------------------------------------

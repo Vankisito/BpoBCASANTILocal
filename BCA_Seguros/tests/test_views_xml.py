@@ -72,6 +72,11 @@ class TestViewsXml(TransactionCase):
     def test_wizard_skeletons_cargan(self) -> None:
         self._validate('BCA_Seguros.view_wizard_carga_portafolio_form')
         self._validate('BCA_Seguros.view_wizard_cobranza_diaria_form')
+        self._validate('BCA_Seguros.view_wizard_cambio_promotoria_form')
+
+    def test_cambios_promotoria_views(self) -> None:
+        self._validate('BCA_Seguros.view_agente_cambio_promotoria_list')
+        self._validate('BCA_Seguros.view_agente_cambio_promotoria_form')
 
     def test_reportes_views(self) -> None:
         """Etapa 9 — pivot/graph/list/search de los 4 reportes SQL parsean

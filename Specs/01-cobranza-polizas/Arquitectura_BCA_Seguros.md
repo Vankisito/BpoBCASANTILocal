@@ -106,7 +106,7 @@ crm.lead (pipeline venta de pólizas)
 | `bca_tipo` | Selection `index=True` | `holding`, `aseguradora`, `promotoria`, `agente`, `contratante` |
 | `bca_estado_agente` | Selection **computed `store=True`** `index=True` | Rollup de carrera: `prospecto`, `clave_arranque`, `clave_definitiva`. Es el "mejor" estado alcanzado en cualquier aseguradora (Definitiva > Arranque > Prospecto; sin claves = Prospecto). **No editable a mano** — se deriva del modelo puente. Solo para filtros/listas/visual. **La PCA NO filtra por este campo** (ver corrección PCA). |
 | `bca_codigo_aseguradora` | Char `index=True` | Código corto interno (METLIFE, QUALITAS, INSURANCE) |
-| `bca_promotoria_id` | Many2one (computed, **sin store**) | Para agentes: retorna `parent_id` si es promotoría |
+| `bca_promotoria_id` | Many2one computed **store=True**, `index=True` | Para agentes: retorna `parent_id` si es promotoría; dimensión agrupable de la red |
 | `agente_aseguradora_ids` | One2many → `res.partner.agente.aseguradora` | Asociaciones del agente con aseguradoras y sus claves |
 
 > **[CORRECCIÓN C3]** Los campos `bca_clave_agente` (Char) y `bca_aseguradoras_ids` (Many2many) fueron **eliminados** de `res.partner`. No es posible implementar un constraint SQL `UNIQUE(clave, aseguradora)` sobre una relación Many2many. Se reemplazan por el modelo puente `res.partner.agente.aseguradora` (sección 2.3.0) que sí soporta el constraint real.

@@ -32,6 +32,7 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 | BUG-012 | 2026-05-27 | Recibo (form), Póliza (pestaña Recibos), Contactos | Las fechas (Cobertura Desde/Hasta, Fecha de Pago) no se muestran en formato día/mes/año. | Config | ⚪ Baja | Pendiente-config |
 | BUG-013 | 2026-05-27 | Póliza → form → pestaña "Recibos" | Al abrir un recibo desde la pestaña se muestra un popup con botón "Registrar Pago", pero la sección "Datos del Pago" no es editable en ese diálogo, por lo que el botón no tiene funcionalidad real. | UI/UX | 🟡 Media | Abierto |
 | BUG-015 | 2026-06-05 | Datos: `bca.poliza.coaseguro` vs `bca.factor.pca.coaseguro_min` | Desajuste de unidades de coaseguro: la póliza lo guarda como fracción (`0.10`=10%) y el seed de factores GMM como puntos porcentuales (`coaseguro_min=10.0`). El calculador de PCA (E7) lo normaliza, pero la inconsistencia de esquema persiste y puede confundir captura/reportes. | Datos | 🟡 Media | Abierto |
+| BUG-018 | 2026-08-07 | Póliza → lista → agrupar por Promotoría | `promotoria_id` no almacenado provocaba `ValueError` en `read_group`; además la jerarquía de red no tenía flujo auditado para cambios directos de `parent_id`. | Lógica | 🟡 Media | Resuelto |
 
 ### Detalle de bugs abiertos (cont.)
 
@@ -55,6 +56,12 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 ---
 
 ## Bugs Resueltos
+
+Resuelto el **2026-08-10** (versión `19.0.1.10.0`):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-018 | Póliza → lista → agrupar por Promotoría | `promotoria_id` no almacenado provocaba `ValueError` en `read_group`; además la jerarquía de red no tenía flujo auditado para cambios directos de `parent_id`. | Lógica | 🟡 Media | `bca.poliza.promotoria_id` y `res.partner.bca_promotoria_id` almacenados/indexados; gobernanza de red y transferencia auditada. | Pendiente |
 
 Resuelto el **2026-07-13** (rama `desarrollo`; **sin cambio de código** — solo documentación de referencia):
 

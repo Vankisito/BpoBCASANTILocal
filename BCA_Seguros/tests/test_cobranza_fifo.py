@@ -27,8 +27,13 @@ class _CobranzaFixtures(TransactionCase):
         super().setUpClass()
         Partner = cls.env['res.partner']
         cls.aseguradora = cls.env.ref('BCA_Seguros.partner_metlife')
+        cls.holding = Partner.create({
+            'name': 'Holding C', 'bca_tipo': 'holding',
+        })
         cls.promotoria = Partner.create({
-            'name': 'Promotoría C', 'bca_tipo': 'promotoria',
+            'name': 'Promotoría C',
+            'bca_tipo': 'promotoria',
+            'parent_id': cls.holding.id,
         })
         cls.agente = Partner.create({
             'name': 'Agente C', 'bca_tipo': 'agente',

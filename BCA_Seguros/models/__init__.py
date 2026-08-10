@@ -8,6 +8,7 @@ from . import (
     poliza,
     poliza_beneficiario,
     poliza_cambio_agente,
+    agente_cambio_promotoria,
     recibo,
     bitacora,
     dashboard,

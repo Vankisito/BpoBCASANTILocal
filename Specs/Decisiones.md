@@ -37,14 +37,14 @@
 
 ---
 
-## D-03 — `promotoria_id` en póliza es computed puro (sin `store=True`)
+## D-03 — `promotoria_id` en póliza es dimensión almacenada de cartera vigente
 
 **Fecha:** Sesión previa  
 **Referencia:** Corrección C2 en `Arquitectura_BCA_Seguros.md §13`
 
-**Decisión:** `promotoria_id` en `bca.poliza` es un campo computed sin almacenamiento. Se implementa `_search_promotoria_id()` para mantener filtrabilidad.
+**Decisión:** `promotoria_id` en `bca.poliza` es un `Many2one` related almacenado e indexado desde `agente_id.parent_id`, para soportar filtros, agrupaciones y `read_group`.
 
-**Razón:** Evitar desincronización si el agente cambia de promotoría. El valor siempre se deriva del `parent_id` del agente en tiempo real.
+**Razón:** Odoo necesita convertir el campo a SQL para agrupar. La cartera vigente debe reflejar la Promotoría actual; la fotografía histórica al pago permanece en `bca.recibo.promotoria_id`.
 
 ---
 

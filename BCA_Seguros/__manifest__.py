@@ -1,6 +1,6 @@
 {
     'name': 'BCA Seguros — Gestión de Pólizas y Cobranza',
-    'version': '19.0.1.9.0',
+    'version': '19.0.1.10.0',
     'category': 'Insurance',
     'summary': 'Módulo vertical BCA para pólizas, cobranza, PCA y comisiones',
     'author': 'Hábitat Digital',
@@ -33,6 +33,7 @@
         'data/cron_estatus_pago.xml',
         # Vistas (orden: definir actions y views antes que el menú que las referencia)
         'views/res_partner_views.xml',
+        'views/cambio_promotoria_views.xml',
         'views/product_template_views.xml',
         'views/hr_applicant_views.xml',
         'views/bca_sede_views.xml',
@@ -47,6 +48,7 @@
         'views/reportes_views.xml',
         'views/wizard_carga_portafolio_views.xml',
         'views/wizard_cobranza_diaria_views.xml',
+        'views/wizard_cambio_promotoria_views.xml',
         # menu.xml siempre último: depende de todas las actions anteriores
         'views/menu.xml',
     ],

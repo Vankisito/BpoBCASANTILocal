@@ -21,8 +21,8 @@ class BcaReporteEstadoCartera(models.Model):
     # Grano: una póliza activa.
     poliza_id: int = fields.Many2one('bca.poliza', string='Póliza', readonly=True)
     # agente_id es el VIGENTE de la póliza (no la foto): la cartera viva refleja
-    # quién atiende hoy la póliza. promotoria_id sale de agente_id.parent_id
-    # (la póliza no almacena promotoría — es computed sin store).
+    # quién atiende hoy la póliza. promotoria_id es la dimensión almacenada
+    # vigente de bca.poliza, derivada de agente_id.parent_id.
     agente_id: int = fields.Many2one('res.partner', string='Agente', readonly=True)
     promotoria_id: int = fields.Many2one('res.partner', string='Promotoría', readonly=True)
     aseguradora_id: int = fields.Many2one('res.partner', string='Aseguradora', readonly=True)

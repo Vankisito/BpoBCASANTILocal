@@ -22,7 +22,19 @@ class TestPolizaCoberturas(TransactionCase):
         cls.medicalife = cls.env.ref('BCA_Seguros.producto_metlife_gmm_medicalife')
 
         Partner = cls.env['res.partner']
-        cls.agente = Partner.create({'name': 'Agente C', 'bca_tipo': 'agente'})
+        cls.holding = Partner.create({
+            'name': 'Holding C', 'bca_tipo': 'holding',
+        })
+        cls.promotoria = Partner.create({
+            'name': 'Promotoría C',
+            'bca_tipo': 'promotoria',
+            'parent_id': cls.holding.id,
+        })
+        cls.agente = Partner.create({
+            'name': 'Agente C',
+            'bca_tipo': 'agente',
+            'parent_id': cls.promotoria.id,
+        })
         cls.contratante = Partner.create({'name': 'Contratante C'})
 
     def _ptav(self, producto, attribute):

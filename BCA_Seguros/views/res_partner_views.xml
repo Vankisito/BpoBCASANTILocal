@@ -25,6 +25,7 @@
                                    string="Pertenece a"
                                    domain="[('bca_tipo', 'in', ['holding', 'promotoria'])]"
                                    options="{'no_create': True}"
+                                   readonly="id and bca_tipo in ('promotoria', 'agente')"
                                    required="bca_tipo in ('promotoria', 'agente')"
                                    invisible="bca_tipo not in ('promotoria', 'agente')"/>
                             <field name="bca_codigo_aseguradora"
@@ -44,6 +45,11 @@
                             <!-- Rollup readonly: se deriva de las claves por
                                  aseguradora (abajo). No editable a mano. -->
                             <field name="bca_estado_agente" readonly="1"/>
+                            <button name="action_cambiar_promotoria"
+                                    type="object"
+                                    string="Cambiar Promotoría"
+                                    class="oe_highlight"
+                                    groups="BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"/>
                         </group>
                     </group>
                     <!-- Datos fiscales PROPIOS del ente de red (promotoría/agente).

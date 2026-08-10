@@ -95,14 +95,16 @@ class BcaPoliza(models.Model):
         tracking=True,
         index=True,
     )
-    # C2: computed SIN store — siempre refleja parent_id actual del agente.
-    # search= permite filtrar/agrupar desde la UI y la API.
+    # Dimensión de cartera vigente. Es related almacenado porque la lista de
+    # pólizas permite agrupar por Promotoría mediante read_group/GROUP BY.
+    # La fotografía histórica de la promotoría al pago vive en bca.recibo.
     promotoria_id: int = fields.Many2one(
         'res.partner',
         string='Promotoría',
-        compute='_compute_promotoria_id',
-        store=False,
-        search='_search_promotoria_id',
+        related='agente_id.parent_id',
+        store=True,
+        index=True,
+        readonly=True,
     )
     # Contratante y asegurado son ROLES de póliza, no tipos de red: cualquier
     # contacto que no sea una entidad de red (aseguradora/promotoria/holding)
@@ -403,14 +405,6 @@ class BcaPoliza(models.Model):
             else:
                 pol.fecha_fin = pol.fecha_inicio + relativedelta(years=1)
 
-    @api.depends('agente_id', 'agente_id.parent_id')
-    def _compute_promotoria_id(self) -> None:
-        for pol in self:
-            pol.promotoria_id = pol.agente_id.parent_id if pol.agente_id else False
-
-    def _search_promotoria_id(self, operator: str, value: object) -> list:
-        return [('agente_id.parent_id', operator, value)]
-
     @api.depends('recibo_ids')
     def _compute_recibo_count(self) -> None:
         for pol in self:
@@ -634,8 +628,8 @@ class BcaPoliza(models.Model):
         """M4: Único punto autorizado para cambiar el agente de una póliza.
 
         Crea un registro en bca.poliza.cambio.agente con el snapshot
-        organizacional antes y después del cambio. promotoria_id se recalcula
-        sola (computed sin store).
+        organizacional antes y después del cambio. promotoria_id se actualiza
+        automáticamente porque es un related almacenado.
         """
         self.ensure_one()
         if nuevo_agente.bca_tipo != 'agente':

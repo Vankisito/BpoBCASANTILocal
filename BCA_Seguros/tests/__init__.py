@@ -16,4 +16,5 @@ from . import (
     test_reportes,
     test_dashboard,
     test_independencia_fiscal,
+    test_promotoria_governance,
 )
