@@ -1,4 +1,4 @@
-# Plan de Desarrollo — Módulo `bca_core`
+# Plan de Desarrollo — Módulo `BCA_Seguros`
 
 **Proyecto:** Grupo BCA — Gestión de Pólizas, Cobranza y PCA  
 **Plataforma:** Odoo Community 19  
@@ -6,9 +6,15 @@
 **Audiencia:** Desarrolladores humanos y agentes IA  
 **Estado:** Documento vivo — actualizar al cerrar cada etapa
 
+> **Estructura de `Specs/`:** los documentos están organizados por fase.
+> Transversales (gobiernan todo el módulo) en la raíz: `Plan de Desarrollo.md`,
+> `Decisiones.md`, `Changelog.md`, `Bugs.md`, `TESTS_COVERAGE.md`.
+> Fase 1 (cobranza/pólizas/cartera + tablero) en `Specs/01-cobranza-polizas/`.
+> Reclutamiento de agentes en `Specs/02-reclutamiento/`.
+>
 > **Documentos de referencia obligatorios (leer antes de este plan):**
-> 1. `Specs/Arquitectura_BCA_Seguros.md` — modelo de datos, reglas, correcciones arquitectónicas
-> 2. `Specs/Logica de Negocios_BCA_Seguros.md` — qué debe hacer el negocio y por qué
+> 1. `Specs/01-cobranza-polizas/Arquitectura_BCA_Seguros.md` — modelo de datos, reglas, correcciones arquitectónicas
+> 2. `Specs/01-cobranza-polizas/Logica de Negocios_BCA_Seguros.md` — qué debe hacer el negocio y por qué
 > 3. `Specs/Decisiones.md` (cuando exista) — decisiones ya tomadas y sus razones
 
 ---
@@ -21,7 +27,7 @@ Lee las secciones 2–4 para entender el alcance y las reglas. Luego avanza etap
 ### Para un agente IA
 Sigue este protocolo antes de generar cualquier código:
 
-1. **Lee `Specs/Arquitectura_BCA_Seguros.md` completo.** Contiene las definiciones exactas de campos, tipos, constraints y 13 correcciones críticas (C1–M5). No asumir nada que no esté ahí.
+1. **Lee `Specs/01-cobranza-polizas/Arquitectura_BCA_Seguros.md` completo.** Contiene las definiciones exactas de campos, tipos, constraints y 13 correcciones críticas (C1–M5). No asumir nada que no esté ahí.
 2. **Consulta la versión de Odoo:** es **19 Community**. Aplican: OWL v3 (si se necesita frontend), `invisible=...` (no `attrs`), `groups=` en campos en lugar de `attrs="{'invisible': [...]}"` para seguridad.
 3. **Antes de cada etapa, lee el patrón correspondiente** en `C:\Users\rafav\.claude\skills\odoo-development-skill\skills\` según el índice del skill.
 4. **No generes código de memoria.** Si hay duda sobre sintaxis de Odoo 19, lee el archivo de pattern primero.
@@ -39,8 +45,8 @@ Sigue este protocolo antes de generar cualquier código:
 Consecuencias:
 - Los agentes inician sesión en el **backend** de Odoo como cualquier usuario interno.
 - Tienen acceso a módulos estándar (CRM, calendario, etc.) según los grupos que el Director General les asigne.
-- Dentro de `bca_core`, las **record rules** los restringen a ver solo sus propias pólizas y recibos — no se necesita ninguna ruta portal para esto.
-- **No existe un portal de agente** (`/my/polizas`). El módulo `portal` no es una dependencia de `bca_core`.
+- Dentro de `BCA_Seguros`, las **record rules** los restringen a ver solo sus propias pólizas y recibos — no se necesita ninguna ruta portal para esto.
+- **No existe un portal de agente** (`/my/polizas`). El módulo `portal` no es una dependencia de `BCA_Seguros`.
 - El nombre del grupo es `group_bca_agente` (no `group_bca_agente_portal`).
 
 ---
@@ -77,7 +83,7 @@ Referencia rápida a las 13 correcciones en `Arquitectura_BCA_Seguros.md` §13:
 | C3 | No `Many2many` para agente↔aseguradora; usar `res.partner.agente.aseguradora` |
 | C4 | En wizard cobranza: usar `self.env` conservando contexto (idioma, zona horaria) en `savepoint` |
 | C5 | `depends` en manifest: sin `contacts`; agregar `post_init_hook` |
-| A1 | `post_init_hook_bca_core` en `__init__.py` raíz; carpeta `migrations/1.0.0/` |
+| A1 | `post_init_hook_bca_seguros` en `__init__.py` raíz; carpeta `migrations/1.0.0/` |
 | A2 | `index=True` en `bca_tipo`, `bca_estado_agente`, `bca_codigo_aseguradora` |
 | A3 | Record rules explícitas para todos los grupos — ver §2.4.3 para el por qué real |
 | A4 | `get_parser()` en lugar de dict estático |
@@ -111,7 +117,7 @@ Referencia rápida a las 13 correcciones en `Arquitectura_BCA_Seguros.md` §13:
 
 | Regla | Consecuencia si se ignora |
 |---|---|
-| Todo `ref` propio del módulo **siempre con prefijo** `bca_core.`, incluso dentro del mismo archivo | `ValueError: External ID not found` al cargar datos |
+| Todo `ref` propio del módulo **siempre con prefijo** `BCA_Seguros.`, incluso dentro del mismo archivo | `ValueError: External ID not found` al cargar datos |
 | **Un solo bloque `<data>`** por archivo XML | Dos bloques `<data>` en el mismo archivo no garantizan commit entre ellos; puede fallar la FK del segundo bloque |
 | Todo `<menuitem>` raíz **debe tener atributo `groups`** | En Odoo 19, un menuitem raíz sin `groups` solo es visible en modo debug; invisible en producción |
 | El orden entre **archivos** en la lista `data[]` del manifest **sí es secuencial** | Usar esta garantía (no la del orden intra-archivo) para gestionar dependencias entre registros |
@@ -301,15 +307,15 @@ Declarar siempre en el manifest. Sin esto, Odoo instala el módulo aunque la lib
 
 | Archivo | Contenido clave |
 |---|---|
-| `BCA_seguros/__manifest__.py` | `name`, `version='19.0.1.0.0'`, `depends`, `data`, `post_init_hook='post_init_hook_bca_core'` |
-| `BCA_seguros/__init__.py` | Imports de subpaquetes + función `post_init_hook_bca_core` |
-| `BCA_seguros/models/__init__.py` | Imports de todos los archivos de models/ |
-| `BCA_seguros/wizards/__init__.py` | Imports |
-| `BCA_seguros/parsers/__init__.py` | `get_parser()` (esqueleto inicial) |
-| `BCA_seguros/calculadores_pca/__init__.py` | `CALCULADOR_REGISTRY` |
-| `BCA_seguros/reports/__init__.py` | Imports |
-| `BCA_seguros/tests/__init__.py` | Import |
-| `BCA_seguros/static/description/icon.png` | Ícono (placeholder PNG 16x16) |
+| `BCA_Seguros/__manifest__.py` | `name`, `version='19.0.1.0.0'`, `depends`, `data`, `post_init_hook='post_init_hook_bca_seguros'` |
+| `BCA_Seguros/__init__.py` | Imports de subpaquetes + función `post_init_hook_bca_seguros` |
+| `BCA_Seguros/models/__init__.py` | Imports de todos los archivos de models/ |
+| `BCA_Seguros/wizards/__init__.py` | Imports |
+| `BCA_Seguros/parsers/__init__.py` | `get_parser()` (esqueleto inicial) |
+| `BCA_Seguros/calculadores_pca/__init__.py` | `CALCULADOR_REGISTRY` |
+| `BCA_Seguros/reports/__init__.py` | Imports |
+| `BCA_Seguros/tests/__init__.py` | Import |
+| `BCA_Seguros/static/description/icon.png` | Ícono (placeholder PNG 16x16) |
 
 **Contenido de `__manifest__.py`:**
 ```python
@@ -348,7 +354,7 @@ Declarar siempre en el manifest. Sin esto, Odoo instala el módulo aunque la lib
         'views/wizard_carga_portafolio_views.xml',
         'views/wizard_cobranza_diaria_views.xml',
     ],
-    'post_init_hook': 'post_init_hook_bca_core',
+    'post_init_hook': 'post_init_hook_bca_seguros',
     'installable': True,
     'application': True,
     # Declarar SIEMPRE librerías externas. Sin esto Odoo instala el módulo
@@ -359,9 +365,9 @@ Declarar siempre en el manifest. Sin esto, Odoo instala el módulo aunque la lib
 }
 ```
 
-**`post_init_hook_bca_core`** en `__init__.py` raíz:
+**`post_init_hook_bca_seguros`** en `__init__.py` raíz:
 ```python
-def post_init_hook_bca_core(env):
+def post_init_hook_bca_seguros(env):
     """Inicializar SQL views de reportes al instalar/actualizar."""
     for model_name in [
         'bca.reporte.pca.agente',
@@ -372,10 +378,10 @@ def post_init_hook_bca_core(env):
         env[model_name].init()
 ```
 
-**Checklist Etapa 0:**
-- [ ] `odoo-bin -i bca_core` instala sin errores (aunque sin datos todavía)
-- [ ] No hay imports circulares
-- [ ] `post_init_hook` definido y referenciado en manifest
+**Checklist Etapa 0:** ✅ Completado 2026-05-26
+- [x] `odoo-bin -i BCA_Seguros` instala sin errores (verificado en sandbox_bca1)
+- [x] No hay imports circulares
+- [x] `post_init_hook` definido y referenciado en manifest
 
 ---
 
@@ -386,8 +392,7 @@ def post_init_hook_bca_core(env):
 #### `models/res_partner.py`
 Extiende `res.partner`. Campos nuevos (todos con `index=True` donde aplica):
 - `bca_tipo`: Selection `[('holding','Holding BCA'),('aseguradora','Aseguradora'),('promotoria','Promotoría Afiliada'),('agente','Agente'),('contratante','Contratante')]`, `index=True`
-- `bca_estado_agente`: Selection `[('prospecto','Prospecto'),('con_licencia','Con Licencia')]`, `index=True`
-- `bca_fecha_licencia`: Date
+- `bca_estado_agente`: Selection `[('prospecto','Prospecto'),('clave_arranque','Clave de Arranque'),('clave_definitiva','Clave Definitiva')]`, **computed `store=True`** + `index=True` — rollup del estado de carrera (mejor estado en cualquier aseguradora) derivado del modelo puente. No editable a mano. Solo `clave_definitiva` computa PCA. Ver `Decisiones.md` D-07.
 - `bca_codigo_aseguradora`: Char, `index=True` — Ej: METLIFE, QUALITAS
 - `bca_promotoria_id`: Many2one computed **sin store** → retorna `parent_id` si `bca_tipo='agente'`
 - `agente_aseguradora_ids`: One2many → `res.partner.agente.aseguradora`
@@ -408,7 +413,7 @@ _sql_constraints = [
      'Un agente solo puede registrarse una vez por aseguradora'),
 ]
 ```
-Campos: `agente_id` (M2o, cascade), `aseguradora_id` (M2o, restrict), `clave_agente` (Char), `estado` (Selection), `fecha_licencia` (Date).
+Campos: `agente_id` (M2o, cascade), `aseguradora_id` (M2o, restrict), `clave_agente` (Char), `estado` (Selection `[('prospecto','Prospecto'),('clave_arranque','Clave de Arranque'),('clave_definitiva','Clave Definitiva')]`, default `prospecto` — **fuente de verdad** del estado de carrera por aseguradora; solo `clave_definitiva` computa PCA), `fecha_licencia` (Date).
 
 #### `models/product_template.py`
 Extiende `product.template`. Campos nuevos:
@@ -527,7 +532,7 @@ group_bca_director       implied_ids: director_comercial
 
 **Checklist Etapa 4:**
 - [ ] Módulo instala con security sin errores de XML ID
-- [ ] Agente (usuario interno) solo ve sus propias pólizas en backend de `bca_core`
+- [ ] Agente (usuario interno) solo ve sus propias pólizas en backend de `BCA_Seguros`
 - [ ] Agente puede abrir CRM y ver/crear sus leads sin restricción
 - [ ] Operador no puede cancelar recibos
 - [ ] `ir.model.access.csv` cubre todos los modelos nuevos (verificar con `odoo-bin --test-enable`)
@@ -547,10 +552,12 @@ group_bca_director       implied_ids: director_comercial
 | `data/conductos_metlife.xml` | 7 conductos MetLife (Vida: 2, GMM: 5) |
 | `data/factores_metlife_2026.xml` | 17 registros: 14 Vida (7 productos × 2 monedas) + 3 GMM |
 
-**Checklist Etapa 5:**
-- [ ] Datos cargados correctamente al instalar
-- [ ] Factores MetLife 2026 visibles en UI con vigencia correcta
-- [ ] Conductos con `codigo_archivo` exacto del CSV
+**Checklist Etapa 5:** ✅ Completado 2026-05-27 (commit pendiente; verificación sandbox pendiente)
+- [x] Datos cargados correctamente al instalar (estructura completa, deploy sandbox pendiente)
+- [x] Factores MetLife 2026 visibles en UI con vigencia correcta (vinculados a productos vía `producto_ids`)
+- [⚠] Conductos con `codigo_archivo` exacto del CSV — los 4 reales están creados pero `codigo_archivo` es placeholder hasta confirmar contra CSV real en E6
+- [x] Productos MetLife (11 Vida + 2 GMM) creados — **agregado al alcance original de E5** porque los factores los referencian
+- [x] Operador puede crear conductos y productos desde UI (ACL `bca.conducto` RWC + `implied_ids product.group_product_manager`)
 
 ---
 
@@ -594,8 +601,13 @@ Función `get_parser(aseguradora_codigo, ramo)` con mensaje de error descriptivo
 
 ---
 
-### Etapa 7 — Calculadores de PCA
+### Etapa 7 — Calculadores de PCA  ✅ COMPLETADA (2026-06-05, commit `b187215`)
 **Tiempo estimado:** 2–3 horas
+
+> **Cierre:** calculador MetLife Vida + GMM implementado. Verificado en `sandbox_bca1`:
+> **116 tests, 0 failures, 0 errors**. Migración `19.0.1.2.0` aplicada en el deploy.
+> Decisiones de multimoneda y alcance de exclusiones en `Decisiones.md` D-08. Ver
+> también `Changelog.md` (sesión 2026-06-05 Etapa 7).
 
 #### `calculadores_pca/base.py`
 ```python
@@ -615,17 +627,27 @@ class CalculadorPCABase:
 5. PCA = prima_neta_mxn × factor
 6. Retornar `(pca, factor, motivo_exclusion)`
 
+> **Nota D-08:** el paso 4 se resolvió como "factor por moneda de la póliza → resultado
+> convertido a MXN" (conserva el haircut USD). La exclusión "cobertura individual de
+> accidentes/invalidez" del paso 1 quedó **fuera de alcance** (sin campo estructurado).
+
 **Checklist Etapa 7:**
-- [ ] Póliza Vida MXN TempoLife → factor 1.0 aplicado
-- [ ] Póliza Vida USD TempoLife → factor 0.8 aplicado + conversión a MXN
-- [ ] Póliza Vida capitalizable con aportación adicional → PCA = 0 con motivo
-- [ ] Póliza GMM coaseguro ≤ 5% → PCA = 0 con motivo
-- [ ] Póliza GMM coaseguro ≥ 10% + deducible ≥ 29,000 → factor 1.2
+- [x] Póliza Vida MXN TempoLife → factor 1.0 aplicado — test `test_vida_mxn_factor_1`
+- [x] Póliza Vida USD TempoLife → factor 0.8 aplicado + conversión a MXN — test `test_vida_usd_factor_080_convertido_a_mxn`
+- [x] Póliza Vida capitalizable con aportación adicional → PCA = 0 con motivo — test `test_vida_excluye_aportacion_adicional`
+- [x] Póliza GMM coaseguro ≤ 5% → PCA = 0 con motivo — test `test_gmm_excluye_coaseguro_5`
+- [x] Póliza GMM coaseguro ≥ 10% + deducible ≥ 29,000 → factor 1.2 — test `test_gmm_coaseguro10_deducible_alto_factor_120`
 
 ---
 
 ### Etapa 8 — Wizards
 **Tiempo estimado:** 4–5 horas
+**Estado:** ✅ Completada y **verificada en sandbox_bca1** (2026-06-05, **143 tests, 0 failures**,
+commit `adb05a3`) — **Carga de Portafolio** (v`19.0.1.3.0`) + **Cobranza Diaria** (v`19.0.1.4.0`). Decisión asociada: **D-09**
+(`estatus_pago` computed). El deploy de portafolio destapó **BUG-016** (PCA congelada en 0
+por `fecha_pago=False` al calcular), corregido en `recibo.py` (commit `38736b7`).
+Cobranza Diaria: flujo de **una sola fase** (la bitácora es el reporte auditable),
+selector de ramo limitado a **Vida/GMM** (Autos/Qualitas placeholder). Ver `Changelog.md`.
 
 #### `wizards/carga_portafolio.py`
 `bca.wizard.carga.portafolio` (TransientModel):
@@ -634,33 +656,44 @@ class CalculadorPCABase:
   1. `action_validar()`: lee Excel con `openpyxl`, verifica hojas `VIDA`/`GMM`/`AUTOS`, columnas, formatos. Si errores → mostrar reporte. Sin tocar BD.
   2. `action_grabar()`: por cada póliza en savepoint independiente. Al terminar, retorna action con reporte.
 
-#### `wizards/cobranza_diaria.py`
+#### `wizards/cobranza_diaria.py` ✅ implementado
 `bca.wizard.cobranza.diaria` (TransientModel):
-- Campos: `archivo` (Binary), `nombre_archivo`, `aseguradora_id`, `ramo`
-- Flujo:
-  1. Obtener parser con `get_parser(aseguradora_codigo, ramo)`
-  2. Llamar `parser.validar_estructura(df)` — si falla, `UserError` sin crear bitácora (R-COB-09)
-  3. Crear `bca.bitacora.importacion`
-  4. Loop de filas con patrón de savepoint (C4):
-     ```python
-     with self.env.cr.savepoint():
-         # Mantener el context original (C4)
-         resultado = parser.procesar_fila(self.env, fila)
-     ```
-  5. Cerrar bitácora con totales
-  6. Retornar action → vista de la bitácora generada
+- Campos: `archivo` (Binary), `nombre_archivo`, `aseguradora_id`, `ramo` (Vida/GMM — sin Autos)
+- Flujo de **una sola fase** (`action_procesar`):
+  1. Decodificar CSV (Latin-1, R-GLOB-01) → `csv.DictReader` (sniff de delimitador)
+  2. `get_parser(aseguradora.bca_codigo_aseguradora, ramo)`
+  3. `parser_cls.validar_estructura(fieldnames)` (ahora `@classmethod`) — si falla, `UserError`
+     **antes** de crear la bitácora (R-COB-09)
+  4. Crear `bca.bitacora.importacion`; `parser.filtrar_filas()` (GMM omite anulados, R-COB-01)
+  5. Loop `parser.procesar_fila()` (savepoint por fila vive en el parser, R-COB-08) → crea
+     `bca.bitacora.linea` y acumula contadores + PCA
+  6. Escribir totales y retornar action → form de la bitácora generada
 
 **Checklist Etapa 8:**
-- [ ] CSV de MetLife Vida con 5 filas: 4 válidas + 1 póliza no encontrada → bitácora con 5 líneas
-- [ ] Error en fila 3 no detiene proceso (filas 4 y 5 se procesan)
-- [ ] Fila con póliza ya pagada → "Sin recibo disponible" en bitácora
-- [ ] Archivo sin columna crítica → UserError antes de crear bitácora
-- [ ] Portafolio Excel: validar detecta hoja faltante sin tocar BD
+- [x] CSV de MetLife Vida con 5 filas: 4 válidas + 1 póliza no encontrada → bitácora con 5 líneas — test `test_cinco_filas_cuatro_validas_una_no_encontrada`
+- [x] Error en fila 3 no detiene proceso (filas 4 y 5 se procesan) — test `test_error_en_fila_no_detiene_proceso`
+- [x] Fila con póliza ya pagada → "Sin recibo disponible" en bitácora — test `test_poliza_sin_recibo_pendiente`
+- [x] Archivo sin columna crítica → UserError antes de crear bitácora — test `test_columna_faltante_no_crea_bitacora`
+- [x] FIFO: pagos consecutivos aplican recibos en orden ascendente — test `test_fifo_aplica_en_orden`
+- [x] GMM: fila anulada se omite y suma a `anulaciones_ignoradas` (R-COB-01) — test `test_gmm_anulado_se_omite`
+- [x] Portafolio Excel: validar detecta hoja faltante sin tocar BD — test `test_validar_sin_hoja_soportada`
+- [x] Portafolio: validar detecta columna crítica faltante (fail-fast, 0 pólizas) — test `test_validar_columna_faltante`
+- [x] Portafolio: grabar crea pólizas VIDA + GMM con agente/contratante/producto resueltos — test `test_crea_vida_y_gmm`
+- [x] Portafolio: "Pagado Hasta" genera solo recibos posteriores al corte — test `test_pagado_hasta_genera_solo_recibos_posteriores`
+- [x] Portafolio: beneficiarios VIDA + dependientes GMM en `bca.poliza.beneficiario` — test `test_beneficiarios_vida_y_dependientes_gmm`
+- [x] Portafolio: fila con error no detiene el proceso (savepoint por póliza) — test `test_fila_con_error_no_detiene_proceso`
 
 ---
 
-### Etapa 9 — Reportes SQL (SICs)
+### Etapa 9 — Reportes SQL (SICs)  ✅ COMPLETADA (2026-06-29, v`19.0.1.5.0`)
 **Tiempo estimado:** 3–4 horas
+
+> **Cierre:** 4 vistas SQL reales (`_auto=False` + `init()` con `SQL()` builder de v19, patrón
+> `sale.report` de Odoo core) con pivot/graph/list/search y menú. Foto inmutable del recibo
+> (C2), solo Clave Definitiva computa (R-PCA-03, por aseguradora), PCA en MXN (D-08), estado de
+> cartera caída/en_riesgo/vigente. Se reorganizó el menú (Pólizas/Cobranza/Reportes/
+> Configuración) y se ocultó "Registrar Pago" al agente. Tests en `test_reportes.py` +
+> `test_views_xml`. Migración `19.0.1.5.0`. Ver `Changelog.md` (sesión 2026-06-29).
 
 Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 **Patrón crítico:** en el SQL, siempre tomar `agente_id` y `promotoria_id` del `bca_recibo` (inmutabilidad histórica). NO hacer join hacia la póliza actual (C2).
@@ -676,10 +709,12 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 `migrations/1.0.0/post_migrate.py`: script que invoca `init()` de todos los modelos de reporte.
 
 **Checklist Etapa 9:**
-- [ ] SIC 1 (por agente) muestra datos correctos tras pagar un recibo
-- [ ] SIC 2 (por promotoría) agrupa correctamente
-- [ ] Agente en estado prospecto NO aparece en los reportes de PCA
-- [ ] `odoo-bin -u bca_core` recrea las SQL views sin error
+- [x] SIC 1 (por agente) muestra datos correctos tras pagar un recibo — test `test_sic1_agente_muestra_pca`
+- [x] SIC 2 (por promotoría) agrupa correctamente — test `test_sic2_promotoria_agrega_dos_agentes`
+- [x] Agente sin Clave Definitiva NO aparece en los reportes de PCA — test `test_sic1_agente_no_definitiva_no_aparece`
+- [x] `odoo-bin -u BCA_Seguros` recrea las SQL views sin error — migración `19.0.1.5.0/post-migrate.py` + post_init_hook
+- [x] Inmutabilidad: cambiar agente tras el pago no mueve la PCA reportada — test `test_reporte_usa_foto_inmutable_del_recibo`
+- [x] SIC 4 (estado de cartera) clasifica caída/en_riesgo/vigente — tests `test_sic4_*`
 
 ---
 
@@ -688,22 +723,26 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 **Reglas:**
 - Sintaxis Odoo 19: usar `invisible="not bca_es_producto_seguro"` (no `attrs=`)
-- Grupos en campos con `groups="bca_core.group_bca_director"` para ocultar por rol
+- Grupos en campos con `groups="BCA_Seguros.group_bca_director"` para ocultar por rol
 - `statusbar_visible` en campos `estado` de póliza y recibo
 - Botones de acción con `confirm="..."` donde sea destructivo
 - Smart buttons (contadores en form): siempre `type="object"` con método Python que retorna el action dict — **nunca** `type="action"` con `active_id` en contexto (§2.4.1)
 - Vistas search: `<group>` sin atributos — no `expand`, no `string` (§2.4.1)
-- Todo `ref` propio: siempre con prefijo `bca_core.` aunque sea en el mismo archivo (§2.4.2)
+- Todo `ref` propio: siempre con prefijo `BCA_Seguros.` aunque sea en el mismo archivo (§2.4.2)
 - Todo `<menuitem>` raíz: **atributo `groups` obligatorio** o no será visible en producción (§2.4.2)
 - Herencia de kanban de `crm.lead`: `<xpath expr="//t[@t-name='kanban-box']">` (§2.4.1)
 
 **Menú principal:** `BCA → [Pólizas | Cobranza | Reportes | Configuración]`
 
-**Checklist Etapa 10:**
-- [ ] Formulario de póliza abre sin errores de XML
-- [ ] Botón "Confirmar" visible solo en estado borrador
-- [ ] Campo `pagado_hasta` es readonly en UI (no hay widget de edición)
-- [ ] Factor PCA editable solo para directores
+**Checklist Etapa 10:** ✅ Completado 2026-05-27 (verificación sandbox pendiente)
+- [x] Formulario de póliza abre sin errores de XML — test `test_poliza_views`
+- [x] Botón "Confirmar" visible solo en estado borrador — `invisible="estado != 'borrador'"`
+- [x] Campo `pagado_hasta` es readonly en UI — atributo `readonly="1"`
+- [x] Factor PCA editable solo para directores — restricción vía ACL (Director Comercial+ tiene perm_write)
+- [x] Skeleton wizards (E8) y reportes (E9) cargan sin error
+- [x] Menú raíz BCA con jerarquía Pólizas | Cobranza | Reportes | Configuración
+- [x] 12 tests nuevos validan parseo XML de todas las vistas + actions del menú
+- [x] Campo `parent_id` visible y editable cuando `bca_tipo in (promotoria, agente)` (hotfix 2026-05-27 d)
 
 ---
 
@@ -718,11 +757,58 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 | `tests/test_inmutabilidad.py` | Bitácora no editable, `pagado_hasta` solo vía método dedicado |
 | `tests/test_record_rules.py` | Agente (usuario interno) solo ve sus pólizas; director comercial; visibilidad cross-promotoría |
 
-**Ejecutar:** `odoo-bin --test-enable --test-tags bca_core -i bca_core`
+**Ejecutar:** `odoo-bin --test-enable --test-tags BCA_Seguros -i BCA_Seguros`
 
-**Checklist Etapa 11:**
-- [ ] Todos los tests pasan en verde
-- [ ] Sin warnings de deprecación de Odoo 19
+**Checklist Etapa 11:** _(cierre formal 2026-06-29 · `v19.0.1.6.1`)_
+- [x] Suite estabilizada y reproducible — fixtures inmunes al *drift* de conductos
+  (D-13); cobertura inventariada en `Specs/TESTS_COVERAGE.md` (14 archivos / ~127 tests,
+  0 skip/xfail). Alcance de cierre: DoD mínimo (sin tests nuevos; huecos documentados).
+- [x] Sin warnings de deprecación de Odoo 19 — escaneo estático limpio (usa `<list>`,
+  sin `attrs=`/`states=`/`@api.one`/`name_get(`).
+- [ ] Verde `0 failed, 0 error(s)` confirmado en sandbox (corrida del usuario; ver
+  Changelog 2026-06-29 Etapa 11).
+
+---
+
+### Etapa 12 — Reclutamiento y Habilitación de Agentes  ✅ COMPLETA (`19.0.1.7.4`, 2026-07-02)
+**Tiempo estimado:** 16–22 horas (5 fases)
+**Documento director:** `Specs/02-reclutamiento/spec-etapa-12-reclutamiento-bca-v1.md`
+**Specs de negocio:** `Specs/02-reclutamiento/` (BDD v1.3, SDD v1.1, análisis HU/TT, HU+criterios)
+**Reglas de negocio cubiertas:** R-PCA-03 (solo Clave Definitiva computa), Car. 2/8/10 (Id interno, carrera por aseguradora).
+
+> **Objetivo:** integrar el ciclo del candidato con `hr_recruitment` (embudo `hr.applicant`) hasta
+> la **cédula emitida**, que alimenta el puente `res.partner.agente.aseguradora` en
+> `estado='clave_arranque'` (NO computa PCA). Identidad por **Id interno = Nombre+RFC+CURP**;
+> conversión idempotente en el override de `write()`. La promoción a `clave_definitiva` es
+> proceso interno posterior (SI-4), **fuera de alcance**.
+>
+> **Decisiones de negocio (SIs):** SI-1 visibilidad **por reclutadora** (`user_id`); SI-2 promotor
+> **solo destino + notificación**; SI-3 evento **campo de texto** (`bca_evento`); SI-Sede **seed con
+> lista del usuario**; SI-4 paso a definitiva **fuera de alcance**. Decisiones a registrar: D-14…D-18.
+
+**Fases (commit + bump por fase):**
+
+| Fase | Versión | Nombre | HUs |
+|---|---|---|---|
+| A | `19.0.1.7.0` | Cimientos: `bca.sede` + campos identificación/perfil + embudo 12 etapas | 1.0, 1.1, 1.2 |
+| B | `19.0.1.7.1` | PDA + compuerta de riesgo (L1) | 1.3 |
+| C | `19.0.1.7.2` | **Núcleo:** conversión en Cédula Emitida (L2) + RFC/CURP + puente `clave_arranque` | 1.4, 1.5 |
+| D | `19.0.1.7.3` | Automatizaciones (L3/L5/L6) + motivos de rechazo + SICs/reportes | 1.7–1.9, 2.1, 3.1 |
+| E | `19.0.1.7.4` | Visibilidad por reclutadora (record rules) | 1.6 |
+
+**Archivos clave:** `models/bca_sede.py` (nuevo), `models/hr_applicant.py` (campos + L1 + L2/conversión),
+`models/res_partner.py` (`bca_curp`), `models/res_partner_agente_aseg.py` (puente, sin cambios de esquema),
+`data/hr_recruitment_stages.xml` · `data/bca_sedes_iniciales.xml` · `data/base_automation_reclutamiento.xml` ·
+`data/hr_refuse_reasons.xml` (nuevos), `security/groups.xml` + `record_rules.xml` (Fase E), `__manifest__.py` (bumps).
+
+**Checklist Etapa 12:**
+- [x] **Fase A** (2026-07-02, `19.0.1.7.0`): `bca.sede` CRUD; 12 etapas + "Alta Interna" como datos del módulo; `hired_stage=True` en cédula/alta; form sin error XML; sin campos duplicados (género/ramo reusan selección; RFC=`vat` diferido a Fase C por confirmar). Sandbox local `Devlocal`: 136 tests, 0 failed.
+- [x] **Fase B** (2026-07-02, `19.0.1.7.1`): PDA riesgo (nivel no_ideal/baja) ⇒ actividad al promotor; avanzar más allá de "Evaluación PDA" sin VoBo ⇒ `ValidationError`. Local `Devlocal`: 140 tests, 0 failed.
+- [x] **Fase C** (2026-07-02, `19.0.1.7.2`): no se llega a hired sin los 5 datos; conversión crea partner+puente(`clave_arranque`)+empleado idempotente por Id interno (RFC=`bca_rfc`→`partner.vat`, CURP=`bca_curp`); agente reutilizado en 2ª aseguradora; recién habilitado en `clave_arranque` NO computa PCA; Alta Interna no crea agente/puente. Local `Devlocal`: 145 tests, 0 failed.
+- [x] **Fase D** (2026-07-02, `19.0.1.7.3`): 2 motivos de rechazo seed; aviso L6 (base.automation on_stage_set); pivote SIC por sede/reclutadora/ramo/evento/etapa. L3/L5 diferidos a SOP (necesitan trigger por fecha + etapa Stand by). Local `Devlocal`: 148 tests, 0 failed.
+- [x] **Fase E** (2026-07-02, `19.0.1.7.4`): reclutadora ve solo `user_id==uid`; Director ve todo (`[(1,'=',1)]` + ACL lectura); grupos hermanos (reclutadora/capital humano). Separación por `job_id` = refinamiento futuro. Local `Devlocal`: 150 tests, 0 failed.
+- [ ] **SI-Sede pendiente:** rellenar `data/bca_sedes_iniciales.xml` con la lista oficial (seed placeholder Matriz/CDMX/MTY por ahora).
+- [x] Verde `0 failed, 0 error(s)` en Docker local (`Devlocal`) por fase A–E.
 
 ---
 
@@ -730,8 +816,8 @@ Todos usan `_auto = False`. El método `init()` crea/recrea la vista SQL.
 
 ```
 INFRAESTRUCTURA
-[ ] odoo-bin -i bca_core → instala sin errores
-[ ] odoo-bin -u bca_core → actualiza sin errores, SQL views recreadas
+[ ] odoo-bin -i BCA_Seguros → instala sin errores
+[ ] odoo-bin -u BCA_Seguros → actualiza sin errores, SQL views recreadas
 [ ] Datos iniciales cargados (aseguradoras, conductos, factores MetLife 2026)
 
 REGLAS DE NEGOCIO CRÍTICAS
@@ -742,7 +828,7 @@ REGLAS DE NEGOCIO CRÍTICAS
 [ ] Error en fila CSV → rollback de fila, proceso continúa
 
 SEGURIDAD
-[ ] Agente (usuario interno) solo ve sus pólizas en bca_core — puede usar CRM libremente
+[ ] Agente (usuario interno) solo ve sus pólizas en BCA_Seguros — puede usar CRM libremente
 [ ] Operador no puede cancelar recibos
 [ ] Director Comercial puede editar factores y cancelar recibos
 [ ] Director General tiene acceso completo
