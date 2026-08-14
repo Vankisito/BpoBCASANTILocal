@@ -69,6 +69,9 @@ class TestViewsXml(TransactionCase):
     def test_herencia_hr_applicant(self) -> None:
         self._validate('BCA_Seguros.view_hr_applicant_form_bca')
 
+    def test_herencia_hr_employee(self) -> None:
+        self._validate('BCA_Seguros.view_hr_employee_form_bca')
+
     def test_wizard_skeletons_cargan(self) -> None:
         self._validate('BCA_Seguros.view_wizard_carga_portafolio_form')
         self._validate('BCA_Seguros.view_wizard_cobranza_diaria_form')

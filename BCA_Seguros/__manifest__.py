@@ -6,7 +6,7 @@
     'author': 'Hábitat Digital',
     'license': 'LGPL-3',
     'depends': [
-        'base', 'mail', 'product', 'hr_recruitment', 'base_automation',
+        'base', 'mail', 'product', 'hr', 'hr_recruitment', 'base_automation',
         'crm', 'web',
     ],
     'data': [
@@ -36,6 +36,7 @@
         'views/cambio_promotoria_views.xml',
         'views/product_template_views.xml',
         'views/hr_applicant_views.xml',
+        'views/hr_employee_views.xml',
         'views/bca_sede_views.xml',
         'views/reclutamiento_views.xml',
         'views/crm_lead_views.xml',
