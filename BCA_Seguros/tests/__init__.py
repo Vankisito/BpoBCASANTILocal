@@ -17,4 +17,5 @@ from . import (
     test_dashboard,
     test_independencia_fiscal,
     test_promotoria_governance,
+    test_display_name_red,
 )

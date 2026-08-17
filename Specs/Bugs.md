@@ -57,6 +57,12 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 
 ## Bugs Resueltos
 
+Resuelto el **2026-08-12** (versión `19.0.1.11.0`):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-019 | Póliza, Recibo, Reportes PCA, Dashboard, búsquedas (contactos Agente/Promotoría) | Los campos **Agente** y **Promotoría** mostraban "Contacto, Empresa": el nombre del contacto junto al de la promotoría/holding (ej. `Juan Pérez Hernández, Agencia BCA Monterrey`). Odoo nativo antepone la empresa en `_get_complete_name`; el cliente pidió mostrar solo el nombre del contacto. Afectaba listas de pólizas/recibos, reportes PCA, dashboard y cuadros de búsqueda. | UI/UX | 🟡 Media | Override `_compute_display_name` en `res.partner` que aplica la key nativa `partner_display_name_hide_company` para `bca_tipo` agente/promotoria. La relación `parent_id` (base de comisiones y reportes) permanece intacta; el resto de contactos conserva el formato nativo. Verificado en `bca_clean` (tests + smoke test live). | `c06ca02` |
+
 Resuelto el **2026-08-10** (versión `19.0.1.10.0`):
 
 | ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |

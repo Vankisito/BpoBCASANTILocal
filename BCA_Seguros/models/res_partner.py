@@ -54,6 +54,12 @@ GENERO_SELECTION = [
 # is_company, así que ese criterio no sirve como palanca. Ver _fields_sync,
 # _commercial_sync_to_descendants y _update_address más abajo.
 TIPOS_FISCAL_INDEPENDIENTE = ('promotoria', 'agente')
+# Entes de la red que muestran SOLO su nombre en pantalla, sin el de la empresa
+# a la que pertenecen. Petición del cliente (v19.0.1.11.0): Odoo nativo muestra
+# "Contacto, Empresa" y estorba en listas y reportes. La relación parent_id
+# (base de comisiones y reportes) NO se toca: solo cambia la representación,
+# vía la key nativa `partner_display_name_hide_company` de _get_complete_name.
+TIPOS_RED_NOMBRE_CORTO = ('agente', 'promotoria')
 
 
 class ResPartner(models.Model):
@@ -225,6 +231,34 @@ class ResPartner(models.Model):
                 (e for e in _ESTADO_AGENTE_PRIORIDAD if e in estados),
                 'prospecto',
             )
+
+    @api.depends(
+        'complete_name', 'email', 'vat', 'state_id', 'country_id',
+        'commercial_company_name', 'bca_tipo')
+    @api.depends_context(
+        'show_address', 'partner_show_db_id',
+        'show_email', 'show_vat', 'lang', 'formatted_display_name')
+    def _compute_display_name(self) -> None:
+        """Agentes y promotorías muestran solo su nombre, sin la empresa madre.
+
+        Odoo nativo antepone la empresa ("Contacto, Empresa") en
+        ``_get_complete_name``; para la red BCA esa empresa es la promotoría/
+        holding y dificulta la lectura de pólizas, recibos y reportes. Aquí se
+        reutiliza la key nativa ``partner_display_name_hide_company`` sobre el
+        subconjunto de la red: solo cambia lo que se ve, la relación parent_id
+        (base de comisiones/reportes) permanece intacta. El resto de contactos
+        conserva el comportamiento nativo.
+        """
+        red_bca = self.filtered(
+            lambda partner: partner.bca_tipo in TIPOS_RED_NOMBRE_CORTO
+        )
+        if red_bca:
+            super(ResPartner, red_bca.with_context(
+                partner_display_name_hide_company=True
+            ))._compute_display_name()
+        resto = self - red_bca
+        if resto:
+            super(ResPartner, resto)._compute_display_name()
 
     @api.depends('bca_tipo', 'parent_id')
     def _compute_promotoria_id(self) -> None:
