@@ -4,6 +4,51 @@
 
 ---
 
+## Sesión 2026-08-17 — Empleados: pestaña BCA Seguros read-only + claves por aseguradora · `19.0.1.11.0`
+
+### Qué se hizo
+Se agregó una **pestaña "BCA Seguros"** al formulario de Empleados (`hr.employee`) que espeja en
+**solo lectura** toda la información BCA del contacto vinculado (`work_contact_id`). El contacto
+sigue siendo la única fuente de verdad para edición; la ficha de empleado proyecta para consulta.
+
+**Modelo `hr_employee.py`** — nueva extensión de `hr.employee`:
+- Prefijo `bca_` en todos los campos espejo para evitar colisiones con nombres nativos (`parent_id`
+  = manager, `country_id` = ciudadanía).
+- Campos espejo: `bca_tipo`, `bca_parent_id`, `bca_codigo_aseguradora`, `bca_promotoria_id`,
+  `bca_estado_agente`, `bca_es_contratante`, `bca_es_asegurado`.
+- Datos demográficos: `bca_fecha_nacimiento`, `bca_estado_civil`, `bca_genero`, `bca_curp`.
+- Referencias de pago MetLife: 8 campos (`bca_ref_prima_basica_trad`, `bca_ref_prima_medica`,
+  `bca_fondo_variable`, `bca_fondo_fijo`, `bca_fondo_variable_ppr`, `bca_fondo_fijo_ppr`,
+  `bca_fondo_variable_cpea`, `bca_fondo_fijo_cpea`).
+- **Claves por Aseguradora**: `bca_claves_aseguradora_ids` — Many2many computed read-only que
+  vuelca el One2many `agente_aseguradora_ids` del contacto (Odoo rechaza `related` en One2many).
+- Botón `action_bca_open_contact`: abre la ficha de `res.partner` vinculada para edición.
+
+**Vista `hr_employee_views.xml`** — hereda `hr.view_employee_form`:
+- Pestaña "BCA Seguros" con grupos: Contacto Vinculado (read-only + botón "Editar en Contactos"),
+  Clasificación (tipo, promotoría, roles de póliza), Datos de Agente (estado).
+- Lista de Claves por Aseguradora: aseguradora, clave, estado (widget `badge` con decoraciones
+  por tipo: success=definitiva, info=arranque, muted=prospecto), fecha licencia.
+- Datos demográficos y referencias de pago MetLife visibles para todos los empleados.
+
+**Cambios complementarios:**
+- `__manifest__.py`: dependencia `hr` agregada, `hr_employee_views.xml` registrado en data.
+- `__init__.py`: import de `hr_employee` agregado.
+- `test_views_xml.py`: `test_herencia_hr_employee` agregado.
+- `IDEAS-pestana-BCA-empleados.md` eliminado (feature implementada).
+
+### Archivos
+- Creados: `BCA_Seguros/models/hr_employee.py`, `BCA_Seguros/views/hr_employee_views.xml`.
+- Modificados: `BCA_Seguros/__manifest__.py`, `BCA_Seguros/models/__init__.py`,
+  `BCA_Seguros/tests/test_views_xml.py`.
+- Eliminados: `IDEAS-pestana-BCA-empleados.md`.
+
+### Tests
+- `test_herencia_hr_employee` valida la herencia de la vista heredada.
+- Versión del módulo: `19.0.1.11.0`.
+
+---
+
 ## Sesión 2026-07-13 — Reclutamiento: reconciliación de documentación (puestos internos) · sin cambio de código
 
 ### Qué se hizo

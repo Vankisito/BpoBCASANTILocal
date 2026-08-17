@@ -13,5 +13,6 @@ from . import (
     bitacora,
     dashboard,
     hr_applicant,
+    hr_employee,
     crm_lead,
 )

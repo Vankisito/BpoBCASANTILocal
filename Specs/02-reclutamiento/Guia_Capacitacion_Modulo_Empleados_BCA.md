@@ -2,8 +2,8 @@
 titulo: Guía de capacitación del módulo de empleados — BCA Seguros
 subtitulo: Capacitación para Capital Humano
 modulo: BCA_Seguros
-version_modulo: 19.0.1.9.0
-fecha: 2026-08-04
+version_modulo: 19.0.1.11.0
+fecha: 2026-08-17
 autor: Hábitat Digital
 dirigido_a: Departamento de Capital Humano — Grupo BCA
 ---
@@ -179,7 +179,74 @@ Cuando el equipo distingue correctamente entre interno y agente, se reducen erro
 
 ---
 
-## 9. Qué debe observarse en la operación diaria
+## 9. Pestaña "BCA Seguros" en la ficha de Empleado
+
+Desde la versión `19.0.1.11.0`, la ficha de cada empleado incluye una pestaña **"BCA Seguros"**
+que muestra la información comercial del contacto vinculado. Esta pestaña es de **solo lectura**:
+la fuente de verdad siempre es el contacto (`res.partner`), y la ficha de empleado solo proyecta
+para consulta rápida.
+
+### 9.1 Qué muestra la pestaña
+
+La pestaña está organizada en las siguientes secciones:
+
+#### Contacto Vinculado
+- Muestra el contacto asociado al empleado (campo `work_contact_id`, solo lectura).
+- Incluye el botón **"Editar en Contactos"** que abre directamente la ficha del contacto para
+  realizar modificaciones.
+
+#### Clasificación
+- **Tipo BCA**: holding, aseguradora, promotoría o agente.
+- **Promotoría (Contacto)**: la promotoría jerárquica del contacto.
+- **Código Aseguradora**: código asignado por la aseguradora (solo si es tipo aseguradora).
+- **Promotoría**: la promotoría del agente (solo si es tipo agente).
+- **Es Contratante / Es Asegurado**: indicadores de roles de póliza.
+
+#### Datos de Agente (solo agentes)
+- **Estado Agente**: rollup del mejor estado alcanzado en cualquier aseguradora
+  (Clave Definitiva > Clave de Arranque > Prospecto).
+
+#### Claves por Aseguradora (solo agentes)
+Lista que muestra las claves asignadas al agente por cada aseguradora:
+- **Aseguradora**: nombre de la aseguradora.
+- **Clave Agente**: número de clave asignado.
+- **Estado**: badge con color según el estado (verde = Clave Definitiva, azul = Clave de Arranque,
+  gris = Prospecto).
+- **Fecha de Licencia**: fecha de emisión de la licencia.
+
+#### Datos Demográficos
+- Fecha de nacimiento, estado civil, género, CURP.
+
+#### Referencias de Pago (MetLife)
+- 8 referencias bancarias de cobro: prima básica (TRAD), prima médica, fondos variable/fijo
+  (general, PPR, CPEA).
+
+### 9.2 Cómo se edita la información
+
+**Toda la información de la pestaña BCA Seguros es de solo lectura desde el empleado.**
+Para modificar cualquier dato:
+
+1. Hacer clic en el botón **"Editar en Contactos"**.
+2. Se abrirá la ficha del contacto vinculado (`res.partner`).
+3. Editar los campos necesarios en la pestaña "BCA Seguros" del contacto.
+4. Guardar los cambios.
+5. Los cambios se reflejan inmediatamente en la ficha del empleado al refrescar.
+
+> **Nota importante**: La pestaña "BCA Seguros" del contacto (`res.partner`) sí permite edición
+> directa (listas inline para claves, campos editables para clasificación y datos demográficos).
+> La del empleado es solo consulta.
+
+### 9.3 Regla clave
+
+- **No intentar editar directamente en la pestaña del empleado** — todos los campos son de solo
+  lectura.
+- **Si falta información**, verificar que esté completa en el contacto vinculado.
+- **Si un agente no tiene claves**, revisar que estén registradas en la pestaña "BCA Seguros" del
+  contacto (sección "Claves por Aseguradora").
+
+---
+
+## 10. Qué debe observarse en la operación diaria
 
 ### En el caso de empleados internos
 
@@ -201,7 +268,7 @@ Revisar que:
 
 ---
 
-## 10. Errores comunes que conviene evitar
+## 11. Errores comunes que conviene evitar
 
 - registrar a un agente como si fuera un empleado interno de planta
 - omitir datos clave de identificación o operación
@@ -211,7 +278,7 @@ Revisar que:
 
 ---
 
-## 11. Checklist de cierre para Capital Humano
+## 12. Checklist de cierre para Capital Humano
 
 Antes de cerrar un registro, confirmar:
 
@@ -223,7 +290,7 @@ Antes de cerrar un registro, confirmar:
 
 ---
 
-## 12. Resumen para la capacitación
+## 13. Resumen para la capacitación
 
 La gestión del módulo de empleados en BCA debe entenderse como una herramienta para distinguir dos realidades distintas:
 
@@ -234,7 +301,7 @@ El éxito de la operación depende de que Capital Humano mantenga registros clar
 
 ---
 
-## 13. Sugerencia de cierre de capacitación
+## 14. Sugerencia de cierre de capacitación
 
 Al finalizar la sesión, el equipo debe poder responder con claridad:
 
