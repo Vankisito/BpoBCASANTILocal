@@ -57,6 +57,13 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 
 ## Bugs Resueltos
 
+Resuelto el **2026-08-18**:
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-020 | Contactos (form), Empleados (form) → pestaña BCA Seguros | Reclutadora BCA y Capital Humano BCA no podían visualizar la ficha de contacto ni de empleado: el campo "Clave de agente por aseguradora" (`agente_aseguradora_ids` / `bca_claves_aseguradora_ids`) no cargaba por falta de ACL en `res.partner.agente.aseguradora` para esos grupos. | Seguridad | 🟠 Alta | (1) 2 ACL rows (solo lectura) en `ir.model.access.csv` para `group_bca_reclutadora` y `group_bca_capital_humano` sobre `model_res_partner_agente_aseguradora`. (2) 2 record rules `[(1,'=',1)]` (lectura global) en `record_rules.xml` para ambos grupos — patrón A3: grupos fuera de la cadena acumulativa de `implied_ids` requieren rule explícita. | pendiente |
+| BUG-021 | Contactos (form) → smart buttons Pólizas/Recibos | Reclutadora BCA y Capital Humano BCA no podían abrir fichas de contacto que tengan rol de póliza/agente: los smart buttons de Pólizas y Recibos intentaban cargar `bca.poliza`/`bca.recibo` sin ACL para esos grupos, lanzando `AccessError`. | Seguridad | 🟠 Alta | Atributo `groups` en los 2 botones smart (`res_partner_views.xml`) restringiéndolos a los 5 grupos de la cadena BCA. Reclutadora/Capital Humano no necesitan ver pólizas desde contactos. | pendiente |
+
 Resuelto el **2026-08-12** (versión `19.0.1.11.0`):
 
 | ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |

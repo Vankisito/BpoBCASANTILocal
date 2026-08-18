@@ -120,6 +120,7 @@
                         type="object"
                         class="oe_stat_button"
                         icon="fa-file-text-o"
+                        groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
                         invisible="not bca_es_contratante and not bca_es_asegurado and bca_tipo != 'agente'">
                     <field name="bca_poliza_count" widget="statinfo" string="Pólizas"/>
                 </button>
@@ -127,6 +128,7 @@
                         type="object"
                         class="oe_stat_button"
                         icon="fa-money"
+                        groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
                         invisible="not bca_es_contratante and not bca_es_asegurado and bca_tipo != 'agente'">
                     <field name="bca_recibo_count" widget="statinfo" string="Recibos"/>
                 </button>
