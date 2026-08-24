@@ -117,12 +117,17 @@
               action="BCA_Seguros.action_reporte_estado_cartera"
               sequence="40"/>
 
-    <!-- SIC de Reclutamiento (Etapa 12): pivote de postulantes. -->
+    <!-- SIC de Reclutamiento (Etapa 12): pivote de postulantes.
+         OCULTO temporalmente (BUG-022 / D-22): active="False" lo esconde
+         para todos los usuarios SIN eliminar el registro. La acción
+         action_sic_reclutamiento permanece activa (la usan tests).
+         Reactivar: quitar active="False" y actualizar el módulo. -->
     <menuitem id="menu_bca_sic_reclutamiento"
               name="SIC Reclutamiento"
               parent="menu_bca_reportes"
               action="BCA_Seguros.action_sic_reclutamiento"
-              sequence="50"/>
+              sequence="50"
+              active="False"/>
 
     <!-- ============================================================
          Configuración (Director Comercial+) — sin cambios.

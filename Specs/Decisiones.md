@@ -314,3 +314,25 @@ Se **conservan y reubican**: `bca_folio_cv` → pestaña Identificación; `bca_r
 Se retira `bca_tipo_candidato` (duplicaba el origen nativo `source_id`; `DROP COLUMN`, patrón D-19). Se renombran la etapa "Entrevista"→"Cena" y los puestos a "Promotores"/"Agentes" (empujados en migración por `noupdate="1"`). Se añade validación de **formato** RFC/CURP mexicano (`@api.constrains`), independiente del gate L2 de **presencia**.
 
 **Razón:** El proceso real de negocio es de dos fases con dueños distintos; crear el contacto antes (Acuerdo de Arranque) y el empleado después (Clave Definitiva) refleja esa realidad y habilita el traspaso de responsabilidad en la frontera A/B. Usar `interviewer_ids`/`user_id` nativos evita inventar un modelo de "equipo" y reutiliza las record rules existentes. El cruce por `sequence` (no por hired_stage único) hace el flujo robusto a saltos de etapa y a cada fase idempotente. Reemplaza a `_bca_crear_partner_desde_contratado()`/`_bca_habilitar_agente()`. Bump `19.0.1.7.7` → **`19.0.1.7.8`**.
+
+---
+
+## D-22 — Ocultar el submenú "SIC Reclutamiento" con `active="False"` (no eliminarlo)
+
+**Fecha:** 2026-08-24
+**Decidido por:** Rafael Viera (usuario) · Resuelve BUG-022
+
+**Contexto:** El submenú **Reportes → SIC Reclutamiento** (`menu_bca_sic_reclutamiento`, Etapa 12) no debe estar disponible por ahora, pero podría reutilizarse en el futuro. Se pidió ocultarlo para todos los usuarios sin eliminarlo.
+
+**Decisión:** Se agrega `active="False"` al `menuitem` en `views/menu.xml`. **NO se elimina** ni el registro del menú ni la acción `action_sic_reclutamiento` (que los tests de reclutamiento siguen referenciando). La vista pivote/gráfico/búsqueda y el modelo subyacente quedan intactos.
+
+**Razón:**
+- `ir.ui.menu.active=False` oculta el menú para **todos** los usuarios (incluido admin) al filtrarse en la carga de menús.
+- **Comentar el XML NO basta:** al actualizar, Odoo no borra registros eliminados del archivo de datos; el menú seguiría vivo en BD. `active="False"` sí se reescribe en cada `-u`.
+- Reactivación trivial a futuro: quitar el atributo + `-u BCA_Seguros` → el menú regresa idéntico (acción, secuencia y padre preservados).
+- Cero riesgo de migración: no hay `delete`, ni cambio de ID, ni pérdida de traduciones/reglas asociadas al registro.
+
+**Consecuencias:**
+- Ningún rol ve "SIC Reclutamiento" bajo Reportes tras actualizar el módulo.
+- Si algún día se quiere visible solo para un grupo, cambiar `active="False"` por `groups="..."` (decisión futura, no implementada).
+- Referencia cruzada: BUG-022 en `Specs/Bugs.md`.

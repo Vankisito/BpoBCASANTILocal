@@ -57,6 +57,12 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 
 ## Bugs Resueltos
 
+Resuelto el **2026-08-24** (versión `19.0.1.11.1`):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-022 | BCA Seguros → Reportes → submenú "SIC Reclutamiento" | El submenú SIC Reclutamiento aparecía en el apartado Reportes pese a no estar operativo para producción; se solicitó ocultarlo para TODOS los usuarios sin eliminarlo (podría reutilizarse a futuro). | UI/UX / Config | 🟡 Media | Atributo `active="False"` en el `menuitem menu_bca_sic_reclutamiento` (`views/menu.xml`). El registro `ir.ui.menu` y la acción `action_sic_reclutamiento` permanecen intactos en BD (los tests de reclutamiento siguen usando la acción). Reactivación: quitar `active="False"` + `-u BCA_Seguros`. Ver D-22. | pendiente |
+
 Resuelto el **2026-08-18**:
 
 | ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
