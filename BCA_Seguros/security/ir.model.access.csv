@@ -12,6 +12,8 @@ acl_agente_aseg_operador,res.partner.agente.aseguradora operador,model_res_partn
 acl_agente_aseg_lider,res.partner.agente.aseguradora lider,model_res_partner_agente_aseguradora,BCA_Seguros.group_bca_lider,1,1,1,0
 acl_agente_aseg_dir_comercial,res.partner.agente.aseguradora dir_comercial,model_res_partner_agente_aseguradora,BCA_Seguros.group_bca_director_comercial,1,1,1,0
 acl_agente_aseg_director,res.partner.agente.aseguradora director,model_res_partner_agente_aseguradora,BCA_Seguros.group_bca_director,1,1,1,1
+acl_agente_aseg_reclutadora,res.partner.agente.aseguradora reclutadora,model_res_partner_agente_aseguradora,BCA_Seguros.group_bca_reclutadora,1,0,0,0
+acl_agente_aseg_capital_humano,res.partner.agente.aseguradora capital humano,model_res_partner_agente_aseguradora,BCA_Seguros.group_bca_capital_humano,1,0,0,0
 acl_bca_poliza_agente,bca.poliza agente,model_bca_poliza,BCA_Seguros.group_bca_agente,1,0,0,0
 acl_bca_poliza_operador,bca.poliza operador,model_bca_poliza,BCA_Seguros.group_bca_operador,1,1,1,0
 acl_bca_poliza_lider,bca.poliza lider,model_bca_poliza,BCA_Seguros.group_bca_lider,1,1,1,0

@@ -221,6 +221,32 @@
         <field name="perm_unlink" eval="True"/>
     </record>
 
+    <!-- BUG-020: Reclutadora y Capital Humano necesitan lectura global
+         sobre claves de agente para visualizar la ficha de contacto y
+         empleado. Grupos fuera de la cadena acumulativa (implied_ids),
+         requieren rule explícita (patrón A3). -->
+    <record id="rule_agente_aseg_reclutadora" model="ir.rule">
+        <field name="name">res.partner.agente.aseguradora: acceso global reclutadora</field>
+        <field name="model_id" ref="model_res_partner_agente_aseguradora"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_reclutadora'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_agente_aseg_capital_humano" model="ir.rule">
+        <field name="name">res.partner.agente.aseguradora: acceso global capital humano</field>
+        <field name="model_id" ref="model_res_partner_agente_aseguradora"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_capital_humano'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
     <!-- ================================================================
          ETAPA 4 — RECORD RULES DE NEGOCIO
          Pólizas, recibos, bitácora, cambio de agente y reportes SQL.
