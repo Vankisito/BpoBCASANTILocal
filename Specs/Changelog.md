@@ -4,7 +4,79 @@
 
 ---
 
-## Sesión 2026-08-17 — Empleados: pestaña BCA Seguros read-only + claves por aseguradora · `19.0.1.11.0`
+## Sesión 2026-09-01 — Aviso de vencimiento de recibos vía plantilla de correo · operativo UX (sin cambio de módulo)
+
+### Qué se hizo
+Implementación **100% vía UX** (plantilla `mail.template` + server action + cron) para avisar al
+**contratante** cuando un recibo de póliza `bca.recibo` esté a punto de vencer. Usa plantilla de
+correo de Odoo, **no** Mass Mailing.
+
+- Disparador: campo **`fecha_desde`** (Cobertura Desde); aviso **15 días antes**.
+- Reglas: solo recibo **`pendiente`**, solo póliza **`activa`**, disparo por **igualdad exacta**
+  (`fecha_desde == hoy + 15`) → una sola vez, sin duplicados ni recordatorio diario.
+- Destinatario: **contratante** de la póliza del recibo (`poliza_id.contratante_id.email`).
+- Envío por `plantilla.send_mail(rec.id, force_send=False)` → cola `mail.mail` → cron nativo
+  `Mail: Email Queue Manager`.
+- Nota: `bca.recibo` hereda `mail.thread` pero **no** `mail.activity.mixin` (sin impacto en el envío).
+- Server action respetando restricciones v19 (`safe_eval`): sin `import`, sin `STORE_ATTR`.
+
+### Archivos (solo docs)
+- Creado: `Specs/03-email-marketing/implantacion-aviso-vencimiento-recibos-bca-v1.md` (código final,
+  config UX, casos de prueba, relación con SMTP, pendientes).
+
+### Tests
+- No aplica (no se modificó código de módulo). Pendiente validar en `bca_prod` tras crear plantilla,
+  server action y cron.
+
+---
+
+### Qué se hizo
+Implementación **100% vía UX** (plantilla `mail.template` + server action + cron) para avisar al
+**contratante** cuando su póliza `bca.poliza` está **a punto de vencer** (`fecha_fin`). Usa plantilla
+de correo de Odoo, **no** Mass Mailing.
+
+- Ventana acordada: **15 días** antes; **una sola vez** (dispara el día exacto `fecha_fin = hoy + 15`),
+  solo estado **`activa`**, contratante con `email`; plantilla identificada por **nombre exacto**.
+- Idempotencia sin campos nuevos: disparo por igualdad exacta de fechas (renovación → nuevos avisos
+  el año siguiente). Si el cron no corre un día, esa póliza no se avisa (diseño acordado).
+- Envío por `plantilla.send_mail(poliza.id, force_send=False)` → cola `mail.mail` → cron nativo
+  `Mail: Email Queue Manager`.
+- Server action respetando restricciones v19 (`safe_eval`): sin `import`, sin `STORE_ATTR`.
+
+### Archivos (solo docs)
+- Creado: `Specs/03-email-marketing/implantacion-aviso-vencimiento-polizas-bca-v1.md` (código final,
+  config UX, casos de prueba, relación con SMTP, pendientes).
+
+### Tests
+- No aplica (no se modificó código de módulo). Pendiente validar en `bca_prod` tras crear plantilla,
+  server action y cron.
+
+---
+
+### Qué se hizo
+Implementación **100% vía UX** (server action + cron) para felicitar cumpleaños con Mass Mailing.
+**Sin módulos nuevos, sin campos nuevos, sin tocar `mailing.contact`:** el correo de la lista es el
+puente hacia `res.partner`; al encontrarlo se valida `bca_fecha_nacimiento` (mes/día = hoy) y se envía.
+
+- Server action `bca_cumple` (id 695, `Execute Python Code`, modelo `mailing.mailing`, `bca_prod`).
+- Cron `bca_cumple` (id 47) vinculado a la acción — **pendiente: pasarlo de mensual a diario**.
+- Descubrimientos v19: plantilla se identifica por **`subject`** (el campo `name` es computed no-store
+  con sufijo "Correo masivo creado el <fecha>"); campos renombrados `contact_list_ids` y
+  `schedule_date` (no existen `mailing_list_ids`/`date_send`); envío vía `action_put_in_queue()`;
+  server actions sin `import` y con `STORE_ATTR` prohibido (usar `write()`); `copy()` no reemplaza la
+  M2M → `write({'contact_list_ids'...})` post-copy.
+- Prueba completa OK en `bca_prod` (mailing id 3 y 4 → `done`, correo recibido en Gmail/Promociones).
+- SMTP: primer envío en `exception` por `535 Bad Credentials` del server 16 `notificaciones@grupobca.com.mx`
+  (no cubre `from_filter` del dominio emisor); pendiente corregir credenciales/test connection.
+
+### Archivos (solo docs)
+- Creado: `Specs/03-email-marketing/implantacion-cumpleanos-mass-mailing-bca-v1.md` (detalle completo:
+  código final, decisiones técnicas, config UX, pruebas, SMTP, pendientes).
+
+### Tests
+- No aplica (no se modificó código de módulo; validación funcional en runtime sobre `bca_prod`).
+
+---
 
 ### Qué se hizo
 Se agregó una **pestaña "BCA Seguros"** al formulario de Empleados (`hr.employee`) que espeja en
