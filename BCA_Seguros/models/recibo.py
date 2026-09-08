@@ -76,10 +76,10 @@ class BcaRecibo(models.Model):
         currency_field='currency_id',
         help='Base para el cálculo de PCA.',
     )
-    prima_total: float = fields.Monetary(
-        string='Prima Total',
+    prima_total_pagada: float = fields.Monetary(
+        string='Prima Total Pagada',
         currency_field='currency_id',
-        help='Lo que paga el cliente (incluye recargo e impuestos).',
+        help='Importe efectivamente cobrado al cliente.',
     )
     currency_id: int = fields.Many2one(
         'res.currency',
@@ -178,7 +178,7 @@ class BcaRecibo(models.Model):
         self.monto_modal = pendiente.monto_modal
         self.recargo = pendiente.recargo
         self.prima_neta = pendiente.prima_neta
-        self.prima_total = pendiente.prima_total
+        self.prima_total_pagada = pendiente.prima_total_pagada
 
     @api.model_create_multi
     def create(self, vals_list: list[dict]) -> object:
@@ -273,7 +273,7 @@ class BcaRecibo(models.Model):
                 'estado': 'pagado',
                 'fecha_pago': vals['fecha_pago'],
                 'prima_neta': vals['prima_neta'],
-                'prima_total': vals.get('prima_total', vals['prima_neta']),
+                'prima_total_pagada': vals.get('prima_total_pagada', vals['prima_neta']),
                 'recargo': vals.get('recargo', 0.0),
                 'conducto_id': vals.get('conducto_id'),
                 'folio_endoso': vals.get('folio_endoso'),
@@ -311,7 +311,7 @@ class BcaRecibo(models.Model):
         return self.action_registrar_pago({
             'fecha_pago': self.fecha_pago,
             'prima_neta': self.prima_neta,
-            'prima_total': self.prima_total or self.prima_neta,
+            'prima_total_pagada': self.prima_total_pagada or self.prima_neta,
             'recargo': self.recargo,
             'conducto_id': self.conducto_id.id,
             'folio_endoso': self.folio_endoso,

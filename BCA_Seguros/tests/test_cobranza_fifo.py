@@ -99,8 +99,7 @@ class _CobranzaFixtures(TransactionCase):
             'conducto': self.conducto.codigo_archivo,
             'prima_modal': '1,000.00',
             'recargo': '0.00',
-            'prima_total': '1,000.00',
-            'comision_informativa': '0.00',
+            'prima_total_pagada': '1,000.00',
         }
         base.update(ov)
         return base
@@ -119,8 +118,7 @@ class _CobranzaFixtures(TransactionCase):
             'recargo': '0.00',
             'gastos_expedicion': '0.00',
             'impuestos': '0.00',
-            'prima_total': '1,000.00',
-            'folio_endoso': '',
+            'prima_total_pagada': '1,000.00',
         }
         base.update(ov)
         return base
@@ -187,7 +185,7 @@ class TestCobranzaDiaria(_CobranzaFixtures):
         recibo.action_registrar_pago({
             'fecha_pago': '2025-01-10',
             'prima_neta': 12000.0,
-            'prima_total': 12000.0,
+            'prima_total_pagada': 12000.0,
             'conducto_id': self.conducto.id,
         })
         # 'anual' genera 1 recibo por anualidad; tras pagarlo no quedan pendientes

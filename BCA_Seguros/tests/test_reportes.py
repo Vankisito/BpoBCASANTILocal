@@ -84,7 +84,7 @@ class TestReportes(TransactionCase):
         recibo.action_registrar_pago({
             'fecha_pago': fecha or date(2026, 3, 1),
             'prima_neta': recibo.prima_neta,
-            'prima_total': recibo.prima_neta,
+            'prima_total_pagada': recibo.prima_neta,
             'conducto_id': self.conducto.id,
         })
         return recibo

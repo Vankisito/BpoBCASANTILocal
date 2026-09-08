@@ -35,7 +35,7 @@ EJEMPLOS: dict[str, str] = {
     'conducto': 'AGENTE_DIRECTO',
     'prima_modal': '1000.00',
     'prima_neta': '1000.00',
-    'prima_total': '1000.00',
+    'prima_total_pagada': '1000.00',
     'recargo': '0.00',
     'gastos_expedicion': '0.00',
     'impuestos': '0.00',

@@ -116,14 +116,14 @@ class BcaDashboard(models.AbstractModel):
         proximo = Recibo.search(dom_pend, order='fecha_desde asc', limit=1)
         return {
             'pendientes_num': Recibo.search_count(dom_pend),
-            'pendientes_monto': self._sum('bca.recibo', dom_pend, 'prima_total'),
+            'pendientes_monto': self._sum('bca.recibo', dom_pend, 'prima_neta'),
             'vencidos_num': Recibo.search_count(dom_venc),
-            'vencidos_monto': self._sum('bca.recibo', dom_venc, 'prima_total'),
+            'vencidos_monto': self._sum('bca.recibo', dom_venc, 'prima_neta'),
             'cobrado_mes': self._sum('bca.recibo', [
                 ('estado', '=', 'pagado'),
                 ('fecha_pago', '>=', inicio_mes),
                 ('fecha_pago', '<=', fin_mes),
-            ], 'prima_total'),
+            ], 'prima_total_pagada'),
             'proximo_fifo': {
                 'poliza': proximo.poliza_id.name or '',
                 'fecha_fin': fields.Date.to_string(proximo.fecha_hasta) or '',
@@ -143,7 +143,7 @@ class BcaDashboard(models.AbstractModel):
                 ('estado', '=', 'pagado'),
                 ('fecha_pago', '>=', ini),
                 ('fecha_pago', '<=', fin),
-            ], 'prima_total'))
+            ], 'prima_total_pagada'))
         return serie
 
     # -------------------------------------------------------- Tarjeta 3: PCA
