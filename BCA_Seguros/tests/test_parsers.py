@@ -164,7 +164,7 @@ class TestParserMetLifeVida(TransactionCase):
         recibo = self.env['bca.recibo'].browse(resultado['recibo_id'])
         self.assertEqual(recibo.estado, 'pagado')
         self.assertEqual(recibo.numero_recibo, 1, 'FIFO: primer recibo es el 1')
-        self.assertAlmostEqual(recibo.prima_neta, 1000.0, places=2)
+        self.assertAlmostEqual(recibo.prima_total, 1000.0, places=2)
         self.assertEqual(recibo.conducto_id, self.conducto)
 
     def test_metlife_vida_poliza_no_encontrada(self) -> None:

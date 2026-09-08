@@ -99,7 +99,7 @@ class TestPoliza(TransactionCase):
         self.assertEqual(numeros, list(range(1, 13)))
         # 12000 / 12 = 1000 cada uno
         for recibo in poliza.recibo_ids:
-            self.assertAlmostEqual(recibo.prima_neta, 1000.0, places=2)
+            self.assertAlmostEqual(recibo.prima_total, 1000.0, places=2)
             self.assertEqual(recibo.estado, 'pendiente')
 
     def test_no_regenerar_plan_con_recibos_pagados(self) -> None:
@@ -155,7 +155,7 @@ class TestPoliza(TransactionCase):
         self.assertEqual(recibo.numero_recibo, 1)
         self.assertEqual(recibo.fecha_desde, date(2026, 1, 1))
         self.assertEqual(recibo.fecha_hasta, date(2027, 1, 1))
-        self.assertAlmostEqual(recibo.prima_neta, 12000.0, places=2)
+        self.assertAlmostEqual(recibo.prima_total, 12000.0, places=2)
 
     def test_anualidad_avance_al_pagar(self) -> None:
         """Pagar el último recibo de la anualidad genera la siguiente."""
@@ -167,7 +167,7 @@ class TestPoliza(TransactionCase):
         poliza.action_confirmar()
         poliza.recibo_ids.action_registrar_pago({
             'fecha_pago': date(2026, 1, 15),
-            'prima_neta': 12000.0,
+            'prima_total_pagada': 12000.0,
         })
         self.assertEqual(len(poliza.recibo_ids), 2,
                          'Al pagar la anualidad vigente se genera la siguiente.')
@@ -187,7 +187,7 @@ class TestPoliza(TransactionCase):
         poliza.action_confirmar()
         poliza.recibo_ids.action_registrar_pago({
             'fecha_pago': date(2026, 1, 15),
-            'prima_neta': 12000.0,
+            'prima_total_pagada': 12000.0,
         })
         self.assertEqual(len(poliza.recibo_ids), 1,
                          'La póliza ya cubre hasta fecha_fin: sin nuevas anualidades.')

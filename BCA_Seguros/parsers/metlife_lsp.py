@@ -52,7 +52,6 @@ class ParserMetLifeVida(ParserBase):
         conducto_id, advertencia = self._resolver_conducto(env, fila.get('conducto'))
         vals = {
             'fecha_pago': fecha_pago,
-            'prima_neta': prima_neta,
             'prima_total_pagada': prima_total or prima_neta,
             'recargo': recargo,
             'conducto_id': conducto_id,

@@ -116,9 +116,9 @@ class BcaDashboard(models.AbstractModel):
         proximo = Recibo.search(dom_pend, order='fecha_desde asc', limit=1)
         return {
             'pendientes_num': Recibo.search_count(dom_pend),
-            'pendientes_monto': self._sum('bca.recibo', dom_pend, 'prima_neta'),
+            'pendientes_monto': self._sum('bca.recibo', dom_pend, 'prima_total'),
             'vencidos_num': Recibo.search_count(dom_venc),
-            'vencidos_monto': self._sum('bca.recibo', dom_venc, 'prima_neta'),
+            'vencidos_monto': self._sum('bca.recibo', dom_venc, 'prima_total'),
             'cobrado_mes': self._sum('bca.recibo', [
                 ('estado', '=', 'pagado'),
                 ('fecha_pago', '>=', inicio_mes),
@@ -132,7 +132,7 @@ class BcaDashboard(models.AbstractModel):
         }
 
     def _tendencia_semanal(self, hoy: date) -> list:
-        """Suma de prima_total de recibos pagados por semana (lunes-domingo),
+        """Suma de prima_total_pagada de recibos pagados por semana (lunes-domingo),
         últimas 6 semanas, de la más antigua a la actual."""
         lunes_actual = hoy - timedelta(days=hoy.weekday())
         serie = []

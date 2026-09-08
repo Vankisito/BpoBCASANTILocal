@@ -555,7 +555,7 @@ class BcaPoliza(models.Model):
                 'numero_recibo': numero,
                 'fecha_desde': fecha_desde,
                 'fecha_hasta': fecha_hasta,
-                'prima_neta': prima_por_recibo,
+                'prima_total': prima_por_recibo,
                 'monto_modal': prima_por_recibo,
                 'conducto_id': self.conducto_id.id,
             })

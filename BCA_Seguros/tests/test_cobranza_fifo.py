@@ -184,7 +184,7 @@ class TestCobranzaDiaria(_CobranzaFixtures):
         recibo = pol.recibo_ids.sorted('numero_recibo')[0]
         recibo.action_registrar_pago({
             'fecha_pago': '2025-01-10',
-            'prima_neta': 12000.0,
+            'prima_total_pagada': 12000.0,
             'prima_total_pagada': 12000.0,
             'conducto_id': self.conducto.id,
         })
