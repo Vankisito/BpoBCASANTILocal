@@ -89,7 +89,7 @@
                             <!-- Vienen del plan de pagos de la póliza (readonly).
                              Solo prima_total_pagada ("lo que paga el cliente") es
                                  editable mientras el recibo esté pendiente. -->
-                            <field name="monto_modal" widget="monetary" readonly="1"/>
+                            <field name="prima_neta" widget="monetary" readonly="1"/>
                             <field name="recargo" widget="monetary" readonly="1"/>
                             <field name="prima_total" widget="monetary" readonly="1"/>
                             <field name="prima_total_pagada" widget="monetary"

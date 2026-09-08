@@ -111,7 +111,7 @@ class TestPcaMetLife(TransactionCase):
         """Vida MXN: factor 1.0 → PCA = prima_neta (en MXN)."""
         poliza = self._crear_poliza(self.producto_vida, self.mxn)
         recibo = self._confirmar_y_recibo(poliza)
-        prima = recibo.prima_total
+        prima = recibo.prima_neta
         self._pagar(recibo)
         self.assertEqual(recibo.estado, 'pagado')
         self.assertAlmostEqual(recibo.factor_aplicado, 1.0, places=4)
@@ -123,7 +123,7 @@ class TestPcaMetLife(TransactionCase):
         """Vida USD: selecciona la fila USD (0.8) y convierte el resultado a MXN."""
         poliza = self._crear_poliza(self.producto_vida, self.usd)
         recibo = self._confirmar_y_recibo(poliza)
-        prima = recibo.prima_total
+        prima = recibo.prima_neta
         self._pagar(recibo)
         self.assertAlmostEqual(recibo.factor_aplicado, 0.8, places=4)
         self.assertEqual(recibo.pca_currency_id, self.mxn)
@@ -151,7 +151,7 @@ class TestPcaMetLife(TransactionCase):
         poliza = self._crear_poliza(self.producto_vida, self.mxn,
                                     temporalidad_anios=10)
         recibo = self._confirmar_y_recibo(poliza)
-        prima = recibo.prima_total
+        prima = recibo.prima_neta
         self._pagar(recibo)
         self.assertAlmostEqual(recibo.factor_aplicado, 1.0, places=4)
         self.assertAlmostEqual(recibo.pca_aplicada, prima, places=2)
@@ -169,7 +169,7 @@ class TestPcaMetLife(TransactionCase):
         poliza = self._crear_poliza(self.producto_gmm, self.mxn,
                                     coaseguro=0.10, deducible=30000.0)
         recibo = self._confirmar_y_recibo(poliza)
-        prima = recibo.prima_total
+        prima = recibo.prima_neta
         self._pagar(recibo)
         self.assertAlmostEqual(recibo.factor_aplicado, 1.2, places=4)
         self.assertAlmostEqual(recibo.pca_aplicada, prima * 1.2, places=2)
@@ -179,7 +179,7 @@ class TestPcaMetLife(TransactionCase):
         poliza = self._crear_poliza(self.producto_gmm, self.mxn,
                                     coaseguro=0.10, deducible=20000.0)
         recibo = self._confirmar_y_recibo(poliza)
-        prima = recibo.prima_total
+        prima = recibo.prima_neta
         self._pagar(recibo)
         self.assertAlmostEqual(recibo.factor_aplicado, 1.0, places=4)
         self.assertAlmostEqual(recibo.pca_aplicada, prima, places=2)
@@ -198,7 +198,7 @@ class TestPcaMetLife(TransactionCase):
         """Tras pagar, cambiar el factor del catálogo NO recalcula el recibo."""
         poliza = self._crear_poliza(self.producto_vida, self.mxn)
         recibo = self._confirmar_y_recibo(poliza)
-        prima = recibo.prima_total
+        prima = recibo.prima_neta
         self._pagar(recibo)
         pca_original = recibo.pca_aplicada
         factor_original = recibo.factor_aplicado

@@ -63,9 +63,10 @@ class BcaRecibo(models.Model):
     fecha_desde: fields.Date = fields.Date(string='Cobertura Desde', required=True)
     fecha_hasta: fields.Date = fields.Date(string='Cobertura Hasta', required=True)
 
-    monto_modal: float = fields.Monetary(
-        string='Prima Modal',
+    prima_neta: float = fields.Monetary(
+        string='Prima Neta',
         currency_field='currency_id',
+        help='Base para el cálculo de PCA, sin recargos.',
     )
     recargo: float = fields.Monetary(
         string='Recargo',
@@ -175,7 +176,7 @@ class BcaRecibo(models.Model):
         self.numero_recibo = pendiente.numero_recibo
         self.fecha_desde = pendiente.fecha_desde
         self.fecha_hasta = pendiente.fecha_hasta
-        self.monto_modal = pendiente.monto_modal
+        self.prima_neta = pendiente.prima_neta
         self.recargo = pendiente.recargo
         self.prima_total = pendiente.prima_total
         self.prima_total_pagada = pendiente.prima_total_pagada
