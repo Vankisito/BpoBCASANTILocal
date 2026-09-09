@@ -39,17 +39,25 @@ class ParserMetLifeVida(ParserBase):
             }
         vigencia_desde = self.normalizar_fecha(fila.get('vigencia_desde'))
         vigencia_hasta = self.normalizar_fecha(fila.get('vigencia_hasta'))
+        # R-COB-04: sin recibos pendientes → 'sin_recibo'
+        pendientes = poliza.recibo_ids.filtered(
+            lambda r: r.estado == 'pendiente'
+        ).sorted('numero_recibo')
+        if not pendientes:
+            return {
+                'marca': 'sin_recibo',
+                'recibo_id': False,
+                'mensaje': "Sin recibos pendientes",
+                'numero_poliza_raw': raw,
+            }
         recibo = self._buscar_recibo_por_poliza_vigencia(
             poliza, vigencia_desde, vigencia_hasta,
         )
         if not recibo:
-            pendientes = poliza.recibo_ids.filtered(
-                lambda r: r.estado == 'pendiente'
-            ).sorted('numero_recibo')
             detalle_pendientes = ', '.join(
                 '%s (%s–%s)' % (r.name, r.fecha_desde, r.fecha_hasta)
                 for r in pendientes
-            ) if pendientes else 'ninguno'
+            )
             return {
                 'marca': 'sin_coincidencia',
                 'recibo_id': False,

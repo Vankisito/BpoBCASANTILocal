@@ -105,5 +105,6 @@ class TestCobranzaMatchVigencia(_CobranzaFixtures):
         linea = bitacora.linea_ids[0]
         self.assertEqual(linea.marca, 'sin_coincidencia')
         self.assertIn('Recibos pendientes:', linea.mensaje)
-        # Debe mencionar al menos un recibo pendiente
-        self.assertIn('PV-MSG', linea.mensaje)
+        # El mensaje lista recibo.name (REC-XXXXX), no poliza.name
+        self.assertIn('REC-', linea.mensaje)
+        self.assertIn('2025-01-01', linea.mensaje)  # vigencia del primer recibo
