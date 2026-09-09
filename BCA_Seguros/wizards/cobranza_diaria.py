@@ -189,4 +189,8 @@ class BcaWizardCobranzaDiaria(models.TransientModel):
             dialecto = csv.Sniffer().sniff(texto[:4096], delimiters=',;\t')
         except csv.Error:
             dialecto = csv.excel  # fallback: coma
-        return csv.DictReader(io.StringIO(texto), dialect=dialecto)
+        # newline='' preserves CRLF and newlines inside quoted fields for csv.
+        return csv.DictReader(
+            io.StringIO(texto, newline=''),
+            dialect=dialecto,
+        )

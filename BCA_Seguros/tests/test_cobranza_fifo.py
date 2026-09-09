@@ -99,8 +99,7 @@ class _CobranzaFixtures(TransactionCase):
             'conducto': self.conducto.codigo_archivo,
             'prima_modal': '1,000.00',
             'recargo': '0.00',
-            'prima_total': '1,000.00',
-            'comision_informativa': '0.00',
+            'prima_total_pagada': '1,000.00',
         }
         base.update(ov)
         return base
@@ -119,8 +118,7 @@ class _CobranzaFixtures(TransactionCase):
             'recargo': '0.00',
             'gastos_expedicion': '0.00',
             'impuestos': '0.00',
-            'prima_total': '1,000.00',
-            'folio_endoso': '',
+            'prima_total_pagada': '1,000.00',
         }
         base.update(ov)
         return base
@@ -186,8 +184,8 @@ class TestCobranzaDiaria(_CobranzaFixtures):
         recibo = pol.recibo_ids.sorted('numero_recibo')[0]
         recibo.action_registrar_pago({
             'fecha_pago': '2025-01-10',
-            'prima_neta': 12000.0,
-            'prima_total': 12000.0,
+            'prima_total_pagada': 12000.0,
+            'prima_total_pagada': 12000.0,
             'conducto_id': self.conducto.id,
         })
         # 'anual' genera 1 recibo por anualidad; tras pagarlo no quedan pendientes
@@ -210,6 +208,25 @@ class TestCobranzaDiaria(_CobranzaFixtures):
         with self.assertRaises(UserError):
             wizard.action_procesar()
         self.assertEqual(Bitacora.search_count([]), previas)
+
+    def test_csv_con_salto_de_linea_en_campo_entre_comillas(self) -> None:
+        """Los campos CSV multilínea deben conservarse como una sola fila."""
+        texto = (
+            'numero_poliza,descripcion\r\n'
+            'PV-1,"primera línea\r\nsegunda línea"\r\n'
+        )
+        wizard = self._wizard(base64.b64encode(texto.encode('utf-8')))
+
+        reader = wizard._abrir_csv()
+
+        self.assertEqual(reader.fieldnames, ['numero_poliza', 'descripcion'])
+        self.assertEqual(
+            next(reader),
+            {
+                'numero_poliza': 'PV-1',
+                'descripcion': 'primera línea\r\nsegunda línea',
+            },
+        )
 
     def test_fifo_aplica_en_orden(self) -> None:
         """R-COB-03: pagos consecutivos toman los recibos en orden ascendente."""

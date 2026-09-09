@@ -14,9 +14,9 @@
                 <field name="numero_recibo"/>
                 <field name="fecha_desde" optional="show"/>
                 <field name="fecha_hasta" optional="show"/>
-                <field name="prima_neta" widget="monetary" sum="Prima Neta"/>
-                <field name="prima_total" widget="monetary"
-                       sum="Prima Total" optional="hide"/>
+                <field name="prima_total" widget="monetary" sum="Prima Total"/>
+                <field name="prima_total_pagada" widget="monetary"
+                       sum="Prima Total Pagada" optional="hide"/>
                 <field name="currency_id" column_invisible="True"/>
                 <field name="pca_currency_id" column_invisible="True"/>
                 <field name="fecha_pago" optional="show"/>
@@ -87,12 +87,12 @@
                         </group>
                         <group string="Importes">
                             <!-- Vienen del plan de pagos de la póliza (readonly).
-                                 Solo prima_total ("lo que paga el cliente") es
+                             Solo prima_total_pagada ("lo que paga el cliente") es
                                  editable mientras el recibo esté pendiente. -->
-                            <field name="monto_modal" widget="monetary" readonly="1"/>
-                            <field name="recargo" widget="monetary" readonly="1"/>
                             <field name="prima_neta" widget="monetary" readonly="1"/>
-                            <field name="prima_total" widget="monetary"
+                            <field name="recargo" widget="monetary" readonly="1"/>
+                            <field name="prima_total" widget="monetary" readonly="1"/>
+                            <field name="prima_total_pagada" widget="monetary"
                                    readonly="estado != 'pendiente'"/>
                         </group>
                     </group>

@@ -33,6 +33,7 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 | BUG-013 | 2026-05-27 | Póliza → form → pestaña "Recibos" | Al abrir un recibo desde la pestaña se muestra un popup con botón "Registrar Pago", pero la sección "Datos del Pago" no es editable en ese diálogo, por lo que el botón no tiene funcionalidad real. | UI/UX | 🟡 Media | Abierto |
 | BUG-015 | 2026-06-05 | Datos: `bca.poliza.coaseguro` vs `bca.factor.pca.coaseguro_min` | Desajuste de unidades de coaseguro: la póliza lo guarda como fracción (`0.10`=10%) y el seed de factores GMM como puntos porcentuales (`coaseguro_min=10.0`). El calculador de PCA (E7) lo normaliza, pero la inconsistencia de esquema persiste y puede confundir captura/reportes. | Datos | 🟡 Media | Abierto |
 | BUG-018 | 2026-08-07 | Póliza → lista → agrupar por Promotoría | `promotoria_id` no almacenado provocaba `ValueError` en `read_group`; además la jerarquía de red no tenía flujo auditado para cambios directos de `parent_id`. | Lógica | 🟡 Media | Resuelto |
+| BUG-023 | 2026-09-09 | Recibo (form) → Cancelar Pago | `prima_total_pagada` no se limpia a 0 al cancelar un pago desde el form de recibo. En tableros y PCA sí se cancela correctamente. | Lógica | 🟡 Media | Resuelto |
 
 ### Detalle de bugs abiertos (cont.)
 
@@ -56,6 +57,12 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 ---
 
 ## Bugs Resueltos
+
+Resuelto el **2026-08-24** (versión `19.0.1.11.1`):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-022 | BCA Seguros → Reportes → submenú "SIC Reclutamiento" | El submenú SIC Reclutamiento aparecía en el apartado Reportes pese a no estar operativo para producción; se solicitó ocultarlo para TODOS los usuarios sin eliminarlo (podría reutilizarse a futuro). | UI/UX / Config | 🟡 Media | Atributo `active="False"` en el `menuitem menu_bca_sic_reclutamiento` (`views/menu.xml`). El registro `ir.ui.menu` y la acción `action_sic_reclutamiento` permanecen intactos en BD (los tests de reclutamiento siguen usando la acción). Reactivación: quitar `active="False"` + `-u BCA_Seguros`. Ver D-22. | pendiente |
 
 Resuelto el **2026-08-18**:
 
@@ -88,6 +95,12 @@ Resuelto el **2026-06-05** (rama `desarrollo`; deploy a sandbox `sandbox_bca1` c
 |----|----------------|-------------|------|-----------|----------|--------|
 | BUG-014 | Contactos (form, Agente, pestaña BCA Seguros) | Al abrir un Agente, la pestaña BCA crasheaba con `OwlError → TypeError: Cannot read properties of undefined (reading '1')` en `SelectionField`. Causa: registros viejos con `bca_estado_agente`/`estado='con_licencia'`, valor eliminado del `Selection` al pasar a la nomenclatura de 3 estados (D-07). No afectaba a promotorías (no renderizan esos campos). | Datos | 🔴 Crítica | Migración `migrations/19.0.1.1.0/post-migrate.py`: mapea `con_licencia→clave_definitiva` en el puente, sanea el rollup del partner y lo recalcula desde el puente. Bump de manifest a `19.0.1.1.0`. | `0b08f3b` |
 | BUG-016 | `bca.recibo.action_registrar_pago` → `_calcular_pca` (calculador MetLife) | La PCA quedaba congelada en **0** al pagar todo recibo: el cálculo corría ANTES del write que asigna `fecha_pago`, así que el calculador leía `recibo.fecha_pago=False` y el filtro `vigencia_desde <= False` no encontraba el factor vigente (`'Sin factor PCA vigente'`). Bug latente en `recibo.py` desde la E7; las 6 pruebas de `test_pca_metlife` que esperan factor ≠ 0 lo destaparon en el primer `-u` honesto sobre `sandbox_bca1`. | Lógica | 🔴 Crítica | Fijar `rec.fecha_pago = vals['fecha_pago']` **antes** de `_calcular_pca()` en `action_registrar_pago`. Validado en sandbox (`_calcular_pca` → `(12000.0, 1.0, '')`); suite completa **135 tests, 0 failures**. | `38736b7` |
+
+Resuelto el **2026-09-09**:
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-023 | Recibo (form) → Cancelar Pago | `prima_total_pagada` no se reseteaba a 0 al cancelar un pago desde el form de recibo. Los campos de PCA (`pca_aplicada`, `factor_aplicado`) y otros datos del pago sí se limpiaban, pero `prima_total_pagada` quedaba con el valor anterior. | Lógica | 🟡 Media | Agregar `'prima_total_pagada': 0.0` al `write` de `action_cancelar_pago` en `recibo.py`. | pendiente |
 
 ---
 

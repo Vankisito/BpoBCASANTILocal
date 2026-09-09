@@ -65,7 +65,7 @@ class TestInmutabilidad(TransactionCase):
         primer_recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
         primer_recibo.action_registrar_pago({
             'fecha_pago': date(2026, 1, 15),
-            'prima_neta': 1000.0,
+            'prima_total_pagada': 1000.0,
         })
         self.assertEqual(poliza.pagado_hasta, primer_recibo.fecha_hasta,
                          'pagado_hasta debe avanzar al fecha_hasta del recibo pagado.')
@@ -82,11 +82,11 @@ class TestInmutabilidad(TransactionCase):
         recibos = poliza.recibo_ids.sorted('numero_recibo')
         recibos[0].action_registrar_pago({
             'fecha_pago': date(2026, 1, 15),
-            'prima_neta': 1000.0,
+            'prima_total_pagada': 1000.0,
         })
         recibos[1].action_registrar_pago({
             'fecha_pago': date(2026, 2, 15),
-            'prima_neta': 1000.0,
+            'prima_total_pagada': 1000.0,
         })
         self.assertEqual(poliza.pagado_hasta, recibos[1].fecha_hasta)
 
@@ -100,7 +100,7 @@ class TestInmutabilidad(TransactionCase):
         recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
         recibo.action_registrar_pago({
             'fecha_pago': date(2026, 1, 15),
-            'prima_neta': 1000.0,
+            'prima_total_pagada': 1000.0,
         })
         # Usuario interno no-su no puede tocar PCA.
         usuario = self.env['res.users'].create({
@@ -118,7 +118,7 @@ class TestInmutabilidad(TransactionCase):
         recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
         estado_previo = recibo.estado
         with self.assertRaises(ValidationError):
-            recibo.action_registrar_pago({'prima_neta': 1000.0})
+            recibo.action_registrar_pago({'prima_total_pagada': 1000.0})
         recibo.invalidate_recordset()
         self.assertEqual(recibo.estado, estado_previo,
                          'El recibo no debe haberse modificado al fallar la validación.')
@@ -138,7 +138,7 @@ class TestInmutabilidad(TransactionCase):
         recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
         recibo.action_registrar_pago({
             'fecha_pago': date(2026, 1, 15),
-            'prima_neta': 1000.0,
+            'prima_total_pagada': 1000.0,
         })
         self.assertEqual(recibo.estado, 'pagado')
 
@@ -157,10 +157,10 @@ class TestInmutabilidad(TransactionCase):
         poliza = self._crear_poliza_activa()
         recibos = poliza.recibo_ids.sorted('numero_recibo')
         recibos[0].action_registrar_pago({
-            'fecha_pago': date(2026, 1, 15), 'prima_neta': 1000.0,
+            'fecha_pago': date(2026, 1, 15), 'prima_total_pagada': 1000.0,
         })
         recibos[1].action_registrar_pago({
-            'fecha_pago': date(2026, 2, 15), 'prima_neta': 1000.0,
+            'fecha_pago': date(2026, 2, 15), 'prima_total_pagada': 1000.0,
         })
         with self.assertRaises(UserError):
             recibos[0].action_cancelar_pago()
@@ -179,7 +179,7 @@ class TestInmutabilidad(TransactionCase):
         poliza = self._crear_poliza_activa()
         recibo = poliza.recibo_ids.sorted('numero_recibo')[0]
         recibo.action_registrar_pago({
-            'fecha_pago': date(2026, 1, 15), 'prima_neta': 1000.0,
+            'fecha_pago': date(2026, 1, 15), 'prima_total_pagada': 1000.0,
         })
         with self.assertRaises(UserError):
             recibo.action_anular_recibo()
