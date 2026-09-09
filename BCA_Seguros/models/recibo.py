@@ -63,23 +63,24 @@ class BcaRecibo(models.Model):
     fecha_desde: fields.Date = fields.Date(string='Cobertura Desde', required=True)
     fecha_hasta: fields.Date = fields.Date(string='Cobertura Hasta', required=True)
 
-    monto_modal: float = fields.Monetary(
-        string='Prima Modal',
+    prima_neta: float = fields.Monetary(
+        string='Prima Neta',
         currency_field='currency_id',
+        help='Base para el cálculo de PCA, sin recargos.',
     )
     recargo: float = fields.Monetary(
         string='Recargo',
         currency_field='currency_id',
     )
-    prima_neta: float = fields.Monetary(
-        string='Prima Neta',
-        currency_field='currency_id',
-        help='Base para el cálculo de PCA.',
-    )
     prima_total: float = fields.Monetary(
         string='Prima Total',
         currency_field='currency_id',
-        help='Lo que paga el cliente (incluye recargo e impuestos).',
+        help='Prima base más recargos del recibo.',
+    )
+    prima_total_pagada: float = fields.Monetary(
+        string='Prima Total Pagada',
+        currency_field='currency_id',
+        help='Importe efectivamente cobrado al cliente.',
     )
     currency_id: int = fields.Many2one(
         'res.currency',
@@ -175,10 +176,10 @@ class BcaRecibo(models.Model):
         self.numero_recibo = pendiente.numero_recibo
         self.fecha_desde = pendiente.fecha_desde
         self.fecha_hasta = pendiente.fecha_hasta
-        self.monto_modal = pendiente.monto_modal
-        self.recargo = pendiente.recargo
         self.prima_neta = pendiente.prima_neta
+        self.recargo = pendiente.recargo
         self.prima_total = pendiente.prima_total
+        self.prima_total_pagada = pendiente.prima_total_pagada
 
     @api.model_create_multi
     def create(self, vals_list: list[dict]) -> object:
@@ -232,13 +233,14 @@ class BcaRecibo(models.Model):
     def action_registrar_pago(self, vals: dict) -> bool:
         """R-COB-09: valida precondiciones ANTES de tocar BD.
 
-        Si fecha_pago o prima_neta no vienen, levantamos sin haber
+        Si fecha_pago o prima_total_pagada no vienen, levantamos sin haber
         modificado nada — la BD queda intacta y el recibo sigue pendiente.
         """
         if not vals.get('fecha_pago'):
             raise ValidationError(_('La fecha de pago es obligatoria.'))
-        if not vals.get('prima_neta') or vals['prima_neta'] <= 0:
-            raise ValidationError(_('La prima neta debe ser un valor positivo.'))
+        if (not vals.get('prima_total_pagada')
+                or vals['prima_total_pagada'] <= 0):
+            raise ValidationError(_('El importe pagado debe ser positivo.'))
 
         for rec in self:
             if rec.estado != 'pendiente':
@@ -272,8 +274,7 @@ class BcaRecibo(models.Model):
             super(BcaRecibo, rec.with_context(allow_pca_edit=True)).write({
                 'estado': 'pagado',
                 'fecha_pago': vals['fecha_pago'],
-                'prima_neta': vals['prima_neta'],
-                'prima_total': vals.get('prima_total', vals['prima_neta']),
+                'prima_total_pagada': vals['prima_total_pagada'],
                 'recargo': vals.get('recargo', 0.0),
                 'conducto_id': vals.get('conducto_id'),
                 'folio_endoso': vals.get('folio_endoso'),
@@ -299,7 +300,7 @@ class BcaRecibo(models.Model):
         """Wrapper UI: toma los valores ya editados en el form y registra el pago.
 
         Diseñado para el botón "Registrar Pago" del form view. El usuario debe
-        haber completado fecha_pago, prima_neta y conducto_id antes de presionar.
+        haber completado fecha_pago, prima_total_pagada y conducto_id antes de presionar.
         """
         self.ensure_one()
         # R4: el conducto es obligatorio para cobrar (solo en el flujo UI; el
@@ -310,8 +311,7 @@ class BcaRecibo(models.Model):
             )
         return self.action_registrar_pago({
             'fecha_pago': self.fecha_pago,
-            'prima_neta': self.prima_neta,
-            'prima_total': self.prima_total or self.prima_neta,
+            'prima_total_pagada': self.prima_total_pagada or self.prima_total,
             'recargo': self.recargo,
             'conducto_id': self.conducto_id.id,
             'folio_endoso': self.folio_endoso,
@@ -351,6 +351,7 @@ class BcaRecibo(models.Model):
                 'fecha_pago': False,
                 'conducto_id': False,
                 'folio_endoso': False,
+                'prima_total_pagada': 0.0,
                 'pca_aplicada': 0.0,
                 'factor_aplicado': 0.0,
                 'motivo_exclusion_pca': False,

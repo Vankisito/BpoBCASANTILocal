@@ -238,7 +238,7 @@
                                     <field name="numero_recibo"/>
                                     <field name="fecha_desde"/>
                                     <field name="fecha_hasta"/>
-                                    <field name="prima_neta"
+                                    <field name="prima_total"
                                            widget="monetary" sum="Total"/>
                                     <field name="currency_id" column_invisible="True"/>
                                     <field name="pca_currency_id" column_invisible="True"/>

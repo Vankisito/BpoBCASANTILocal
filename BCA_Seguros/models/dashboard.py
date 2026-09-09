@@ -123,7 +123,7 @@ class BcaDashboard(models.AbstractModel):
                 ('estado', '=', 'pagado'),
                 ('fecha_pago', '>=', inicio_mes),
                 ('fecha_pago', '<=', fin_mes),
-            ], 'prima_total'),
+            ], 'prima_total_pagada'),
             'proximo_fifo': {
                 'poliza': proximo.poliza_id.name or '',
                 'fecha_fin': fields.Date.to_string(proximo.fecha_hasta) or '',
@@ -132,7 +132,7 @@ class BcaDashboard(models.AbstractModel):
         }
 
     def _tendencia_semanal(self, hoy: date) -> list:
-        """Suma de prima_total de recibos pagados por semana (lunes-domingo),
+        """Suma de prima_total_pagada de recibos pagados por semana (lunes-domingo),
         últimas 6 semanas, de la más antigua a la actual."""
         lunes_actual = hoy - timedelta(days=hoy.weekday())
         serie = []
@@ -143,7 +143,7 @@ class BcaDashboard(models.AbstractModel):
                 ('estado', '=', 'pagado'),
                 ('fecha_pago', '>=', ini),
                 ('fecha_pago', '<=', fin),
-            ], 'prima_total'))
+            ], 'prima_total_pagada'))
         return serie
 
     # -------------------------------------------------------- Tarjeta 3: PCA

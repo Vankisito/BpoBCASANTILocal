@@ -31,7 +31,7 @@ class CalculadorPCAMetLife(CalculadorPCABase):
         if factor is None:
             return (0.0, 0.0, 'Sin factor PCA vigente')
 
-        # 3. PCA = prima_neta x factor (en moneda de la poliza) -> convertir a MXN.
+        # PCA = prima_neta x factor (sin recargos).
         pca_ccy = recibo.prima_neta * factor.factor
         mxn = self.env.ref('base.MXN')
         if poliza.currency_id == mxn:

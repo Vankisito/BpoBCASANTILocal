@@ -125,8 +125,8 @@ class TestRecordRules(TransactionCase):
             'numero_recibo': 1,
             'fecha_desde': date(2026, 1, 1),
             'fecha_hasta': date(2026, 12, 31),
+            'prima_total': 12000.0,
             'prima_neta': 12000.0,
-            'monto_modal': 12000.0,
             'estado': 'pagado',
             'fecha_pago': date(2026, 1, 15),
             'agente_id': cls.agente_a.id,
@@ -139,8 +139,8 @@ class TestRecordRules(TransactionCase):
             'numero_recibo': 1,
             'fecha_desde': date(2026, 1, 1),
             'fecha_hasta': date(2026, 12, 31),
+            'prima_total': 12000.0,
             'prima_neta': 12000.0,
-            'monto_modal': 12000.0,
         })
 
     def test_agente_ve_solo_sus_polizas(self) -> None:

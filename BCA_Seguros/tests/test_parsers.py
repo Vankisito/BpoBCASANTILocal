@@ -152,8 +152,7 @@ class TestParserMetLifeVida(TransactionCase):
             'conducto': self.conducto.codigo_archivo,
             'prima_modal': '1,000.00',
             'recargo': '0.00',
-            'prima_total': '1,000.00',
-            'comision_informativa': '100.00',
+            'prima_total_pagada': '1,000.00',
         }
         fila.update(overrides)
         return fila
@@ -165,7 +164,7 @@ class TestParserMetLifeVida(TransactionCase):
         recibo = self.env['bca.recibo'].browse(resultado['recibo_id'])
         self.assertEqual(recibo.estado, 'pagado')
         self.assertEqual(recibo.numero_recibo, 1, 'FIFO: primer recibo es el 1')
-        self.assertAlmostEqual(recibo.prima_neta, 1000.0, places=2)
+        self.assertAlmostEqual(recibo.prima_total, 1000.0, places=2)
         self.assertEqual(recibo.conducto_id, self.conducto)
 
     def test_metlife_vida_poliza_no_encontrada(self) -> None:
@@ -286,8 +285,7 @@ class TestParserMetLifeGMM(TransactionCase):
             'recargo': '0.00',
             'gastos_expedicion': '0.00',
             'impuestos': '0.00',
-            'prima_total': '1,000.00',
-            'folio_endoso': 'END-001',
+            'prima_total_pagada': '1,000.00',
         }
         fila.update(overrides)
         return fila
