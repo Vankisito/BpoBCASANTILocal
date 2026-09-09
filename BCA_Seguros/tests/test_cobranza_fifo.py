@@ -160,21 +160,29 @@ class TestCobranzaDiaria(_CobranzaFixtures):
     def test_error_en_fila_no_detiene_proceso(self) -> None:
         """R-COB-08: una fila con error no aborta el lote."""
         pol = self._poliza('PV-ERR')
+        # R-COB-11: cada fila lleva la vigencia del recibo que le corresponde.
+        # La fila con error va al FINAL para no bloquear el FIFO de las
+        # filas válidas posteriores (action_registrar_pago valida FIFO).
         filas = [
-            self._fila_vida('PV-ERR'),                              # fila 1 → recibo 1
-            self._fila_vida('PV-ERR'),                              # fila 2 → recibo 2
-            self._fila_vida('PV-ERR', fecha_aplicacion='FECHA-MALA'),  # fila 3 → error
-            self._fila_vida('PV-ERR'),                              # fila 4 → recibo 3
-            self._fila_vida('PV-ERR'),                              # fila 5 → recibo 4
+            self._fila_vida('PV-ERR'),                                       # fila 1 → recibo 1
+            self._fila_vida('PV-ERR',                                       # fila 2 → recibo 2
+                            vigencia_desde='01/02/2025', vigencia_hasta='01/03/2025'),
+            self._fila_vida('PV-ERR',                                       # fila 3 → recibo 3
+                            vigencia_desde='01/03/2025', vigencia_hasta='01/04/2025'),
+            self._fila_vida('PV-ERR',                                       # fila 4 → recibo 4
+                            vigencia_desde='01/04/2025', vigencia_hasta='01/05/2025'),
+            self._fila_vida('PV-ERR',                                       # fila 5 → error
+                            vigencia_desde='01/05/2025', vigencia_hasta='01/06/2025',
+                            fecha_aplicacion='FECHA-MALA'),
         ]
         bitacora = self._procesar(COLUMNAS_LSP, filas)
 
         self.assertEqual(len(bitacora.linea_ids), 5)
         self.assertEqual(bitacora.recibos_aplicados, 4)
         self.assertEqual(bitacora.errores_procesamiento, 1)
-        linea3 = bitacora.linea_ids.filtered(lambda l: l.numero_fila == 3)
-        self.assertEqual(linea3.marca, 'error')
-        # Las 4 cuotas pagadas son las primeras (FIFO no se rompe por el error).
+        linea5 = bitacora.linea_ids.filtered(lambda l: l.numero_fila == 5)
+        self.assertEqual(linea5.marca, 'error')
+        # Las 4 cuotas pagadas: 1, 2, 3, 4 (la 5 falló).
         pagados = pol.recibo_ids.filtered(lambda r: r.estado == 'pagado')
         self.assertEqual(sorted(pagados.mapped('numero_recibo')), [1, 2, 3, 4])
 
@@ -231,7 +239,14 @@ class TestCobranzaDiaria(_CobranzaFixtures):
     def test_fifo_aplica_en_orden(self) -> None:
         """R-COB-03: pagos consecutivos toman los recibos en orden ascendente."""
         pol = self._poliza('PV-FIFO')
-        filas = [self._fila_vida('PV-FIFO') for _ in range(3)]
+        # R-COB-11: cada fila lleva la vigencia del recibo que le corresponde
+        filas = [
+            self._fila_vida('PV-FIFO'),  # recibo 1: 01/01→01/02
+            self._fila_vida('PV-FIFO', vigencia_desde='01/02/2025',
+                            vigencia_hasta='01/03/2025'),  # recibo 2
+            self._fila_vida('PV-FIFO', vigencia_desde='01/03/2025',
+                            vigencia_hasta='01/04/2025'),  # recibo 3
+        ]
 
         self._procesar(COLUMNAS_LSP, filas)
 
