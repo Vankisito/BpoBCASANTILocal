@@ -86,6 +86,28 @@ class ParserBase:
             lambda r: r.estado == 'pendiente'
         ).sorted('numero_recibo')[:1]
 
+    def _buscar_recibo_por_poliza_vigencia(self, poliza, vigencia_desde,
+                                           vigencia_hasta):
+        """R-COB-11: busca recibo pendiente que coincida con póliza + vigencia.
+
+        Compara ``vigencia_desde``/``vigencia_hasta`` del CSV contra
+        ``fecha_desde``/``fecha_hasta`` del recibo. Retorna el recibo
+        coincidente o ``None``.
+
+        La regla FIFO se mantiene: si hay varios recibos con la misma vigencia
+        (no debería ocurrir), toma el de menor ``numero_recibo``.
+        """
+        from datetime import date as _date
+        if not vigencia_desde or not vigencia_hasta:
+            return None
+        pendientes = poliza.recibo_ids.filtered(
+            lambda r: r.estado == 'pendiente'
+        )
+        for recibo in pendientes.sorted('numero_recibo'):
+            if recibo.fecha_desde == vigencia_desde and recibo.fecha_hasta == vigencia_hasta:
+                return recibo
+        return None
+
     def _resolver_conducto(self, env, valor) -> tuple:
         """Resuelve ``conducto_id`` por ``codigo_archivo``.
 
