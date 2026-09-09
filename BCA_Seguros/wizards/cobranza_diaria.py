@@ -88,7 +88,7 @@ class BcaWizardCobranzaDiaria(models.TransientModel):
         filas = parser.filtrar_filas(list(reader))  # R-COB-01 (GMM omite anulados)
 
         BitacoraLinea = self.env['bca.bitacora.linea'].sudo()
-        aplicados = no_encontradas = errores = 0
+        aplicados = no_encontradas = errores = sin_coincidencia = 0
         pca_total = 0.0
         for numero_fila, fila in enumerate(filas, start=1):
             resultado = parser.procesar_fila(self.env, fila, numero_fila)
@@ -108,6 +108,8 @@ class BcaWizardCobranzaDiaria(models.TransientModel):
                     ).pca_aplicada
             elif resultado['marca'] == 'no_encontrada':
                 no_encontradas += 1
+            elif resultado['marca'] == 'sin_coincidencia':
+                sin_coincidencia += 1
             elif resultado['marca'] == 'error':
                 errores += 1
 
@@ -116,15 +118,16 @@ class BcaWizardCobranzaDiaria(models.TransientModel):
             'total_filas': len(filas) + bitacora.anulaciones_ignoradas,
             'recibos_aplicados': aplicados,
             'polizas_no_encontradas': no_encontradas,
+            'recibos_sin_coincidencia': sin_coincidencia,
             'errores_procesamiento': errores,
             'pca_total_sesion': pca_total,
         })
         _logger.info(
             'Cobranza diaria %s (%s/%s): %s filas en %.2fs '
-            '(%s aplicados, %s no encontradas, %s errores)',
+            '(%s aplicados, %s no encontradas, %s sin coincidencia, %s errores)',
             bitacora.name, codigo, self.ramo, len(filas),
             (datetime.now() - inicio).total_seconds(),
-            aplicados, no_encontradas, errores,
+            aplicados, no_encontradas, sin_coincidencia, errores,
         )
         return {
             'type': 'ir.actions.act_window',

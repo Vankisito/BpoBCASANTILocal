@@ -336,3 +336,35 @@ Se retira `bca_tipo_candidato` (duplicaba el origen nativo `source_id`; `DROP CO
 - Ningún rol ve "SIC Reclutamiento" bajo Reportes tras actualizar el módulo.
 - Si algún día se quiere visible solo para un grupo, cambiar `active="False"` por `groups="..."` (decisión futura, no implementada).
 - Referencia cruzada: BUG-022 en `Specs/Bugs.md`.
+
+---
+
+## D-23 — Match de cobranza por póliza + vigencia (sin prima)
+
+**Fecha:** 2026-09-09
+**Decidido por:** Rafael Viera (usuario) · Resuelve duplicación de pagos
+
+**Contexto:** Al subir el archivo de cobranza dos veces (o cuando una misma póliza aparece dos veces en el archivo), el sistema aplicaba el pago al siguiente recibo pendiente (FIFO) sin verificar que la vigencia del CSV coincidiera con la del recibo. Resultado: se cobraba un periodo distinto al que la aseguradora reportaba.
+
+**Decisión:** Cada fila del CSV se aplica **solo si** encuentra un recibo pendiente que cumpla:
+- Número de póliza (`poliza_id.name`)
+- Vigencia desde (`fecha_desde` del recibo == `vigencia_desde` del CSV)
+- Vigencia hasta (`fecha_hasta` del recibo == `vigencia_hasta` del CSV)
+
+**Se elimina** el criterio de prima del plan original (R-COB-11). La prima no se usa como criterio de match porque los archivos reales incluyen impuestos y recargos que el plan de pagos del sistema no modela.
+
+Si la fila no cumple el match → se registra marca `sin_coincidencia` en la bitáconera con el motivo exacto y la lista de recibos pendientes reales de la póliza.
+
+**Razón:**
+- Evita duplicación de pagos al subir el mismo archivo dos veces.
+- Evita aplicación a periodos equivocados cuando la póliza tiene múltiples recibos pendientes.
+- La prima no es un criterio confiable porque `prima_total` del CSV incluye impuestos (16%) y recargos que no están en el plan de pagos.
+- FIFO se mantiene como regla de ordenamiento, pero el match por vigencia es el filtro principal.
+
+**Consecuencias:**
+- Nueva marca `sin_coincidencia` en `MARCA_LINEA_SELECTION` (`bitacora.py`).
+- Nuevo campo `recibos_sin_coincidencia` en `bca.bitacora.importacion`.
+- Nuevo método `_buscar_recibo_por_poliza_vigencia()` en `parsers/base.py`.
+- Ambos parsers (Vida y GMM) usan el nuevo método en lugar de `_primer_recibo_pendiente()`.
+- Versión del módulo: `19.0.1.14.0`.
+- Referencia cruzada: BUG-023 (prima_total_pagada) + R-COB-11 en specs.

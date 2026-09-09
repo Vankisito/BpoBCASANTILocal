@@ -12,6 +12,7 @@ MARCA_LINEA_SELECTION = [
     ('anulado', 'Anulado'),
     ('no_encontrada', 'Póliza no encontrada'),
     ('sin_recibo', 'Sin recibo pendiente'),
+    ('sin_coincidencia', 'Sin coincidencia de recibo'),
     ('advertencia', 'Advertencia'),
     ('error', 'Error'),
     ('info', 'Información'),
@@ -82,6 +83,10 @@ class BcaBitacoraImportacion(models.Model):
     )
     errores_procesamiento: int = fields.Integer(
         string='Errores de Procesamiento',
+        readonly=True,
+    )
+    recibos_sin_coincidencia: int = fields.Integer(
+        string='Sin Coincidencia de Recibo',
         readonly=True,
     )
     pca_total_sesion: float = fields.Monetary(

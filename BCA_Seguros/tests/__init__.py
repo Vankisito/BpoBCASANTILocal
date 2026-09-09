@@ -4,6 +4,7 @@ from . import (
     test_poliza_gmm,
     test_poliza_coberturas,
     test_cobranza_fifo,
+    test_cobranza_match,
     test_pca_metlife,
     test_inmutabilidad,
     test_record_rules,

@@ -68,12 +68,26 @@ class ParserMetLifeGMM(ParserBase):
                 'mensaje': "Póliza no existe en el sistema",
                 'numero_poliza_raw': raw,
             }
-        recibo = self._primer_recibo_pendiente(poliza)
+        vigencia_desde = self.normalizar_fecha(fila.get('vigencia_desde'))
+        vigencia_hasta = self.normalizar_fecha(fila.get('vigencia_hasta'))
+        recibo = self._buscar_recibo_por_poliza_vigencia(
+            poliza, vigencia_desde, vigencia_hasta,
+        )
         if not recibo:
+            pendientes = poliza.recibo_ids.filtered(
+                lambda r: r.estado == 'pendiente'
+            ).sorted('numero_recibo')
+            detalle_pendientes = ', '.join(
+                '%s (%s–%s)' % (r.name, r.fecha_desde, r.fecha_hasta)
+                for r in pendientes
+            ) if pendientes else 'ninguno'
             return {
-                'marca': 'sin_recibo',
+                'marca': 'sin_coincidencia',
                 'recibo_id': False,
-                'mensaje': "Sin recibos pendientes",
+                'mensaje': (
+                    "Sin coincidencia de recibo para vigencia %s–%s. "
+                    "Recibos pendientes: %s"
+                ) % (vigencia_desde, vigencia_hasta, detalle_pendientes),
                 'numero_poliza_raw': raw,
             }
         fecha_pago = self.normalizar_fecha(fila.get('fecha_aplicacion'))

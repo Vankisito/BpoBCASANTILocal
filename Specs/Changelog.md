@@ -4,6 +4,44 @@
 
 ---
 
+## Sesión 2026-09-09 — R-COB-11: Match de cobranza por póliza + vigencia · `19.0.1.14.0`
+
+### Qué se hizo
+Se implementó la **regla R-COB-11** para evitar duplicación de pagos al subir archivos de cobranza.
+Cada fila del CSV ahora se aplica solo si encuentra un recibo pendiente que coincida con:
+- Número de póliza
+- Vigencia desde
+- Vigencia hasta
+
+**Cambio clave:** Se eliminó el criterio de prima del plan original (D-23). La prima no se usa como
+criterio de match porque los archivos reales incluyen impuestos y recargos que el plan de pagos del
+sistema no modela.
+
+**Archivos modificados:**
+- `parsers/base.py`: Nuevo método `_buscar_recibo_por_poliza_vigencia()` que busca recibo pendiente
+  por póliza + vigencia_desde + vigencia_hasta.
+- `parsers/metlife_lsp.py`: Usa el nuevo método; retorna marca `sin_coincidencia` cuando no hay match,
+  con mensaje que incluye los recibos pendientes reales de la póliza.
+- `parsers/metlife_gcaye.py`: Idéntico a LSP.
+- `models/bitacora.py`: Nueva marca `sin_coincidencia` en `MARCA_LINEA_SELECTION`; nuevo campo
+  `recibos_sin_coincidencia` en `bca.bitacora.importacion`.
+- `views/bitacora_views.xml`: Campo visible en lista y formulario; decoración warning para la nueva marca.
+- `wizards/cobranza_diaria.py`: Contador `sin_coincidencia` en el loop de procesamiento.
+- `__manifest__.py`: Versión `19.0.1.14.0`.
+
+**Archivos creados:**
+- `tests/test_cobranza_match.py`: 6 casos de prueba (doble subida, vigencia distinta, fila legítima,
+  GMM doble subida, GMM anulaciones + sin_coincidencia, mensaje con recibos pendientes).
+
+### Tests
+- Suite completa en verde (0 errores).
+- `test_cobranza_match.py` valida los criterios de aceptación del plan.
+
+### Decisiones
+- D-23: Match por póliza + vigencia (sin prima).
+
+---
+
 ## Sesión 2026-08-17 — Empleados: pestaña BCA Seguros read-only + claves por aseguradora · `19.0.1.11.0`
 
 ### Qué se hizo
