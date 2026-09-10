@@ -34,11 +34,46 @@ sistema no modela.
   GMM doble subida, GMM anulaciones + sin_coincidencia, mensaje con recibos pendientes).
 
 ### Tests
-- Suite completa en verde (0 errores).
+- Suite completa local **2026-09-10**: 2 fallos preexistentes en `test_carga_portafolio`
+  (sin relación con R-COB-11). La afirmación "0 errores" publicada aquí era incorrecta:
+  - `test_agente_existente_reutilizado_como_contratante`: se crea un segundo `res.partner`
+    al reutilizar un agente como contratante (assert res.partner != res.partner).
+  - `test_asigna_coberturas_ofrecidas_y_notas`: no se resuelve el
+    `product.template.attribute.value` esperado (dependencia del seed de coberturas).
 - `test_cobranza_match.py` valida los criterios de aceptación del plan.
 
 ### Decisiones
 - D-23: Match por póliza + vigencia (sin prima).
+
+---
+
+## Sesión 2026-09-10 — Fix race condition en pago de recibos · `19.0.1.14.1`
+
+### Qué se hizo
+Corregida **race condition de concurrencia** en `action_registrar_pago`: dos importaciones
+simultáneas (PostgreSQL MVCC) podían leer el mismo recibo como `pendiente` antes de que
+ninguna commiteara, pagarlo dos veces y duplicar la generación de la siguiente anualidad.
+El chequeo `estado != 'pendiente'` era ciego entre transacciones: validaba sobre el
+snapshot de la propia transacción.
+
+**Fix:** bloqueo transaccional `SELECT … FOR UPDATE` por fila de recibo antes de revalidar
+estado (`models/recibo.py`, vía `cr.execute` — en este build de Odoo 19
+`BaseModel.search()` no acepta `for_update`). Incluye `invalidate_recordset()` para releer
+snapshot fresco post-lock. La 2ª transacción espera al commit de la 1ª y aborta con
+`UserError` → marca `error` en bitácora. Cubre parsers (LSP/GCAYE) y flujo UI por igual.
+
+**Archivos modificados:**
+- `BCA_Seguros/models/recibo.py`: lock `SELECT … FOR UPDATE` + `invalidate_recordset()`.
+- `__manifest__.py`: Versión `19.0.1.14.1`.
+
+### Tests
+- Suite completa local (docker, DB `bca_clean`, `--test-tags BCA_Seguros`):
+  **184/186 en verde**, 2 fallos preexistentes en `test_carga_portafolio`
+  (mismos que afectaban a 19.0.1.14.0; ajenos a este fix). Ningún fallo nuevo.
+
+### Decisión
+- Lock por fila de recibo (no por póliza): serializa solo el pago concurrente del mismo
+  recibo. Lock por póliza descartado por sobre-bloqueo innecesario.
 
 ---
 
