@@ -242,6 +242,20 @@ class BcaRecibo(models.Model):
                 or vals['prima_total_pagada'] <= 0):
             raise ValidationError(_('El importe pagado debe ser positivo.'))
 
+        # Row-level lock: SELECT … FOR UPDATE blocks concurrent transactions
+        # on the same recibo rows until this transaction commits/rolls back.
+        # Raw SQL: BaseModel.search() in this Odoo build has no for_update kwarg.
+        if self.ids:
+            self.env.cr.execute(
+                'SELECT id FROM bca_recibo WHERE id IN %s FOR UPDATE',
+                (tuple(self.ids),),
+            )
+
+        # Invalidate ORM cache so the estado check below reads the fresh,
+        # post-lock snapshot — a pre-lock cached value would be stale if
+        # another transaction already paid these recibos.
+        self.invalidate_recordset()
+
         for rec in self:
             if rec.estado != 'pendiente':
                 raise UserError(
