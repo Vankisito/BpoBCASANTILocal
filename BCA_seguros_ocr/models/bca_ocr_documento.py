@@ -17,7 +17,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 from ..extractors.base import detectar_layout
@@ -160,6 +160,10 @@ class BcaOcrDocumento(models.Model):
         "bca.poliza",
         string="Póliza Creada",
         readonly=True,
+    )
+    resumen_extraccion: str = fields.Char(
+        compute="_compute_resumen_extraccion",
+        string="Resumen de Extracción",
     )
 
     # ===================================================================
@@ -583,3 +587,33 @@ class BcaOcrDocumento(models.Model):
                     "porcentaje": porcentaje,
                 }
             )
+
+    @api.depends(
+        "estado",
+        "layout_detectado",
+        "poliza_numero",
+        "contratante_nombre",
+        "producto_pdf",
+        "prima_monto",
+        "currency_id",
+        "fecha_inicio",
+        "fecha_fin",
+    )
+    def _compute_resumen_extraccion(self) -> None:
+        """Resumen legible de qué contiene el documento extraído."""
+        for doc in self:
+            partes = []
+            if doc.layout_detectado in ("gmm", "vida"):
+                partes.append("GMM" if doc.layout_detectado == "gmm" else "Vida")
+            if doc.poliza_numero:
+                partes.append("Póliza %s" % doc.poliza_numero)
+            if doc.contratante_nombre:
+                partes.append("Contratante %s" % doc.contratante_nombre)
+            if doc.producto_pdf:
+                partes.append("Producto %s" % doc.producto_pdf)
+            if doc.prima_monto:
+                moneda = doc.currency_id.symbol or ""
+                partes.append("Prima %s%s" % (moneda, doc.prima_monto))
+            if doc.fecha_inicio and doc.fecha_fin:
+                partes.append("Vigencia %s → %s" % (doc.fecha_inicio, doc.fecha_fin))
+            doc.resumen_extraccion = " · ".join(partes) or False
