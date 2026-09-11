@@ -6,13 +6,23 @@ from .base import ParserBase
 # de MetLife (archivo GCAYE — ramo GMM). Tentativos según specs §5.3
 # y §4.2. Pueden requerir ajuste por acentos, mayúsculas o espacios.
 COLUMNAS_GCAYE = [
-    'numero_poliza', 'estatus_pago', 'agente', 'contratante',
-    'fecha_aplicacion', 'vigencia_desde', 'vigencia_hasta', 'conducto',
-    'prima_neta', 'recargo', 'gastos_expedicion', 'impuestos',
-    'prima_total', 'folio_endoso',
+    "numero_poliza",
+    "estatus_pago",
+    "agente",
+    "contratante",
+    "fecha_aplicacion",
+    "vigencia_desde",
+    "vigencia_hasta",
+    "conducto",
+    "prima_neta",
+    "recargo",
+    "gastos_expedicion",
+    "impuestos",
+    "prima_total",
+    "folio_endoso",
 ]
 
-ESTATUS_ANULADOS = {'anulado', 'cancelado'}
+ESTATUS_ANULADOS = {"anulado", "cancelado"}
 
 
 class ParserMetLifeGMM(ParserBase):
@@ -21,10 +31,14 @@ class ParserMetLifeGMM(ParserBase):
     Reglas aplicadas: R-COB-01 (anulaciones omitidas en ``filtrar_filas``),
     R-COB-02/04/06/08 (idénticas a Vida), más propagación de ``folio_endoso``
     al recibo (campo GMM-only).
+
+    El pago y match son atómicos vía ``bca.recibo._aplicar_lote`` que
+    bloquea pendientes de la póliza, matchea por vigencia y paga en una
+    sola sección transaccional.
     """
 
-    aseguradora_codigo = 'METLIFE'
-    ramo = 'gmm'
+    aseguradora_codigo = "METLIFE"
+    ramo = "gmm"
     columnas_requeridas = COLUMNAS_GCAYE
 
     def filtrar_filas(self, filas: list[dict]) -> list[dict]:
@@ -34,96 +48,73 @@ class ParserMetLifeGMM(ParserBase):
         y suma al contador ``anulaciones_ignoradas`` directamente. El parser
         es dueño de esta regla; el wizard (E8) no necesita conocerla.
         """
-        BitacoraLinea = self.env['bca.bitacora.linea'].sudo()
-        filtradas: list[dict] = []
+        BitacoraLinea = self.env["bca.bitacora.linea"].sudo()
+        filtradas: list[tuple[int, dict]] = []
         anulaciones = 0
         for idx, fila in enumerate(filas):
-            estatus = str(fila.get('estatus_pago') or '').strip().lower()
+            estatus = str(fila.get("estatus_pago") or "").strip().lower()
             if estatus in ESTATUS_ANULADOS:
-                raw = (fila.get('numero_poliza') or '').strip()
-                BitacoraLinea.create({
-                    'bitacora_id': self.bitacora.id,
-                    'numero_fila': idx + 1,
-                    'marca': 'anulado',
-                    'mensaje': "Estatus '%s' — fila omitida (R-COB-01)" % estatus,
-                    'numero_poliza_raw': raw,
-                })
+                raw = (fila.get("numero_poliza") or "").strip()
+                BitacoraLinea.create(
+                    {
+                        "bitacora_id": self.bitacora.id,
+                        "numero_fila": idx + 1,
+                        "marca": "anulado",
+                        "mensaje": "Estatus '%s' — fila omitida (R-COB-01)" % estatus,
+                        "numero_poliza_raw": raw,
+                    }
+                )
                 anulaciones += 1
             else:
-                filtradas.append(fila)
+                filtradas.append((idx + 1, fila))
         if anulaciones:
-            self.bitacora.sudo().write({
-                'anulaciones_ignoradas':
-                    self.bitacora.anulaciones_ignoradas + anulaciones,
-            })
+            self.bitacora.sudo().write(
+                {
+                    "anulaciones_ignoradas": self.bitacora.anulaciones_ignoradas
+                    + anulaciones,
+                }
+            )
         return filtradas
 
-    def _procesar_fila_interna(self, env, fila: dict, numero_fila: int,
-                               raw: str) -> dict:
+    def _procesar_fila_interna(
+        self, env, fila: dict, numero_fila: int, raw: str
+    ) -> dict:
         poliza = self._buscar_poliza(env, raw)
         if not poliza:
             return {
-                'marca': 'no_encontrada',
-                'recibo_id': False,
-                'mensaje': "Póliza no existe en el sistema",
-                'numero_poliza_raw': raw,
+                "marca": "no_encontrada",
+                "recibo_id": False,
+                "mensaje": "Póliza no existe en el sistema",
+                "numero_poliza_raw": raw,
             }
-        vigencia_desde = self.normalizar_fecha(fila.get('vigencia_desde'))
-        vigencia_hasta = self.normalizar_fecha(fila.get('vigencia_hasta'))
-        # R-COB-04: sin recibos pendientes → 'sin_recibo'
-        pendientes = poliza.recibo_ids.filtered(
-            lambda r: r.estado == 'pendiente'
-        ).sorted('numero_recibo')
-        if not pendientes:
-            return {
-                'marca': 'sin_recibo',
-                'recibo_id': False,
-                'mensaje': "Sin recibos pendientes",
-                'numero_poliza_raw': raw,
-            }
-        recibo = self._buscar_recibo_por_poliza_vigencia(
-            poliza, vigencia_desde, vigencia_hasta,
-        )
-        if not recibo:
-            detalle_pendientes = ', '.join(
-                '%s (%s–%s)' % (r.name, r.fecha_desde, r.fecha_hasta)
-                for r in pendientes
-            )
-            return {
-                'marca': 'sin_coincidencia',
-                'recibo_id': False,
-                'mensaje': (
-                    "Sin coincidencia de recibo para vigencia %s–%s. "
-                    "Recibos pendientes: %s"
-                ) % (vigencia_desde, vigencia_hasta, detalle_pendientes),
-                'numero_poliza_raw': raw,
-            }
-        fecha_pago = self.normalizar_fecha(fila.get('fecha_aplicacion'))
-        prima_neta = self.normalizar_monto(fila.get('prima_neta'))
-        recargo = self.normalizar_monto(fila.get('recargo'))
-        prima_total = self.normalizar_monto(fila.get('prima_total'))
-        folio_endoso = str(fila.get('folio_endoso') or '').strip() or False
-        conducto_id, advertencia = self._resolver_conducto(env, fila.get('conducto'))
+
+        vigencia_desde = self.normalizar_fecha(fila.get("vigencia_desde"))
+        vigencia_hasta = self.normalizar_fecha(fila.get("vigencia_hasta"))
+        fecha_pago = self.normalizar_fecha(fila.get("fecha_aplicacion"))
+        prima_neta = self.normalizar_monto(fila.get("prima_neta"))
+        recargo = self.normalizar_monto(fila.get("recargo"))
+        prima_total = self.normalizar_monto(fila.get("prima_total"))
+        folio_endoso = str(fila.get("folio_endoso") or "").strip() or False
+        conducto_id, advertencia = self._resolver_conducto(env, fila.get("conducto"))
+
         vals = {
-            'fecha_pago': fecha_pago,
-            'prima_total_pagada': prima_total or prima_neta,
-            'recargo': recargo,
-            'conducto_id': conducto_id,
-            'folio_endoso': folio_endoso,
+            "fecha_pago": fecha_pago,
+            "prima_total_pagada": prima_total or prima_neta,
+            "recargo": recargo,
+            "conducto_id": conducto_id,
+            "folio_endoso": folio_endoso,
         }
-        with env.cr.savepoint():
-            recibo.action_registrar_pago(vals)
-        mensaje = "Recibo %s pagado por %s" % (recibo.name, prima_neta)
-        if advertencia:
-            return {
-                'marca': 'advertencia',
-                'recibo_id': recibo.id,
-                'mensaje': "%s | %s" % (mensaje, advertencia),
-                'numero_poliza_raw': raw,
-            }
-        return {
-            'marca': 'aplicado',
-            'recibo_id': recibo.id,
-            'mensaje': mensaje,
-            'numero_poliza_raw': raw,
-        }
+
+        resultado = env["bca.recibo"]._aplicar_lote(
+            poliza.id,
+            vigencia_desde,
+            vigencia_hasta,
+            vals,
+        )
+        resultado["numero_poliza_raw"] = raw
+
+        if advertencia and resultado["marca"] == "aplicado":
+            resultado["mensaje"] += " | %s" % advertencia
+            resultado["marca"] = "advertencia"
+
+        return resultado

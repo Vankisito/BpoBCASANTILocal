@@ -3,161 +3,173 @@ from __future__ import annotations
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, RedirectWarning, UserError, ValidationError
 
+
+class ReciboPagadoConcurrenteError(ValidationError):
+    """Un pago concurrente ya aplicó este recibo.
+
+    En el flujo de importación (parser R-COB-08) se clasifica como
+    ``sin_coincidencia``, no como ``error``, para ser consistente con el
+    duplicado secuencial.
+    """
+
+
 ESTADO_RECIBO_SELECTION = [
-    ('pendiente', 'Pendiente'),
-    ('pagado', 'Pagado'),
-    ('cancelado', 'Cancelado'),
+    ("pendiente", "Pendiente"),
+    ("pagado", "Pagado"),
+    ("cancelado", "Cancelado"),
 ]
 
-CAMPOS_PCA_PROTEGIDOS = {'pca_aplicada', 'factor_aplicado', 'pca_currency_id'}
+CAMPOS_PCA_PROTEGIDOS = {"pca_aplicada", "factor_aplicado", "pca_currency_id"}
 
 
 class BcaRecibo(models.Model):
-    _name = 'bca.recibo'
-    _description = 'Recibo de Póliza BCA'
-    _inherit = ['mail.thread']
-    _order = 'poliza_id, numero_recibo'
+    _name = "bca.recibo"
+    _description = "Recibo de Póliza BCA"
+    _inherit = ["mail.thread"]
+    _order = "poliza_id, numero_recibo"
 
     name: str = fields.Char(
-        string='Folio',
-        default=lambda self: self.env['ir.sequence'].next_by_code('bca.recibo'),
+        string="Folio",
+        default=lambda self: self.env["ir.sequence"].next_by_code("bca.recibo"),
         readonly=True,
         copy=False,
     )
     poliza_id: int = fields.Many2one(
-        'bca.poliza',
-        string='Póliza',
+        "bca.poliza",
+        string="Póliza",
         required=True,
-        ondelete='restrict',
+        ondelete="restrict",
         index=True,
     )
     # Foto inmutable del agente/promotoría al momento del pago.
     # Asignado por action_registrar_pago — NO confiar en poliza.agente_id
     # para reportes históricos (puede cambiar vía cambiar_agente()).
     agente_id: int = fields.Many2one(
-        'res.partner',
-        string='Agente (al pagar)',
-        ondelete='restrict',
-        domain=[('bca_tipo', '=', 'agente')],
+        "res.partner",
+        string="Agente (al pagar)",
+        ondelete="restrict",
+        domain=[("bca_tipo", "=", "agente")],
     )
     promotoria_id: int = fields.Many2one(
-        'res.partner',
-        string='Promotoría (al pagar)',
-        ondelete='restrict',
+        "res.partner",
+        string="Promotoría (al pagar)",
+        ondelete="restrict",
     )
     # Agente VIGENTE de la póliza (no la foto al pagar). Siempre poblado, aun en
     # recibos pendientes — usado para agrupar la lista por agente sin que los
     # pendientes caigan en el grupo "Ninguno".
     agente_poliza_id: int = fields.Many2one(
-        'res.partner',
-        string='Agente (póliza)',
-        related='poliza_id.agente_id',
+        "res.partner",
+        string="Agente (póliza)",
+        related="poliza_id.agente_id",
         store=True,
         index=True,
     )
     numero_recibo: int = fields.Integer(
-        string='Número de Recibo',
+        string="Número de Recibo",
         readonly=True,
-        help='Secuencia dentro de la póliza (1, 2, 3...).',
+        help="Secuencia dentro de la póliza (1, 2, 3...).",
     )
-    fecha_desde: fields.Date = fields.Date(string='Cobertura Desde', required=True)
-    fecha_hasta: fields.Date = fields.Date(string='Cobertura Hasta', required=True)
+    fecha_desde: fields.Date = fields.Date(string="Cobertura Desde", required=True)
+    fecha_hasta: fields.Date = fields.Date(string="Cobertura Hasta", required=True)
 
     prima_neta: float = fields.Monetary(
-        string='Prima Neta',
-        currency_field='currency_id',
-        help='Base para el cálculo de PCA, sin recargos.',
+        string="Prima Neta",
+        currency_field="currency_id",
+        help="Base para el cálculo de PCA, sin recargos.",
     )
     recargo: float = fields.Monetary(
-        string='Recargo',
-        currency_field='currency_id',
+        string="Recargo",
+        currency_field="currency_id",
     )
     prima_total: float = fields.Monetary(
-        string='Prima Total',
-        currency_field='currency_id',
-        help='Prima base más recargos del recibo.',
+        string="Prima Total",
+        currency_field="currency_id",
+        help="Prima base más recargos del recibo.",
     )
     prima_total_pagada: float = fields.Monetary(
-        string='Prima Total Pagada',
-        currency_field='currency_id',
-        help='Importe efectivamente cobrado al cliente.',
+        string="Prima Total Pagada",
+        currency_field="currency_id",
+        help="Importe efectivamente cobrado al cliente.",
     )
     currency_id: int = fields.Many2one(
-        'res.currency',
-        related='poliza_id.currency_id',
+        "res.currency",
+        related="poliza_id.currency_id",
         store=True,
         readonly=True,
     )
 
     estado: str = fields.Selection(
         ESTADO_RECIBO_SELECTION,
-        string='Estado',
-        default='pendiente',
+        string="Estado",
+        default="pendiente",
         required=True,
         tracking=True,
         index=True,
     )
-    fecha_pago: fields.Date = fields.Date(string='Fecha de Pago')
+    fecha_pago: fields.Date = fields.Date(string="Fecha de Pago")
     conducto_id: int = fields.Many2one(
-        'bca.conducto',
-        string='Conducto',
-        ondelete='restrict',
+        "bca.conducto",
+        string="Conducto",
+        ondelete="restrict",
     )
     folio_endoso: str = fields.Char(
-        string='Folio de Endoso',
-        help='Solo aplica para ramo GMM.',
+        string="Folio de Endoso",
+        help="Solo aplica para ramo GMM.",
     )
 
     # PCA congelada al pago. Inmutable salvo por env.su o cancelación autorizada.
     # Se expresa SIEMPRE en MXN (decisión D-08), por eso usa pca_currency_id
     # (no currency_id, que es la moneda de la póliza y puede ser USD).
     pca_currency_id: int = fields.Many2one(
-        'res.currency',
-        string='Moneda PCA',
+        "res.currency",
+        string="Moneda PCA",
         readonly=True,
         default=lambda self: (
-            self.env.ref('base.MXN', raise_if_not_found=False)
+            self.env.ref("base.MXN", raise_if_not_found=False)
             or self.env.company.currency_id
         ),
     )
     pca_aplicada: float = fields.Monetary(
-        string='PCA Aplicada',
-        currency_field='pca_currency_id',
+        string="PCA Aplicada",
+        currency_field="pca_currency_id",
         readonly=True,
         tracking=True,
     )
     factor_aplicado: float = fields.Float(
-        string='Factor Aplicado',
+        string="Factor Aplicado",
         digits=(6, 4),
         readonly=True,
         tracking=True,
     )
     motivo_exclusion_pca: str = fields.Char(
-        string='Motivo Exclusión PCA',
-        help='Razón por la que la PCA es 0 (ej: aportación adicional).',
+        string="Motivo Exclusión PCA",
+        help="Razón por la que la PCA es 0 (ej: aportación adicional).",
     )
     bitacora_linea_id: int = fields.Many2one(
-        'bca.bitacora.linea',
-        string='Línea de Bitácora',
-        ondelete='set null',
-        help='Línea de la importación de cobranza que generó este pago.',
+        "bca.bitacora.linea",
+        string="Línea de Bitácora",
+        ondelete="set null",
+        help="Línea de la importación de cobranza que generó este pago.",
     )
 
     # Unicidad del número de recibo dentro de una póliza.
     _unique_numero_por_poliza = models.Constraint(
-        'UNIQUE(poliza_id, numero_recibo)',
-        'El número de recibo debe ser único dentro de cada póliza.',
+        "UNIQUE(poliza_id, numero_recibo)",
+        "El número de recibo debe ser único dentro de cada póliza.",
     )
 
-    @api.constrains('fecha_desde', 'fecha_hasta')
+    @api.constrains("fecha_desde", "fecha_hasta")
     def _check_fechas(self) -> None:
         for rec in self:
-            if rec.fecha_desde and rec.fecha_hasta and rec.fecha_desde >= rec.fecha_hasta:
-                raise ValidationError(
-                    _('Fecha desde debe ser anterior a fecha hasta.')
-                )
+            if (
+                rec.fecha_desde
+                and rec.fecha_hasta
+                and rec.fecha_desde >= rec.fecha_hasta
+            ):
+                raise ValidationError(_("Fecha desde debe ser anterior a fecha hasta."))
 
-    @api.onchange('poliza_id')
+    @api.onchange("poliza_id")
     def _onchange_poliza_id(self) -> None:
         """R1: al elegir póliza en un recibo NUEVO, previsualiza el recibo
         pendiente más antiguo (FIFO). Al guardar, create() redirige al recibo
@@ -165,14 +177,18 @@ class BcaRecibo(models.Model):
         if not self.poliza_id or self._origin.id:
             return
         pendiente = self.poliza_id.recibo_ids.filtered(
-            lambda r: r.estado == 'pendiente'
-        ).sorted('numero_recibo')[:1]
+            lambda r: r.estado == "pendiente"
+        ).sorted("numero_recibo")[:1]
         if not pendiente:
-            return {'warning': {
-                'title': _('Sin recibos pendientes'),
-                'message': _('La póliza %s no tiene recibos pendientes para cobrar.')
-                           % self.poliza_id.name,
-            }}
+            return {
+                "warning": {
+                    "title": _("Sin recibos pendientes"),
+                    "message": _(
+                        "La póliza %s no tiene recibos pendientes para cobrar."
+                    )
+                    % self.poliza_id.name,
+                }
+            }
         self.numero_recibo = pendiente.numero_recibo
         self.fecha_desde = pendiente.fecha_desde
         self.fecha_hasta = pendiente.fecha_hasta
@@ -186,28 +202,31 @@ class BcaRecibo(models.Model):
         """R1: la creación manual de un recibo para una póliza que ya tiene un
         pendiente redirige a ese recibo (los recibos nacen del plan de pagos,
         no a mano). La generación interna del plan pasa `bca_generando_plan`."""
-        if not self.env.context.get('bca_generando_plan'):
+        if not self.env.context.get("bca_generando_plan"):
             for vals in vals_list:
-                poliza_id = vals.get('poliza_id')
+                poliza_id = vals.get("poliza_id")
                 if not poliza_id:
                     continue
-                pendiente = self.env['bca.poliza'].browse(poliza_id).recibo_ids.filtered(
-                    lambda r: r.estado == 'pendiente'
-                ).sorted('numero_recibo')[:1]
+                poliza = self.env["bca.poliza"].browse(poliza_id)
+                pendiente = poliza.recibo_ids.filtered(
+                    lambda r: r.estado == "pendiente"
+                ).sorted("numero_recibo")[:1]
                 if pendiente:
                     raise RedirectWarning(
-                        _('La póliza ya tiene el recibo pendiente %s. Abrilo para '
-                          'registrar el pago en lugar de crear uno nuevo.')
+                        _(
+                            "La póliza ya tiene el recibo pendiente %s. Abrilo para "
+                            "registrar el pago en lugar de crear uno nuevo."
+                        )
                         % pendiente.name,
                         {
-                            'type': 'ir.actions.act_window',
-                            'res_model': 'bca.recibo',
-                            'res_id': pendiente.id,
-                            'view_mode': 'form',
-                            'views': [(False, 'form')],
-                            'target': 'current',
+                            "type": "ir.actions.act_window",
+                            "res_model": "bca.recibo",
+                            "res_id": pendiente.id,
+                            "view_mode": "form",
+                            "views": [(False, "form")],
+                            "target": "current",
                         },
-                        _('Abrir recibo pendiente'),
+                        _("Abrir recibo pendiente"),
                     )
         return super().create(vals_list)
 
@@ -219,14 +238,19 @@ class BcaRecibo(models.Model):
         - bypass explícito vía contexto allow_pca_edit=True (usado por
           action_cancelar_pago tras chequeo de grupo).
         """
-        if (set(vals) & CAMPOS_PCA_PROTEGIDOS
-                and not self.env.su
-                and not self.env.context.get('allow_pca_edit')):
+        if (
+            set(vals) & CAMPOS_PCA_PROTEGIDOS
+            and not self.env.su
+            and not self.env.context.get("allow_pca_edit")
+        ):
             for rec in self:
-                if rec.estado == 'pagado':
+                if rec.estado == "pagado":
                     raise UserError(
-                        _('PCA y factor de recibo pagado son inmutables '
-                          '(recibo %s).') % rec.name
+                        _(
+                            "PCA y factor de recibo pagado son inmutables "
+                            "(recibo %s)."
+                        )
+                        % rec.name
                     )
         return super().write(vals)
 
@@ -236,41 +260,66 @@ class BcaRecibo(models.Model):
         Si fecha_pago o prima_total_pagada no vienen, levantamos sin haber
         modificado nada — la BD queda intacta y el recibo sigue pendiente.
         """
-        if not vals.get('fecha_pago'):
-            raise ValidationError(_('La fecha de pago es obligatoria.'))
-        if (not vals.get('prima_total_pagada')
-                or vals['prima_total_pagada'] <= 0):
-            raise ValidationError(_('El importe pagado debe ser positivo.'))
+        if not vals.get("fecha_pago"):
+            raise ValidationError(_("La fecha de pago es obligatoria."))
+        if not vals.get("prima_total_pagada") or vals["prima_total_pagada"] <= 0:
+            raise ValidationError(_("El importe pagado debe ser positivo."))
+
+        # Orden fijo: AIDL (alternative interpretation of deadlock) —
+        # bloquear en `id` ascendente evita esperas circulares entre imports
+        # concurrentes que tocan varios recibos en distinto orden.
+        ids_ordenados = tuple(sorted(set(self.ids)))
 
         # Row-level lock: SELECT … FOR UPDATE blocks concurrent transactions
         # on the same recibo rows until this transaction commits/rolls back.
         # Raw SQL: BaseModel.search() in this Odoo build has no for_update kwarg.
-        if self.ids:
+        # El flush previo materializa writes pendientes de la misma transacción
+        # (patrón OCA para SQL crudo) antes del lock.
+        if ids_ordenados:
+            self.env.flush_all()
             self.env.cr.execute(
-                'SELECT id FROM bca_recibo WHERE id IN %s FOR UPDATE',
-                (tuple(self.ids),),
+                "SELECT id FROM bca_recibo WHERE id IN %s ORDER BY id FOR UPDATE",
+                (ids_ordenados,),
             )
 
         # Invalidate ORM cache so the estado check below reads the fresh,
         # post-lock snapshot — a pre-lock cached value would be stale if
-        # another transaction already paid these recibos.
+        # another transaction already paid these recibos. Invalida también
+        # las pólizas: su One2many recibo_ids se cachea en el registro de
+        # póliza y los checks FIFO / anualidad lo releen recién.
+        for rec in self:
+            rec.poliza_id.invalidate_recordset()
         self.invalidate_recordset()
 
         for rec in self:
-            if rec.estado != 'pendiente':
+            if rec.estado != "pendiente":
+                # Duplicado por concurrencia: otro import ya pagó el recibo.
+                # Se reempleza en el parser como sin_coincidencia, igual que
+                # el duplicado secuencial — no como error.
+                if rec.estado == "pagado":
+                    raise ReciboPagadoConcurrenteError(
+                        _(
+                            "El recibo %s ya fue pagado en otra operación "
+                            "(posible doble importación)."
+                        )
+                        % rec.name
+                    )
                 raise UserError(
-                    _("Solo se pueden pagar recibos en estado 'Pendiente' "
-                      "(recibo %s, estado %s).") % (rec.name, rec.estado)
+                    _(
+                        "Solo se pueden pagar recibos en estado 'Pendiente' "
+                        "(recibo %s, estado %s)."
+                    )
+                    % (rec.name, rec.estado)
                 )
 
             # FIFO: este recibo debe ser el más antiguo pendiente de la póliza.
             pendientes = rec.poliza_id.recibo_ids.filtered(
-                lambda r: r.estado == 'pendiente'
+                lambda r: r.estado == "pendiente"
             )
-            fifo = pendientes.sorted('numero_recibo')[:1]
+            fifo = pendientes.sorted("numero_recibo")[:1]
             if fifo and fifo.id != rec.id:
                 raise UserError(
-                    _('Debe pagarse el recibo %s antes que el %s (FIFO).')
+                    _("Debe pagarse el recibo %s antes que el %s (FIFO).")
                     % (fifo.name, rec.name)
                 )
 
@@ -280,33 +329,43 @@ class BcaRecibo(models.Model):
             # plan), así que fijamos fecha_pago primero — de lo contrario el
             # calculador lee recibo.fecha_pago=False y `vigencia_desde <= False`
             # no encuentra el factor vigente (PCA quedaría en 0).
-            rec.fecha_pago = vals['fecha_pago']
+            rec.fecha_pago = vals["fecha_pago"]
             pca, factor, motivo = rec._calcular_pca()
             # Usa super().write para esquivar nuestro propio bloqueo de write()
             # (el recibo aún no está 'pagado' cuando entra aquí, pero el
             # contexto allow_pca_edit deja explícita la autoría del cambio).
-            super(BcaRecibo, rec.with_context(allow_pca_edit=True)).write({
-                'estado': 'pagado',
-                'fecha_pago': vals['fecha_pago'],
-                'prima_total_pagada': vals['prima_total_pagada'],
-                'recargo': vals.get('recargo', 0.0),
-                'conducto_id': vals.get('conducto_id'),
-                'folio_endoso': vals.get('folio_endoso'),
-                'agente_id': rec.poliza_id.agente_id.id,
-                'promotoria_id': rec.poliza_id.promotoria_id.id,
-                'pca_aplicada': pca,
-                'pca_currency_id': (
-                    self.env.ref('base.MXN', raise_if_not_found=False)
-                    or self.env.company.currency_id
-                ).id,
-                'factor_aplicado': factor,
-                'motivo_exclusion_pca': motivo,
-                'bitacora_linea_id': vals.get('bitacora_linea_id'),
-            })
+            super(BcaRecibo, rec.with_context(allow_pca_edit=True)).write(
+                {
+                    "estado": "pagado",
+                    "fecha_pago": vals["fecha_pago"],
+                    "prima_total_pagada": vals["prima_total_pagada"],
+                    "recargo": vals.get("recargo", 0.0),
+                    "conducto_id": vals.get("conducto_id"),
+                    "folio_endoso": vals.get("folio_endoso"),
+                    "agente_id": rec.poliza_id.agente_id.id,
+                    "promotoria_id": rec.poliza_id.promotoria_id.id,
+                    "pca_aplicada": pca,
+                    "pca_currency_id": (
+                        self.env.ref("base.MXN", raise_if_not_found=False)
+                        or self.env.company.currency_id
+                    ).id,
+                    "factor_aplicado": factor,
+                    "motivo_exclusion_pca": motivo,
+                    "bitacora_linea_id": vals.get("bitacora_linea_id"),
+                }
+            )
 
             # P5: si se pagó el último pendiente de la anualidad y aún queda
             # término, generar la siguiente anualidad (avance automático).
-            if not rec.poliza_id.recibo_ids.filtered(lambda r: r.estado == 'pendiente'):
+            # Se lockea la fila de la póliza ANTES de generar para serializar
+            # la creación de recibos ante imports concurrentes del mismo
+            # último recibo (dos imports pagando la misma anualidad no deben
+            # duplicar la siguiente).
+            if not rec.poliza_id.recibo_ids.filtered(lambda r: r.estado == "pendiente"):
+                self.env.cr.execute(
+                    "SELECT id FROM bca_poliza WHERE id = %s FOR UPDATE",
+                    (rec.poliza_id.id,),
+                )
                 rec.poliza_id._generar_siguiente_anualidad()
         return True
 
@@ -314,22 +373,127 @@ class BcaRecibo(models.Model):
         """Wrapper UI: toma los valores ya editados en el form y registra el pago.
 
         Diseñado para el botón "Registrar Pago" del form view. El usuario debe
-        haber completado fecha_pago, prima_total_pagada y conducto_id antes de presionar.
+        haber completado fecha_pago, prima_total_pagada y conducto_id antes
+        de presionar.
         """
         self.ensure_one()
         # R4: el conducto es obligatorio para cobrar (solo en el flujo UI; el
         # método núcleo lo deja flexible para imports/llamadas programáticas).
         if not self.conducto_id:
             raise ValidationError(
-                _('El conducto es obligatorio para registrar el pago.')
+                _("El conducto es obligatorio para registrar el pago.")
             )
-        return self.action_registrar_pago({
-            'fecha_pago': self.fecha_pago,
-            'prima_total_pagada': self.prima_total_pagada or self.prima_total,
-            'recargo': self.recargo,
-            'conducto_id': self.conducto_id.id,
-            'folio_endoso': self.folio_endoso,
-        })
+        return self.action_registrar_pago(
+            {
+                "fecha_pago": self.fecha_pago,
+                "prima_total_pagada": self.prima_total_pagada or self.prima_total,
+                "recargo": self.recargo,
+                "conducto_id": self.conducto_id.id,
+                "folio_endoso": self.folio_endoso,
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # Importación atómica (Opción B — lock + match + pago en una sección)
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _aplicar_lote(self, poliza_id, vigencia_desde, vigencia_hasta, vals):
+        """R-COB-11/03/04: lock de recibos pendientes de la póliza, match por
+        vigencia y pago FIFO en una sola sección transaccional.
+
+        Bloquea TODOS los recibos pendientes de la póliza en `id ASC` (orden
+        determinístico) ANTES de buscar coincidencia, invalida el caché ORM
+        (recibos + one2many de la póliza), y re-carga el estado real de
+        post-lock.  Esto garantiza que:
+
+        * la clasificación de duplicados concurrentes es idéntica al
+          duplicado secuencial (``sin_coincidencia``, no ``error``).
+        * el check FIFO lee datos frescos, no caché stale.
+        * la anualidad se genera como máximo una vez (lock de póliza).
+
+        Devuelve un dict ``{marca, recibo_id, mensaje}`` listo para
+        ``bca.bitacora.linea``.  El caller agrega ``numero_poliza_raw``
+        y, si aplica, cambia ``marca`` a ``advertencia``.
+        """
+        # 0. Validación de precondiciones (consistentes con action_registrar_pago).
+        if not vals.get("fecha_pago"):
+            raise ValidationError(_("La fecha de pago es obligatoria."))
+        if not vals.get("prima_total_pagada") or vals["prima_total_pagada"] <= 0:
+            raise ValidationError(_("El importe pagado debe ser positivo."))
+
+        poliza = self.env["bca.poliza"].browse(poliza_id)
+
+        # 1. Lock ordenado de pendientes + lock de póliza (anualidad).
+        #    Flush previo: materializa cualquier write ORM pendiente de la tx
+        #    antes de SQL crudo (patrón OCA).
+        self.env.flush_all()
+        self.env.cr.execute(
+            "SELECT id FROM bca_recibo "
+            "WHERE poliza_id = %s AND estado = 'pendiente' "
+            "ORDER BY id FOR UPDATE",
+            (poliza_id,),
+        )
+        self.env.cr.execute(
+            "SELECT id FROM bca_poliza WHERE id = %s FOR UPDATE",
+            (poliza_id,),
+        )
+
+        # 2. Invalidación de caché completo: recibos y one2many de la póliza.
+        self.invalidate_recordset()
+        poliza.invalidate_recordset()
+
+        # 3. Lectura fresca post-lock.
+        pendientes = poliza.recibo_ids.filtered(
+            lambda r: r.estado == "pendiente"
+        ).sorted("numero_recibo")
+
+        if not pendientes:
+            return {
+                "marca": "sin_recibo",
+                "recibo_id": False,
+                "mensaje": _("Sin recibos pendientes."),
+            }
+
+        # 4. Match por vigencia exacta (R-COB-11).
+        recibo = next(
+            (
+                r
+                for r in pendientes
+                if r.fecha_desde == vigencia_desde and r.fecha_hasta == vigencia_hasta
+            ),
+            None,
+        )
+        if not recibo:
+            detalle = ", ".join(
+                "%s (%s–%s)" % (r.name, r.fecha_desde, r.fecha_hasta)
+                for r in pendientes
+            )
+            return {
+                "marca": "sin_coincidencia",
+                "recibo_id": False,
+                "mensaje": (
+                    _(
+                        "Sin coincidencia de recibo para vigencia %s–%s. "
+                        "Recibos pendientes: %s."
+                    )
+                )
+                % (vigencia_desde, vigencia_hasta, detalle),
+            }
+
+        # 5. Pago delegado a action_registrar_pago (FIFO + PCA + write + P5).
+        #    El lock del recibo individual ya está activo (FOR UPDATE del paso 1);
+        #    la re-entrada en action_registrar_pago es inmediata y re-valida
+        #    estado + FIFO bajo caché fresco.
+        with self.env.cr.savepoint():
+            recibo.action_registrar_pago(vals)
+
+        return {
+            "marca": "aplicado",
+            "recibo_id": recibo.id,
+            "mensaje": "Recibo %s pagado por %s"
+            % (recibo.name, vals.get("prima_total_pagada", 0)),
+        }
 
     def action_cancelar_pago(self) -> bool:
         """M5/R6: deshace el PAGO — el recibo vuelve a 'pendiente' y se limpian
@@ -339,40 +503,49 @@ class BcaRecibo(models.Model):
         Validación explícita de grupo además de la ACL — la ACL restringe
         write/unlink pero no impide ejecutar el método por sí sola.
         """
-        if not (self.env.user.has_group('BCA_Seguros.group_bca_director')
-                or self.env.user.has_group('BCA_Seguros.group_bca_director_comercial')):
+        if not (
+            self.env.user.has_group("BCA_Seguros.group_bca_director")
+            or self.env.user.has_group("BCA_Seguros.group_bca_director_comercial")
+        ):
             raise AccessError(
-                _('Solo Director General o Director Comercial pueden cancelar pagos.')
+                _("Solo Director General o Director Comercial pueden cancelar pagos.")
             )
         for rec in self:
-            if rec.estado != 'pagado':
+            if rec.estado != "pagado":
                 raise UserError(
-                    _("Solo se pueden cancelar pagos de recibos en estado 'Pagado' "
-                      "(recibo %s, estado %s).") % (rec.name, rec.estado)
+                    _(
+                        "Solo se pueden cancelar pagos de recibos en estado 'Pagado' "
+                        "(recibo %s, estado %s)."
+                    )
+                    % (rec.name, rec.estado)
                 )
             # Guardia FIFO: solo el último recibo pagado puede revertirse, para
             # no dejar un pendiente antes de un pagado.
             posteriores = rec.poliza_id.recibo_ids.filtered(
-                lambda r: r.estado == 'pagado' and r.numero_recibo > rec.numero_recibo
+                lambda r, ficha=rec: (
+                    r.estado == "pagado" and r.numero_recibo > ficha.numero_recibo
+                )
             )
             if posteriores:
-                ultimo = posteriores.sorted('numero_recibo', reverse=True)[:1]
+                ultimo = posteriores.sorted("numero_recibo", reverse=True)[:1]
                 raise UserError(
-                    _('Cancelá primero el pago del recibo %s (FIFO).') % ultimo.name
+                    _("Cancelá primero el pago del recibo %s (FIFO).") % ultimo.name
                 )
-            rec.with_context(allow_pca_edit=True).write({
-                'estado': 'pendiente',
-                'fecha_pago': False,
-                'conducto_id': False,
-                'folio_endoso': False,
-                'prima_total_pagada': 0.0,
-                'pca_aplicada': 0.0,
-                'factor_aplicado': 0.0,
-                'motivo_exclusion_pca': False,
-                'agente_id': False,
-                'promotoria_id': False,
-                'bitacora_linea_id': False,
-            })
+            rec.with_context(allow_pca_edit=True).write(
+                {
+                    "estado": "pendiente",
+                    "fecha_pago": False,
+                    "conducto_id": False,
+                    "folio_endoso": False,
+                    "prima_total_pagada": 0.0,
+                    "pca_aplicada": 0.0,
+                    "factor_aplicado": 0.0,
+                    "motivo_exclusion_pca": False,
+                    "agente_id": False,
+                    "promotoria_id": False,
+                    "bitacora_linea_id": False,
+                }
+            )
         return True
 
     def action_anular_recibo(self) -> bool:
@@ -380,19 +553,24 @@ class BcaRecibo(models.Model):
         Solo desde 'pendiente'; si está pagado hay que cancelar el pago primero.
         Solo Director General o Director Comercial.
         """
-        if not (self.env.user.has_group('BCA_Seguros.group_bca_director')
-                or self.env.user.has_group('BCA_Seguros.group_bca_director_comercial')):
+        if not (
+            self.env.user.has_group("BCA_Seguros.group_bca_director")
+            or self.env.user.has_group("BCA_Seguros.group_bca_director_comercial")
+        ):
             raise AccessError(
-                _('Solo Director General o Director Comercial pueden anular recibos.')
+                _("Solo Director General o Director Comercial pueden anular recibos.")
             )
         for rec in self:
-            if rec.estado != 'pendiente':
+            if rec.estado != "pendiente":
                 raise UserError(
-                    _("Solo se pueden anular recibos en estado 'Pendiente' "
-                      "(recibo %s, estado %s). Si está pagado, cancelá el pago primero.")
+                    _(
+                        "Solo se pueden anular recibos en estado 'Pendiente' "
+                        "(recibo %s, estado %s). Si está pagado, cancelá el pago "
+                        "primero."
+                    )
                     % (rec.name, rec.estado)
                 )
-            rec.estado = 'cancelado'
+            rec.estado = "cancelado"
         return True
 
     def _calcular_pca(self) -> tuple:
@@ -403,15 +581,14 @@ class BcaRecibo(models.Model):
         asignado (ej. Qualitas/Autos, diferido a post-v1).
         """
         from ..calculadores_pca import CALCULADOR_REGISTRY
+
         self.ensure_one()
         codigo = self.poliza_id.aseguradora_id.bca_codigo_aseguradora
         if not codigo:
             raise UserError(
-                _('La aseguradora %s no tiene código asignado.')
+                _("La aseguradora %s no tiene código asignado.")
                 % self.poliza_id.aseguradora_id.display_name
             )
         if codigo not in CALCULADOR_REGISTRY:
-            raise UserError(
-                _('No hay calculador de PCA registrado para %s.') % codigo
-            )
+            raise UserError(_("No hay calculador de PCA registrado para %s.") % codigo)
         return CALCULADOR_REGISTRY[codigo](self.env).calcular(self)

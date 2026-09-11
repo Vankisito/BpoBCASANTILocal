@@ -129,7 +129,7 @@ class BcaWizardCobranzaDiaria(models.TransientModel):
         BitacoraLinea = self.env["bca.bitacora.linea"].sudo()
         aplicados = no_encontradas = errores = sin_coincidencia = 0
         pca_total = 0.0
-        for numero_fila, fila in enumerate(filas, start=1):
+        for numero_fila, fila in filas:
             resultado = parser.procesar_fila(self.env, fila, numero_fila)
             BitacoraLinea.create(
                 {

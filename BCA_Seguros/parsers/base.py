@@ -44,8 +44,8 @@ class ParserBase:
                 "El archivo no tiene las columnas requeridas: %s" % faltantes
             )
 
-    def filtrar_filas(self, filas: list[dict]) -> list[dict]:
-        return list(filas)
+    def filtrar_filas(self, filas: list[dict]) -> list[tuple[int, dict]]:
+        return list(enumerate(filas, start=1))
 
     def procesar_fila(self, env, fila: dict, numero_fila: int) -> dict:
         """R-COB-08: ejecuta ``_procesar_fila_interna`` aislando errores.
