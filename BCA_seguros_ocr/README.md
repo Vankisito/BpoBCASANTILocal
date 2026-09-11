@@ -164,15 +164,15 @@ Métodos / botones:
 | Referencia | Regla | Si falla |
 |---|---|---|
 | Aseguradora | Partner `bca_tipo='aseguradora'` nombre `ilike 'metlife'` | UserError claro |
-| Agente | `res.partner.agente.aseguradora` por `clave_agente` (+ tolerant lookup de ceros a la izquierda) | Warning, campo queda vacío, usuario corrige |
+| Agente | `res.partner.agente.aseguradora` por `clave_agente` (+ tolerant lookup de ceros a la izquierda) | **UserError claro**: explica que la clave no está registrada y cómo dar de alta al agente |
 | Producto | 1) nombre exacto → 2) `bca_nombre_archivo_aseguradora` → 3) `ilike` nombre. Filtros: `bca_es_producto_seguro=True`, `bca_aseguradora_id=MetLife`, ramo | **UserError claro**: explica que el producto no está en catálogo y cómo resolverlo |
 | Contratante/Asegurado | `find_or_create_partner` (por RFC → nombre → nombre normalizado → crea) | Crea partner si no existe |
 
 > **Importante**: `bca.poliza` requiere `producto_id`, `agente_id`, `fecha_inicio`,
-> `fecha_fin`. Si el producto no se resuelve, la creación se aborta con un
-> mensaje claro ANTES de intentar crear (nunca llega al error técnico de
-> constraint NOT NULL). El usuario debe crear el producto o corregir el nombre
-> en el catálogo.
+> `fecha_fin`. Si el producto **o el agente** no se resuelven, la creación se
+> aborta con un mensaje claro ANTES de intentar crear (nunca llega al error
+> técnico de constraint NOT NULL). El usuario debe crear/registrar el producto o
+> agente, o corregir el nombre/clave en el catálogo.
 
 ---
 
@@ -212,6 +212,21 @@ El nombre del PDF no coincide con ningún producto. Dos opciones:
   `METALIFE EDUCACIÓN` (texto tal cual del PDF). El resolutor matchea por ese
   campo antes que por nombre.
 
+### ADM (solucionar el error de agente)
+
+Si al crear la póliza aparece:
+
+> *No se encontró el agente con clave "XXXX" para MetLife.*
+
+La clave de la carátula no está registrada. Opciones:
+
+- **A. Registrar el agente**: crea el contacto en *Contactos* con tipo
+  *Agente* y vincúlelo a MetLife en `res.partner.agente.aseguradora` con la
+  `clave_agente` exacta del PDF.
+- **B. Corregir la clave**: si la persona sí está dada de alta pero con otra
+  clave, actualiza el registro en Contactos, o corrige la clave extraída en el
+  form de staging antes de crear la póliza.
+
 ---
 
 ## 5. Pruebas
@@ -235,6 +250,7 @@ Estado actual: **22/22** unit tests, **10/10** validación (2 GMM + 8 Vida).
 
 | Fecha | Cambio |
 |---|---|
+| 2026-09-11 | Error de agente amigable: se aborta con `UserError` claro si la clave no está registrada (antes solo warning + error técnico de campo requerido) |
 | 2026-09-11 | Fix botón "Crear Póliza": stat button en `button_box` + `view_id` forzado en el wizard (elimina ambigüedad entre la vista form y la de texto) |
 | 2026-09-11 | Fix "Abrir Póliza": invisible contradictorio corregido; nuevo método `action_abrir_poliza` |
 | 2026-09-11 | Error de producto amigable: se aborta con `UserError` claro antes del constraint NOT NULL de `bca.poliza` |
@@ -290,3 +306,8 @@ como al instalar manualmente dentro del contenedor (ver sección 2.1).
 El nombre del producto en el PDF no coincide con el catálogo. Ejemplo real:
 el PDF dice `"METALIFE EDUCACIÓN"` pero en Odoo el producto se llama
 `MetLife EducaLife`. Ver sección 5.1 (ADM) para resolverlo.
+
+### La póliza no se crea: "No se encontró el agente"
+
+La clave del agente de la carátula no está registrada en MetLife.
+Ver sección 5.2 (ADM) para resolverlo.

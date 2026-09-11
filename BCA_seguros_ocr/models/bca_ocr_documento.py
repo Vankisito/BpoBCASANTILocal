@@ -366,7 +366,18 @@ class BcaOcrDocumento(models.Model):
         agente, agente_warn = resolver_agente(env, self.agente_clave, aseguradora.id)
         if agente_warn:
             _logger.warning('Agente warning: %s', agente_warn)
-            # Don't abort — leave agente_id empty for user to fix
+
+        if not agente:
+            raise UserError(_(
+                'No se encontró el agente con clave "%s" para MetLife.\n\n'
+                'Verifique que:\n'
+                '• La clave del agente esté registrada en Odoo\n'
+                '• La clave pertenezca a un agente de MetLife\n'
+                '• La clave en la carátula sea correcta\n\n'
+                'Si la clave es correcta pero el agente no existe, '
+                'regístrelo en Contactos con tipo "Agente" y vincúlelo '
+                'a la aseguradora.'
+            ) % (self.agente_clave or '(vacía)'))
 
         # 4) Producto
         producto, prod_warn = resolver_producto(
