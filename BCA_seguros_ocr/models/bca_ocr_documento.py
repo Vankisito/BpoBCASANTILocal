@@ -19,7 +19,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 from ..extractors.base import detectar_layout
-from ..ocr_engines.pypdf_engine import PypdfEngine
+from ..ocr_engines.pypdf_engine import PdfEncriptadoError, PdfInvalidoError, PypdfEngine
 from ..helpers import (
     find_or_create_partner,
     normalizar_moneda,
@@ -171,8 +171,37 @@ class BcaOcrDocumento(models.Model):
             raise UserError(_('No hay archivo PDF adjunto.'))
 
         # 1) Extract text
-        pdf_bytes = base64.b64decode(self.archivo_pdf)
-        texto = _layout_engine.extraer_texto(pdf_bytes)
+        try:
+            pdf_bytes = base64.b64decode(self.archivo_pdf)
+        except Exception:
+            self.write({
+                'estado': 'error',
+                'error_mensaje': _(
+                    'El archivo no es un PDF válido. '
+                    'Verifique que el archivo sea una carátula en formato PDF.'
+                ),
+            })
+            return False
+        try:
+            texto = _layout_engine.extraer_texto(pdf_bytes)
+        except PdfEncriptadoError:
+            self.write({
+                'estado': 'error',
+                'error_mensaje': _(
+                    'El PDF está protegido con contraseña. '
+                    'Elimine la protección del archivo y vuelva a intentarlo.'
+                ),
+            })
+            return False
+        except PdfInvalidoError:
+            self.write({
+                'estado': 'error',
+                'error_mensaje': _(
+                    'El archivo no es un PDF válido o está dañado. '
+                    'Verifique que el archivo sea una carátula en formato PDF.'
+                ),
+            })
+            return False
         if not texto:
             self.write({
                 'estado': 'error',

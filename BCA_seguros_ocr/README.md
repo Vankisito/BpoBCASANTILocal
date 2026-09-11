@@ -250,6 +250,7 @@ Estado actual: **22/22** unit tests, **10/10** validación (2 GMM + 8 Vida).
 
 | Fecha | Cambio |
 |---|---|
+| 2026-09-11 | Errores de PDF amigables: `PdfInvalidoError` (no-PDF/dañado) y `PdfEncriptadoError` (protegido por contraseña) con mensajes claros; red final del wizard sin traceback técnico |
 | 2026-09-11 | Error de agente amigable: se aborta con `UserError` claro si la clave no está registrada (antes solo warning + error técnico de campo requerido) |
 | 2026-09-11 | Fix botón "Crear Póliza": stat button en `button_box` + `view_id` forzado en el wizard (elimina ambigüedad entre la vista form y la de texto) |
 | 2026-09-11 | Fix "Abrir Póliza": invisible contradictorio corregido; nuevo método `action_abrir_poliza` |
@@ -311,3 +312,18 @@ el PDF dice `"METALIFE EDUCACIÓN"` pero en Odoo el producto se llama
 
 La clave del agente de la carátula no está registrada en MetLife.
 Ver sección 5.2 (ADM) para resolverlo.
+
+### El PDF no se procesa: "El archivo no es un PDF válido o está dañado"
+
+El archivo subido no es un PDF legible. Causas típicas y soluciones:
+
+- **Archivo renombrado** (Word, TXT o imagen con extensión `.pdf`):
+  vuelve a guardar el archivo como PDF real, o sube la carátula original.
+- **PDF escaneado sin capa de texto**: aparece el mensaje
+  *"No se pudo extraer texto del PDF. Parece ser un PDF escaneado sin capa de
+  texto"*. No hay texto digital para extraer.
+
+### El PDF no se procesa: "El PDF está protegido con contraseña"
+
+Quita la protección del archivo (mostrar y eliminar contraseña del lector de
+PDF) y vuelve a intentarlo.

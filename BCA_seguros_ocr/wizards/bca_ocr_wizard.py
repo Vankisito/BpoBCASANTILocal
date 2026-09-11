@@ -49,11 +49,15 @@ class BcaOcrWizard(models.TransientModel):
         # Extract
         try:
             doc.action_extraer()
-        except Exception as exc:
+        except Exception:
             _logger.exception('OCR extraction failed')
             doc.write({
                 'estado': 'error',
-                'error_mensaje': str(exc),
+                'error_mensaje': _(
+                    'No se pudo procesar el PDF. '
+                    'Verifique que el archivo sea un PDF válido de una carátula '
+                    'MetLife, o intente con otro archivo.'
+                ),
             })
 
         # Open the staging form directly — user reviews & corrects data
