@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Documento OCR — List View
+         ============================================================ -->
+    <record id="view_ocr_documento_list" model="ir.ui.view">
+        <field name="name">bca.ocr.documento.list</field>
+        <field name="model">bca.ocr.documento</field>
+        <field name="arch" type="xml">
+            <list string="Documentos OCR"
+                  decoration-danger="estado == 'error'"
+                  decoration-success="estado == 'creado'"
+                  decoration-warning="estado == 'extraido'">
+                <field name="create_date" string="Fecha"/>
+                <field name="archivo_nombre" string="Archivo"/>
+                <field name="poliza_numero" string="Póliza"/>
+                <field name="layout_detectado" string="Layout" widget="badge"
+                       decoration-info="layout_detectado == 'gmm'"
+                       decoration-warning="layout_detectado == 'vida'"/>
+                <field name="contratante_nombre" string="Contratante"/>
+                <field name="producto_pdf" string="Producto"/>
+                <field name="estado" string="Estado" widget="badge"
+                       decoration-success="estado == 'creado'"
+                       decoration-info="estado == 'extraido'"
+                       decoration-danger="estado == 'error'"/>
+                <field name="poliza_id" string="Póliza Odoo"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Documento OCR — Form View (principal)
+         ============================================================ -->
+    <record id="view_ocr_documento_form" model="ir.ui.view">
+        <field name="name">bca.ocr.documento.form</field>
+        <field name="model">bca.ocr.documento</field>
+        <field name="arch" type="xml">
+            <form string="Documento OCR">
+                <header>
+                    <button name="action_extraer" type="object"
+                            string="Extraer Datos" class="btn-primary"
+                            invisible="estado not in ('nuevo', 'error')"/>
+                    <button name="action_crear_poliza" type="object"
+                            string="Crear Póliza" class="btn-primary"
+                            invisible="estado != 'extraido'"
+                            confirm="¿Crear póliza en borrador con estos datos?"/>
+                    <field name="estado" widget="statusbar"
+                           statusbar_visible="nuevo,extraido,creado"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_texto" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                invisible="not texto_extraido">
+                            <span class="o_stat_text">Ver Texto</span>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-plus-circle"
+                                type="object" name="action_crear_poliza"
+                                invisible="estado != 'extraido' or poliza_id"
+                                confirm="¿Crear póliza en borrador con estos datos?">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Crear Póliza</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-file-pdf-o"
+                                type="object" name="action_abrir_poliza"
+                                invisible="not poliza_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Abrir Póliza</span>
+                            </div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Error"
+                            bg_color="bg-danger"
+                            invisible="estado != 'error'"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="poliza_numero" placeholder="Nº de Póliza"
+                                   readonly="estado not in ('nuevo', 'error')"/>
+                        </h1>
+                    </div>
+
+                    <!-- Archivo + Layout -->
+                    <group>
+                        <group string="Documento">
+                            <field name="archivo_pdf" filename="archivo_nombre"
+                                   readonly="estado not in ('nuevo', 'error')"/>
+                            <field name="archivo_nombre" invisible="1"/>
+                            <field name="layout_detectado" readonly="1"/>
+                            <field name="error_mensaje" invisible="not error_mensaje"
+                                   readonly="1" colspan="2"/>
+                        </group>
+                        <group string="Moneda">
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <!-- Datos extraídos -->
+                    <notebook>
+                        <page string="Datos Generales" name="general">
+                            <group>
+                                <group>
+                                    <field name="contratante_nombre"/>
+                                    <field name="asegurado_nombre"/>
+                                    <field name="producto_pdf"/>
+                                    <field name="agente_clave"/>
+                                </group>
+                                <group>
+                                    <field name="periodicidad"/>
+                                    <field name="forma_pago_pdf"/>
+                                    <field name="prima_monto"/>
+                                    <field name="rfc"
+                                           invisible="layout_detectado != 'vida'"/>
+                                </group>
+                            </group>
+                            <group string="Fechas">
+                                <group>
+                                    <field name="fecha_emision"/>
+                                    <field name="fecha_inicio"/>
+                                    <field name="fecha_fin"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="GMM" name="gmm"
+                               invisible="layout_detectado != 'gmm'">
+                            <group>
+                                <group>
+                                    <field name="prima_neta"/>
+                                    <field name="iva"/>
+                                    <field name="recargo_frac"/>
+                                    <field name="deducible"/>
+                                </group>
+                                <group>
+                                    <field name="coaseguro"/>
+                                    <field name="plan"/>
+                                    <field name="nivel_hospitalario"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Vida" name="vida"
+                               invisible="layout_detectado != 'vida'">
+                            <group>
+                                <group>
+                                    <field name="suma_asegurada"/>
+                                    <field name="recargo_fijo"/>
+                                    <field name="prima_forma_pago"/>
+                                </group>
+                            </group>
+                            <group string="Beneficiarios">
+                                <field name="beneficiarios_texto" nolabel="1"
+                                       placeholder="nombre|parentesco|porcentaje"/>
+                            </group>
+                        </page>
+
+                        <page string="Texto Extraído" name="texto"
+                               invisible="not texto_extraido">
+                            <field name="texto_extraido" nolabel="1" readonly="1"
+                                   rows="20"
+                                   style="font-family: monospace; font-size: 11px;"/>
+                        </page>
+                    </notebook>
+
+                    <!-- Link a póliza creada -->
+                    <group string="Resultado" invisible="not poliza_id">
+                        <group>
+                            <field name="poliza_id" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Documento OCR — Form View (solo texto)
+         ============================================================ -->
+    <record id="view_ocr_documento_texto_form" model="ir.ui.view">
+        <field name="name">bca.ocr.documento.texto.form</field>
+        <field name="model">bca.ocr.documento</field>
+        <field name="arch" type="xml">
+            <form string="Texto Extraído">
+                <sheet>
+                    <field name="texto_extraido" nolabel="1" readonly="1"
+                           rows="30"
+                           style="font-family: monospace; font-size: 11px;"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Documento OCR — Search View
+         ============================================================ -->
+    <record id="view_ocr_documento_search" model="ir.ui.view">
+        <field name="name">bca.ocr.documento.search</field>
+        <field name="model">bca.ocr.documento</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Documento OCR">
+                <field name="poliza_numero"/>
+                <field name="contratante_nombre"/>
+                <field name="producto_pdf"/>
+                <separator/>
+                <filter name="nuevos" string="Nuevos"
+                        domain="[('estado', 'in', ('nuevo', 'error'))]"/>
+                <filter name="extraidos" string="Extraídos"
+                        domain="[('estado', '=', 'extraido')]"/>
+                <filter name="creados" string="Creados"
+                        domain="[('estado', '=', 'creado')]"/>
+                <separator/>
+                <filter name="group_layout" string="Layout"
+                        context="{'group_by': 'layout_detectado'}"/>
+                <filter name="group_estado" string="Estado"
+                        context="{'group_by': 'estado'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Documento OCR — Action
+         ============================================================ -->
+    <record id="action_ocr_documento" model="ir.actions.act_window">
+        <field name="name">Documentos OCR</field>
+        <field name="res_model">bca.ocr.documento</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ocr_documento_search"/>
+        <field name="context">{'search_default_nuevos': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Sube una carátula PDF para comenzar
+            </p>
+            <p>
+                Usa el botón <strong>"OCR Carátulas"</strong> en el menú
+                Pólizas para subir una carátula MetLife y extraer sus datos
+                automáticamente.
+            </p>
+        </field>
+    </record>
+
+</odoo>

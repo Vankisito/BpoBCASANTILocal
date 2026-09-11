@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Wizard OCR — Form View
+         ============================================================ -->
+    <record id="view_wizard_ocr_form" model="ir.ui.view">
+        <field name="name">bca.ocr.wizard.form</field>
+        <field name="model">bca.ocr.wizard</field>
+        <field name="arch" type="xml">
+            <form string="OCR Carátulas MetLife">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>OCR Carátulas MetLife</h1>
+                    </div>
+                    <div class="alert alert-info" role="status"
+                         invisible="state == 'resultado'">
+                        <p class="mb-1">
+                            <strong>Requisitos:</strong>
+                        </p>
+                        <ul class="mb-0">
+                            <li>Solo se aceptan carátulas de
+                                <strong>MetLife</strong>.</li>
+                            <li>Formatos soportados:
+                                <strong>GMM</strong> (Gastos Médicos Mayores) y
+                                <strong>Vida Individual</strong>.</li>
+                            <li>El PDF debe ser <strong>digital</strong>
+                                (con capa de texto), no escaneado.</li>
+                            <li>Después de la extracción, podrás revisar y
+                                corregir los datos antes de crear la póliza.</li>
+                        </ul>
+                    </div>
+                    <group invisible="state != 'cargar'">
+                        <field name="archivo_pdf" filename="archivo_nombre"/>
+                        <field name="archivo_nombre" invisible="1"/>
+                    </group>
+                    <field name="state" invisible="1"/>
+                </sheet>
+                <footer>
+                    <button name="action_procesar" type="object"
+                            string="Procesar" class="btn-primary"
+                            invisible="state != 'cargar'"/>
+                    <button string="Cerrar" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Wizard OCR — Action
+         ============================================================ -->
+    <record id="action_wizard_ocr" model="ir.actions.act_window">
+        <field name="name">OCR Carátulas</field>
+        <field name="res_model">bca.ocr.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
