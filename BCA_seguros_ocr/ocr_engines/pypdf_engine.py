@@ -6,6 +6,7 @@ This is the primary engine for MetLife carátulas, which are all digital
 Raises typed exceptions so the caller can show user-friendly errors for
 corrupt, invalid, or password-protected files instead of raw traces.
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,22 +35,22 @@ class PdfEncriptadoError(Exception):
 class PypdfEngine(OcrEngine):
     """Engine that reads native PDF text via pypdf."""
 
-    name = 'pypdf'
+    name = "pypdf"
 
     def extraer_texto(self, pdf_bytes: bytes) -> str:
         if PdfReader is None:
             _logger.warning(
-                'pypdf not installed — cannot extract text. '
-                'Install with: pip install pypdf'
+                "pypdf not installed — cannot extract text. "
+                "Install with: pip install pypdf"
             )
-            return ''
+            return ""
 
         try:
             reader = PdfReader(BytesIO(pdf_bytes))
         except FileNotDecryptedError as exc:
             raise PdfEncriptadoError from exc
         except Exception as exc:
-            _logger.exception('Error opening PDF with pypdf')
+            _logger.exception("Error opening PDF with pypdf")
             raise PdfInvalidoError from exc
 
         try:
@@ -58,9 +59,9 @@ class PypdfEngine(OcrEngine):
                 texto = page.extract_text()
                 if texto:
                     paginas.append(texto)
-            return '\n\n'.join(paginas)
+            return "\n\n".join(paginas)
         except FileNotDecryptedError as exc:
             raise PdfEncriptadoError from exc
         except Exception:
-            _logger.exception('Error extracting text with pypdf')
-            return ''
+            _logger.exception("Error extracting text with pypdf")
+            return ""

@@ -4,6 +4,7 @@ Adapted from BCA_Seguros/wizards/carga_portafolio.py but kept as pure
 functions to avoid tight coupling.  These resolve agent, product, and
 partner records from OCR-extracted data.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,21 +23,21 @@ def resolver_agente(env, clave_raw: str, aseguradora_id: int):
     returns ``(None, mensaje_de_error)`` instead of raising — the caller
     decides whether to abort or let the user fix it in the wizard.
     """
-    clave = str(clave_raw or '').strip()
+    clave = str(clave_raw or "").strip()
     if not clave:
-        return None, _('Clave de agente vacía.')
+        return None, _("Clave de agente vacía.")
 
-    Bridge = env['res.partner.agente.aseguradora']
-    base = [('aseguradora_id', '=', aseguradora_id)]
+    Bridge = env["res.partner.agente.aseguradora"]
+    base = [("aseguradora_id", "=", aseguradora_id)]
 
-    registro = Bridge.search(base + [('clave_agente', '=', clave)], limit=1)
+    registro = Bridge.search(base + [("clave_agente", "=", clave)], limit=1)
 
     # Tolerar ceros a la izquierda (el Excel pierde el padding)
     if not registro and clave.isdigit():
-        objetivo = clave.lstrip('0') or '0'
+        objetivo = clave.lstrip("0") or "0"
         registro = Bridge.search(base).filtered(
-            lambda b: (b.clave_agente or '').strip().isdigit()
-            and ((b.clave_agente or '').strip().lstrip('0') or '0') == objetivo
+            lambda b: (b.clave_agente or "").strip().isdigit()
+            and ((b.clave_agente or "").strip().lstrip("0") or "0") == objetivo
         )[:1]
 
     if not registro:
@@ -56,33 +57,35 @@ def resolver_producto(env, nombre: str, ramo: str, aseguradora_id: int):
     Returns ``(product, warning_or_None)``.
     """
     if not nombre:
-        return None, _('Nombre de producto vacío.')
+        return None, _("Nombre de producto vacío.")
 
     dominio_base = [
-        ('bca_es_producto_seguro', '=', True),
-        ('bca_aseguradora_id', '=', aseguradora_id),
+        ("bca_es_producto_seguro", "=", True),
+        ("bca_aseguradora_id", "=", aseguradora_id),
     ]
     if ramo:
-        dominio_base.append(('bca_ramo', '=', ramo))
+        dominio_base.append(("bca_ramo", "=", ramo))
 
-    Producto = env['product.template']
+    Producto = env["product.template"]
     nombre_limpio = nombre.strip()
 
     # 1) Exact name
-    producto = Producto.search(dominio_base + [('name', '=', nombre_limpio)], limit=1)
+    producto = Producto.search(dominio_base + [("name", "=", nombre_limpio)], limit=1)
     if producto:
         return producto, None
 
     # 2) bca_nombre_archivo_aseguradora
     producto = Producto.search(
-        dominio_base + [('bca_nombre_archivo_aseguradora', '=', nombre_limpio)],
+        dominio_base + [("bca_nombre_archivo_aseguradora", "=", nombre_limpio)],
         limit=1,
     )
     if producto:
         return producto, None
 
     # 3) ilike
-    producto = Producto.search(dominio_base + [('name', 'ilike', nombre_limpio)], limit=1)
+    producto = Producto.search(
+        dominio_base + [("name", "ilike", nombre_limpio)], limit=1
+    )
     if producto:
         return producto, None
 
@@ -97,31 +100,31 @@ def find_or_create_partner(env, datos: dict) -> Any:
     """
     from odoo.addons.BCA_Seguros.models.res_partner import TIPOS_RED_EXCLUIDOS_POLIZA
 
-    nombre = datos.get('name', '').strip()
+    nombre = datos.get("name", "").strip()
     if not nombre:
-        raise UserError(_('Falta el nombre del contacto.'))
+        raise UserError(_("Falta el nombre del contacto."))
 
-    Partner = env['res.partner']
-    base = [('bca_tipo', 'not in', list(TIPOS_RED_EXCLUIDOS_POLIZA))]
+    Partner = env["res.partner"]
+    base = [("bca_tipo", "not in", list(TIPOS_RED_EXCLUIDOS_POLIZA))]
 
     # 1) By RFC (vat) — strongest match
-    vat = datos.get('vat')
+    vat = datos.get("vat")
     if vat:
-        partner = Partner.search(base + [('vat', '=ilike', vat)], limit=1)
+        partner = Partner.search(base + [("vat", "=ilike", vat)], limit=1)
         if partner:
             return partner
 
     # 2) By name case-insensitive
-    partner = Partner.search(base + [('name', '=ilike', nombre)], limit=1)
+    partner = Partner.search(base + [("name", "=ilike", nombre)], limit=1)
     if partner:
         return partner
 
     # 3) Normalized name fallback
-    if hasattr(Partner, '_bca_norm_nombre'):
+    if hasattr(Partner, "_bca_norm_nombre"):
         objetivo = Partner._bca_norm_nombre(nombre)
-        primer_token = objetivo.split(' ')[0] if objetivo else ''
+        primer_token = objetivo.split(" ")[0] if objetivo else ""
         if primer_token:
-            candidatos = Partner.search(base + [('name', 'ilike', primer_token)])
+            candidatos = Partner.search(base + [("name", "ilike", primer_token)])
             for cand in candidatos:
                 if Partner._bca_norm_nombre(cand.name) == objetivo:
                     return cand
@@ -131,7 +134,7 @@ def find_or_create_partner(env, datos: dict) -> Any:
 
 def normalizar_moneda(valor) -> str:
     """Normalize currency code from OCR text.  Defaults to MXN."""
-    codigo = str(valor or 'MXN').strip().upper()
-    if codigo not in ('MXN', 'USD'):
-        codigo = 'MXN'
+    codigo = str(valor or "MXN").strip().upper()
+    if codigo not in ("MXN", "USD"):
+        codigo = "MXN"
     return codigo

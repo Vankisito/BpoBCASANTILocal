@@ -1,3 +1,1 @@
-from . import base
-from . import metlife_gmm
-from . import metlife_vida
+from . import base, metlife_gmm, metlife_vida
