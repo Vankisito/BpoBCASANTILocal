@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from odoo.exceptions import UserError, ValidationError
+from psycopg2.errors import SerializationFailure
 
 
 class ParserBase:
@@ -13,8 +14,8 @@ class ParserBase:
     ``columnas_requeridas``, e implementan ``_procesar_fila_interna``.
 
     El wrapper ``procesar_fila`` aplica R-COB-08 (tolerancia a fallos por
-    fila): convierte ``UserError``/``ValidationError`` y cualquier excepción
-    inesperada en un diccionario con ``marca='error'``. ``NotImplementedError``
+    fila): convierte ``ReciboPagadoConcurrenteError`` en ``sin_coincidencia``
+    y ``UserError``/``ValidationError`` en ``error``. ``NotImplementedError``
     se propaga para que parsers placeholder (Qualitas) aborten el flujo.
     """
 
@@ -52,61 +53,61 @@ class ParserBase:
         Retorna ``{'marca','recibo_id','mensaje','numero_poliza_raw'}`` que
         el wizard (E8) usa para crear la línea de bitácora. Las subclases
         sobrescriben ``_procesar_fila_interna``; este wrapper no se toca.
+
+        Import lazy de la excepción tipada: los parsers viven en su propio
+        paquete y el modelo bca.recibo los referencia indirectamente vía
+        ``_aplicar_lote``; el import al top-level crearía un ciclo de
+        importación models ⇄ parsers al registrar el módulo.
         """
-        raw = (fila.get('numero_poliza') or '').strip()
+        from odoo.addons.BCA_Seguros.models.recibo import ReciboPagadoConcurrenteError
+
+        raw = (fila.get("numero_poliza") or "").strip()
         try:
             return self._procesar_fila_interna(env, fila, numero_fila, raw)
         except NotImplementedError:
+            raise
+        except ReciboPagadoConcurrenteError as exc:
+            return self._linea_sin_coincidencia(raw, str(exc))
+        except SerializationFailure:
+            # 40001: fallo de transacción (snapshot REPEATABLE READ de este
+            # fork), NO de fila. Debe propagarse para que el caller reintente
+            # el archivo/lote con una transacción nueva; convertirlo a marca
+            # 'error' escondería el fallo de serialización.
             raise
         except (UserError, ValidationError) as exc:
             return self._linea_error(raw, str(exc))
         except Exception as exc:  # noqa: BLE001 — R-COB-08
             return self._linea_error(raw, "Error inesperado: %s" % exc)
 
-    def _procesar_fila_interna(self, env, fila: dict, numero_fila: int,
-                               raw: str) -> dict:
+    def _procesar_fila_interna(
+        self, env, fila: dict, numero_fila: int, raw: str
+    ) -> dict:
         raise NotImplementedError
 
     def _linea_error(self, raw: str, mensaje: str) -> dict:
         return {
-            'marca': 'error',
-            'recibo_id': False,
-            'mensaje': mensaje,
-            'numero_poliza_raw': raw,
+            "marca": "error",
+            "recibo_id": False,
+            "mensaje": mensaje,
+            "numero_poliza_raw": raw,
+        }
+
+    def _linea_sin_coincidencia(self, raw: str, mensaje: str) -> dict:
+        return {
+            "marca": "sin_coincidencia",
+            "recibo_id": False,
+            "mensaje": mensaje,
+            "numero_poliza_raw": raw,
         }
 
     def _buscar_poliza(self, env, raw: str):
-        return env['bca.poliza'].search([
-            ('name', '=', raw),
-            ('aseguradora_id', '=', self.aseguradora_id),
-        ], limit=1)
-
-    def _primer_recibo_pendiente(self, poliza):
-        return poliza.recibo_ids.filtered(
-            lambda r: r.estado == 'pendiente'
-        ).sorted('numero_recibo')[:1]
-
-    def _buscar_recibo_por_poliza_vigencia(self, poliza, vigencia_desde,
-                                           vigencia_hasta):
-        """R-COB-11: busca recibo pendiente que coincida con póliza + vigencia.
-
-        Compara ``vigencia_desde``/``vigencia_hasta`` del CSV contra
-        ``fecha_desde``/``fecha_hasta`` del recibo. Retorna el recibo
-        coincidente o ``None``.
-
-        La regla FIFO se mantiene: si hay varios recibos con la misma vigencia
-        (no debería ocurrir), toma el de menor ``numero_recibo``.
-        """
-        from datetime import date as _date
-        if not vigencia_desde or not vigencia_hasta:
-            return None
-        pendientes = poliza.recibo_ids.filtered(
-            lambda r: r.estado == 'pendiente'
+        return env["bca.poliza"].search(
+            [
+                ("name", "=", raw),
+                ("aseguradora_id", "=", self.aseguradora_id),
+            ],
+            limit=1,
         )
-        for recibo in pendientes.sorted('numero_recibo'):
-            if recibo.fecha_desde == vigencia_desde and recibo.fecha_hasta == vigencia_hasta:
-                return recibo
-        return None
 
     def _resolver_conducto(self, env, valor) -> tuple:
         """Resuelve ``conducto_id`` por ``codigo_archivo``.
@@ -115,14 +116,17 @@ class ParserBase:
         si el código del CSV no coincide con el catálogo, no aborta — el
         recibo se paga con conducto vacío y el wizard registra advertencia.
         """
-        codigo = str(valor or '').strip().upper()
+        codigo = str(valor or "").strip().upper()
         if not codigo:
             return False, "Columna conducto vacía"
-        conducto = env['bca.conducto'].search([
-            ('codigo_archivo', '=', codigo),
-            ('aseguradora_id', '=', self.aseguradora_id),
-            ('activo', '=', True),
-        ], limit=1)
+        conducto = env["bca.conducto"].search(
+            [
+                ("codigo_archivo", "=", codigo),
+                ("aseguradora_id", "=", self.aseguradora_id),
+                ("activo", "=", True),
+            ],
+            limit=1,
+        )
         if not conducto:
             return False, "Conducto '%s' no encontrado en catálogo" % codigo
         return conducto.id, None
@@ -140,7 +144,7 @@ class ParserBase:
         if not texto:
             return 0.0
         try:
-            return float(Decimal(texto.replace(',', '')).quantize(Decimal('0.01')))
+            return float(Decimal(texto.replace(",", "")).quantize(Decimal("0.01")))
         except (InvalidOperation, ValueError) as exc:
             raise ValidationError("Monto inválido: %r" % valor) from exc
 
@@ -152,6 +156,6 @@ class ParserBase:
         if not texto:
             raise ValidationError("Fecha vacía")
         try:
-            return datetime.strptime(texto, '%d/%m/%Y').date()
+            return datetime.strptime(texto, "%d/%m/%Y").date()
         except ValueError as exc:
             raise ValidationError("Fecha inválida: %r" % valor) from exc
