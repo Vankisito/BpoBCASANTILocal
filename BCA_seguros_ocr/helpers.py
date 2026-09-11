@@ -130,11 +130,3 @@ def find_or_create_partner(env, datos: dict) -> Any:
                     return cand
 
     return Partner.create(dict(datos))
-
-
-def normalizar_moneda(valor) -> str:
-    """Normalize currency code from OCR text.  Defaults to MXN."""
-    codigo = str(valor or "MXN").strip().upper()
-    if codigo not in ("MXN", "USD"):
-        codigo = "MXN"
-    return codigo
