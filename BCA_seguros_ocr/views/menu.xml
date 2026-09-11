@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Menú OCR Carátulas — bajo Pólizas
+         Visible para operador+ (misma restricción que Cargar Portafolio).
+         ============================================================ -->
+    <menuitem id="menu_ocr_caratulas"
+              name="OCR Carátulas"
+              parent="BCA_Seguros.menu_bca_polizas"
+              action="action_wizard_ocr"
+              groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              sequence="25"/>
+
+    <menuitem id="menu_ocr_documentos"
+              name="Documentos OCR"
+              parent="BCA_Seguros.menu_bca_polizas"
+              action="action_ocr_documento"
+              groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              sequence="26"/>
+
+</odoo>

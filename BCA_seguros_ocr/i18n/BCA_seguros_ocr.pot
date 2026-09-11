@@ -1,0 +1,857 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* BCA_seguros_ocr
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0-20260619\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-11 19:45+0000\n"
+"PO-Revision-Date: 2026-09-11 19:45+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "(vacía)"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "(vacío)"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "<span class=\"o_stat_text\">Abrir Póliza</span>"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "<span class=\"o_stat_text\">Crear Póliza</span>"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "<span class=\"o_stat_text\">Ver Texto</span>"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_wizard_ocr_form
+msgid "<strong>Requisitos:</strong>"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_needaction
+msgid "Action Needed"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_ids
+msgid "Activities"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_exception_decoration
+msgid "Activity Exception Decoration"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_state
+msgid "Activity State"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_type_icon
+msgid "Activity Type Icon"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__periodicidad__anual
+msgid "Anual"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+msgid "Archivo"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__archivo_pdf
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__archivo_pdf
+msgid "Archivo PDF"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__asegurado_nombre
+msgid "Asegurado"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_attachment_count
+msgid "Attachment Count"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Beneficiarios"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__beneficiarios_texto
+msgid "Beneficiarios (texto)"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_search
+msgid "Buscar Documento OCR"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_wizard__state__cargar
+msgid "Cargar"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_wizard_ocr_form
+msgid "Cerrar"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__agente_clave
+msgid "Clave Agente"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/helpers.py:0
+msgid "Clave de agente \"%s\" no registrada en la aseguradora."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/helpers.py:0
+msgid "Clave de agente vacía."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__coaseguro
+msgid "Coaseguro (%)"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__contratante_nombre
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+msgid "Contratante"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_search
+msgid "Creados"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Crear Póliza"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__create_uid
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__create_uid
+msgid "Created by"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__create_date
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__create_date
+msgid "Created on"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Datos Generales"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/wizards/bca_ocr_wizard.py:0
+msgid "Debe adjuntar un archivo PDF."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__deducible
+msgid "Deducible"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__layout_detectado__desconocido
+msgid "Desconocido"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_wizard_ocr_form
+msgid ""
+"Después de la extracción, podrás revisar y\n"
+"                                corregir los datos antes de crear la póliza."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__display_name
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__display_name
+msgid "Display Name"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Documento"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Documento OCR"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model,name:BCA_seguros_ocr.model_bca_ocr_documento
+msgid "Documento OCR — Carátula de Póliza"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.actions.act_window,name:BCA_seguros_ocr.action_ocr_documento
+#: model:ir.ui.menu,name:BCA_seguros_ocr.menu_ocr_documentos
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+msgid "Documentos OCR"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_wizard_ocr_form
+msgid ""
+"El PDF debe ser <strong>digital</strong>\n"
+"                                (con capa de texto), no escaneado."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid ""
+"El PDF está protegido con contraseña. Elimine la protección del archivo y "
+"vuelva a intentarlo."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid ""
+"El archivo no es un PDF válido o está dañado. Verifique que el archivo sea "
+"una carátula en formato PDF."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid ""
+"El archivo no es un PDF válido. Verifique que el archivo sea una carátula en"
+" formato PDF."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__error_mensaje
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__estado__error
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Error"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "Error en extracción: %s"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__estado
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__state
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_search
+msgid "Estado"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Extraer Datos"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__estado__extraido
+msgid "Extraído"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_search
+msgid "Extraídos"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/helpers.py:0
+msgid "Falta el nombre del contacto."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "Falta el número de póliza."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+msgid "Fecha"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__fecha_emision
+msgid "Fecha Emisión"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__fecha_fin
+msgid "Fecha de Fin"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__fecha_inicio
+msgid "Fecha de Inicio"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Fechas"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__fecha_fin
+msgid "Fin de vigencia. Editar si la extracción falló."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_follower_ids
+msgid "Followers"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_partner_ids
+msgid "Followers (Partners)"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__activity_type_icon
+msgid "Font awesome icon e.g. fa-tasks"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__forma_pago_pdf
+msgid "Forma de Pago (PDF)"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_wizard_ocr_form
+msgid ""
+"Formatos soportados:\n"
+"                                <strong>GMM</strong> (Gastos Médicos Mayores) y\n"
+"                                <strong>Vida Individual</strong>."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__layout_detectado__gmm
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "GMM"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__has_message
+msgid "Has Message"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__id
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__id
+msgid "ID"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__iva
+msgid "IVA"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_exception_icon
+msgid "Icon"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__activity_exception_icon
+msgid "Icon to indicate an exception activity."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__message_has_error
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__fecha_inicio
+msgid "Inicio de vigencia. Editar si la extracción falló."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_is_follower
+msgid "Is Follower"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__write_uid
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__write_uid
+msgid "Last Updated by"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__write_date
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__write_date
+msgid "Last Updated on"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_search
+msgid "Layout"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__layout_detectado
+msgid "Layout Detectado"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "Layout no soportado: %s"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__periodicidad__mensual
+msgid "Mensual"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_has_error
+msgid "Message Delivery error"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_ids
+msgid "Messages"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__currency_id
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Moneda"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__my_activity_date_deadline
+msgid "My Activity Deadline"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_calendar_event_id
+msgid "Next Activity Calendar Event"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_date_deadline
+msgid "Next Activity Deadline"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_summary
+msgid "Next Activity Summary"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_type_id
+msgid "Next Activity Type"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__nivel_hospitalario
+msgid "Nivel Hospitalario"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "No hay archivo PDF adjunto."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid ""
+"No se encontró el agente con clave \"%s\" para MetLife.\n"
+"\n"
+"Verifique que:\n"
+"• La clave del agente esté registrada en Odoo\n"
+"• La clave pertenezca a un agente de MetLife\n"
+"• La clave en la carátula sea correcta\n"
+"\n"
+"Si la clave es correcta pero el agente no existe, regístrelo en Contactos con tipo \"Agente\" y vincúlelo a la aseguradora."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid ""
+"No se encontró el producto \"%s\" (ramo %s) en el catálogo.\n"
+"\n"
+"Verifique que:\n"
+"• El producto esté registrado en Odoo\n"
+"• La aseguradora sea MetLife\n"
+"• El ramo coincida (%s)\n"
+"\n"
+"Si el nombre en el PDF difiere del catálogo, actualice el campo \"Nombre archivo aseguradora\" en el producto."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid ""
+"No se encontró la aseguradora MetLife en la base de datos. Debe existir un "
+"contacto con tipo \"Aseguradora\" y nombre conteniendo \"MetLife\"."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "No se ha creado la póliza aún."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid ""
+"No se pudo extraer texto del PDF. Parece ser un PDF escaneado sin capa de "
+"texto."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/wizards/bca_ocr_wizard.py:0
+msgid ""
+"No se pudo procesar el PDF. Verifique que el archivo sea un PDF válido de "
+"una carátula MetLife, o intente con otro archivo."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid ""
+"No se reconoce el formato del documento. Solo se soportan carátulas MetLife "
+"(GMM y Vida)."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/helpers.py:0
+msgid "Nombre de producto vacío."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__archivo_nombre
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_wizard__archivo_nombre
+msgid "Nombre del Archivo"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__producto_pdf
+msgid "Nombre del producto tal como aparece en la carátula."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__estado__nuevo
+msgid "Nuevo"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_search
+msgid "Nuevos"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_needaction_counter
+msgid "Number of Actions"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_has_error_counter
+msgid "Number of errors"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__poliza_numero
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Nº de Póliza"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.actions.act_window,name:BCA_seguros_ocr.action_wizard_ocr
+#: model:ir.ui.menu,name:BCA_seguros_ocr.menu_ocr_caratulas
+msgid "OCR Carátulas"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_wizard_ocr_form
+msgid "OCR Carátulas MetLife"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__periodicidad
+msgid "Periodicidad"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__plan
+msgid "Plan"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__prima_neta
+msgid "Prima Neta"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__prima_monto
+msgid "Prima Total / Anual"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__prima_forma_pago
+msgid "Prima según Forma de Pago"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "Primero debe extraer los datos del PDF."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__estado__procesando
+msgid "Procesando"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_wizard_ocr_form
+msgid "Procesar"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+msgid "Producto"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/helpers.py:0
+msgid "Producto \"%s\" no encontrado para el ramo %s."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__producto_pdf
+msgid "Producto (PDF)"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+msgid "Póliza"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "Póliza %s"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__poliza_id
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__estado__creado
+msgid "Póliza Creada"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_list
+msgid "Póliza Odoo"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__rfc
+msgid "RFC"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__recargo_fijo
+msgid "Recargo Fijo"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__recargo_frac
+msgid "Recargo Fraccionamiento"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__activity_user_id
+msgid "Responsible User"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_wizard__state__resultado
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Resultado"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/wizards/bca_ocr_wizard.py:0
+msgid "Revisar Extracción OCR"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__periodicidad__semestral
+msgid "Semestral"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_wizard_ocr_form
+msgid ""
+"Solo se aceptan carátulas de\n"
+"                                <strong>MetLife</strong>."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__activity_state
+msgid ""
+"Status based on activities\n"
+"Overdue: Due date is already passed\n"
+"Today: Activity date is today\n"
+"Planned: Future activities."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.actions.act_window,help:BCA_seguros_ocr.action_ocr_documento
+msgid "Sube una carátula PDF para comenzar"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__suma_asegurada
+msgid "Suma Asegurada"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__texto_extraido
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_texto_form
+msgid "Texto Extraído"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__beneficiarios_texto
+msgid "Texto crudo de la tabla de beneficiarios / asegurados."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__periodicidad__trimestral
+msgid "Trimestral"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__activity_exception_decoration
+msgid "Type of the exception activity on record."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.actions.act_window,help:BCA_seguros_ocr.action_ocr_documento
+msgid ""
+"Usa el botón <strong>\"OCR Carátulas\"</strong> en el menú\n"
+"                Pólizas para subir una carátula MetLife y extraer sus datos\n"
+"                automáticamente."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__estado__validado
+msgid "Validado"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields.selection,name:BCA_seguros_ocr.selection__bca_ocr_documento__layout_detectado__vida
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "Vida"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,field_description:BCA_seguros_ocr.field_bca_ocr_documento__website_message_ids
+msgid "Website Messages"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model.fields,help:BCA_seguros_ocr.field_bca_ocr_documento__website_message_ids
+msgid "Website communication history"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model:ir.model,name:BCA_seguros_ocr.model_bca_ocr_wizard
+msgid "Wizard OCR — Carga de Carátulas MetLife"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#. odoo-python
+#: code:addons/BCA_seguros_ocr/models/bca_ocr_documento.py:0
+msgid "Ya se creó la póliza %s."
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "nombre|parentesco|porcentaje"
+msgstr ""
+
+#. module: BCA_seguros_ocr
+#: model_terms:ir.ui.view,arch_db:BCA_seguros_ocr.view_ocr_documento_form
+msgid "¿Crear póliza en borrador con estos datos?"
+msgstr ""
