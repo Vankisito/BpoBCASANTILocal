@@ -55,14 +55,6 @@
                                 invisible="not texto_extraido">
                             <span class="o_stat_text">Ver Texto</span>
                         </button>
-                        <button class="oe_stat_button" icon="fa-plus-circle"
-                                type="object" name="action_crear_poliza"
-                                invisible="estado != 'extraido' or poliza_id"
-                                confirm="¿Crear póliza en borrador con estos datos?">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_text">Crear Póliza</span>
-                            </div>
-                        </button>
                         <button class="oe_stat_button" icon="fa-file-pdf-o"
                                 type="object" name="action_abrir_poliza"
                                 invisible="not poliza_id">
@@ -79,6 +71,34 @@
                             <field name="poliza_numero" placeholder="Nº de Póliza"
                                    readonly="estado not in ('nuevo', 'error')"/>
                         </h1>
+                        <div class="alert alert-success mt-2 mb-0"
+                             role="status"
+                             invisible="estado != 'creado'">
+                            <p class="mb-0">
+                                <i class="fa fa-check-circle me-1" title="Listo"/>
+                                <field name="resumen_extraccion" nolabel="1"
+                                       readonly="1"/>
+                            </p>
+                        </div>
+                        <div class="alert alert-info mt-2 mb-0"
+                             role="status"
+                             invisible="estado not in ('extraido', 'validado')">
+                            <p class="mb-0">
+                                <i class="fa fa-info-circle me-1" title="Información"/>
+                                <field name="resumen_extraccion" nolabel="1"
+                                       readonly="1"/>
+                            </p>
+                        </div>
+                        <div class="alert alert-danger mt-2 mb-0"
+                             role="alert"
+                             invisible="estado != 'error'">
+                            <p class="mb-0">
+                                <i class="fa fa-exclamation-circle me-1" title="Error"/>
+                                <strong>No se pudo procesar el documento.</strong>
+                                <field name="error_mensaje" nolabel="1"
+                                       readonly="1"/>
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Archivo + Layout -->
@@ -87,9 +107,8 @@
                             <field name="archivo_pdf" filename="archivo_nombre"
                                    readonly="estado not in ('nuevo', 'error')"/>
                             <field name="archivo_nombre" invisible="1"/>
-                            <field name="layout_detectado" readonly="1"/>
-                            <field name="error_mensaje" invisible="not error_mensaje"
-                                   readonly="1" colspan="2"/>
+                            <field name="layout_detectado" readonly="1"
+                                   string="Ramo Detectado"/>
                         </group>
                         <group string="Moneda">
                             <field name="currency_id" invisible="1"/>
@@ -103,8 +122,8 @@
                                 <group>
                                     <field name="contratante_nombre"/>
                                     <field name="asegurado_nombre"/>
-                                    <field name="producto_pdf"/>
-                                    <field name="agente_clave"/>
+                                    <field name="producto_pdf" string="Producto en Carátula"/>
+                                    <field name="agente_clave" string="Clave del Agente"/>
                                 </group>
                                 <group>
                                     <field name="periodicidad"/>
@@ -164,17 +183,12 @@
                     </notebook>
 
                     <!-- Link a póliza creada -->
-                    <group string="Resultado" invisible="not poliza_id">
+                    <group string="Póliza Creada en Odoo" invisible="not poliza_id">
                         <group>
                             <field name="poliza_id" readonly="1"/>
                         </group>
                     </group>
                 </sheet>
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="activity_ids"/>
-                    <field name="message_ids"/>
-                </div>
             </form>
         </field>
     </record>
