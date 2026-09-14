@@ -47,6 +47,105 @@ def _puntaje_tokens(tokens_busqueda: list[str], tokens_prod: list[str]) -> int:
     return len(usados)
 
 
+# ---------------------------------------------------------------------------
+# Product aliasing — ported from the Convertidor BCA helper (reglas
+# confirmadas con BCA el 2026-07-09 y 2026-07-31).  El mapeo es dato, no
+# lógica: estas tablas reemplazan al fuzzy para los nombres canónicos que el
+# matching por similitud NO puede deducir (p. ej. METALIFE MUJER →
+# Universales/Metalife Mujer).  Orden importa: prefijos más específicos van
+# primero.  Un nombre sin equivalente confirmado devuelve None a propósito:
+# el llamado decide si ir a fuzzy o mandar a advertencias (cero silenciosos).
+# ---------------------------------------------------------------------------
+
+# Ruido que se elimina del nombre crudo antes de comparar (traído de
+# limpiar_producto_vida del convertidor, adaptado a carátulas).
+# OJO: NO se elimina "TOTALIFE"/"TEMPOLIFE" aquí (en el CSV de BCA esos
+# sufijos eran ruido de columna; en la carátula SON el nombre del producto).
+_RUIDO_PRODUCTO = re.compile(
+    r"\s*-\s*PL\s*\d+|\bPL\s*\d+\b|"
+    r"\bPOLIZA DE SEGURO\b|\bVIDA INDIVIDUAL\b|\bL[IÍ]NEA GRAN VIDA\b|"
+    r"\bM\.?\s*N\.?\b|\bPESOS\b|\bDLR\b|\bMN\b|\bFAMILIAR\b|\bFAM\b|"
+    r"\b(?:19|20)\d{2}\b",
+    re.IGNORECASE,
+)
+
+
+def _limpiar_nombre_producto(raw: str | None) -> str:
+    """Normaliza un nombre de producto crudo de carátula.
+
+    Quita espacios \\xa0, ruido de columna/plan/moneda (PL N, M.N.), acentos
+    y colapsa espacios.  Devuelve MAYÚSCULAS sin acentos, listo para
+    comparar contra los prefijos de las tablas de mapeo.
+    """
+    if not raw:
+        return ""
+    s = str(raw).replace("\xa0", " ")
+    s = _RUIDO_PRODUCTO.sub(" ", s)
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"\s+", " ", s).strip().upper()
+
+
+# Prefijos Vida (startswith) → nombre canónico en Odoo (nombre real de BD).
+_MAPEO_METLIFE_VIDA = [
+    # Retiro: 3 variantes + el nombre propio "MetLife Metalife Retiro"
+    ("PLAN PERSONAL DE RETIRO", "MetLife Metalife Retiro"),
+    ("PLAN DE RETIRO", "MetLife Metalife Retiro"),
+    ("CUENTA ESPECIAL AHORRO", "MetLife Metalife Retiro"),
+    ("METALIFE RETIRO", "MetLife Metalife Retiro"),
+    # Familia Metalife (carátulas IV1360ME)
+    ("METALIFE TU FUTURO", "MetLife Metalife tu Futuro"),
+    ("METALIFE EDUCACION", "Metlife Educalife"),
+    ("METALIFE MUJER", "MetLife Metalife Mujer"),
+    # Productos clásicos (confirmado con BCA)
+    ("ORDINARIO DE VIDA", "MetLife TotalLife"),
+    ("VIDA PAGOS LIMITADOS", "MetLife Vida Pagos"),
+    ("VIDA PAGOS", "MetLife Vida Pagos"),
+    ("PERFECTLIFE", "MetLife PerfectLife"),
+    ("PERFECT LIFE", "MetLife PerfectLife"),
+    ("FLEXILIFE", "Metlife FlexiLife"),
+    ("FLEXI LIFE", "Metlife FlexiLife"),
+    ("HORIZONTE", "Metlife Horizonte"),
+    ("TOTALIFE", "MetLife TotalLife"),
+    ("TEMPOLIFE", "MetLife TempoLife"),
+    ("TEMPORAL", "MetLife TempoLife"),
+]
+
+
+def mapear_producto_metlife(raw: str | None, ramo: str | None) -> str | None:
+    """Devuelve el nombre canónico del producto MetLife en Odoo.
+
+    ``ramo`` discrimina las reglas GMM de las de Vida.  Va a los prefijos de
+    la carátula limpia; ``None`` significa "sin equivalente confirmado".
+
+    Casos especiales confirmados con BCA/Rafael 2026-07-31: la familia
+    TEMPORAL con EDUCALIFE o GRANDES SUMAS es TempoLife GP/RP; el resto de
+    TEMPORAL/TEMPOLIFE simple es TempoLife.
+    """
+    c = _limpiar_nombre_producto(raw)
+    if not c:
+        return None
+
+    if ramo == "gmm":
+        if "GRUPO VIDA" in c:
+            return "Grupo vida"
+        if "MEDICALIFE" in c:
+            return "MetLife MedicaLife"
+        if "PRIMORDIAL" in c:
+            return "MetLife Primordial"
+        return None
+
+    if (c.startswith("TEMPORAL") or c.startswith("TEMPOLIFE")) and (
+        "EDUCALIFE" in c or "GRANDES SUMAS" in c
+    ):
+        return "MetLife TempoLife GP/RP"
+
+    for prefijo, producto in _MAPEO_METLIFE_VIDA:
+        if c.startswith(prefijo):
+            return producto
+    return None
+
+
 def resolver_agente(env, clave_raw: str, aseguradora_id: int):
     """Resolve agent partner from ``clave_agente`` + aseguradora.
 
@@ -82,10 +181,14 @@ def resolver_producto(env, nombre: str, ramo: str, aseguradora_id: int):
 
     Search cascade (progressive relaxation):
     1. Exact ``name`` / ``bca_nombre_archivo_aseguradora``
-    2. Case-insensitive substring (``ilike``) on both fields
-    3. Fuzzy word matching: every normalized OCR token must map to a
+    2. Canonical MetLife rules (semantic equivalences confirmed with BCA,
+       ported from the Convertidor helper), e.g. ``METALIFE EDUCACION`` →
+       ``Metlife Educalife``, ``GASTOS MEDICOS MEDICALIFE FAM.`` →
+       ``MetLife MedicaLife``
+    3. Case-insensitive substring (``ilike``) on both fields
+    4. Fuzzy word matching: every normalized OCR token must map to a
        product-name token (case-, accent- and typo-insensitive), e.g.
-       carátula ``METALIFE EDUCACION`` → producto ``Metlife Educación``.
+       carátula ``METALIFE UNIVERSALES`` → producto ``MetLife Universales``.
 
     ``ramo`` is a *soft* filter: it narrows the candidate pool first, but if
     no match is found the search retries without it. ``aseguradora_id`` stays
@@ -119,6 +222,28 @@ def resolver_producto(env, nombre: str, ramo: str, aseguradora_id: int):
     )
     if producto:
         return producto, None
+
+    # 1.5) Reglas canónicas MetLife (portadas del Convertidor BCA) — corren
+    # ANTES del fuzzy porque codifican equivalencias semánticas que la
+    # similitud de tokens NO puede deducir (p. ej. METALIFE EDUCACION →
+    # EducaLife, ORDINARIO DE VIDA → TotalLife). Si la regla acierta pero el
+    # producto no existe en el catálogo, se reporta en vez de seguir a fuzzy
+    # (cero silenciosos).
+    canonico = mapear_producto_metlife(nombre_limpio, ramo)
+    if canonico:
+        producto = Producto.search(
+            dominio_base + [("name", "=ilike", canonico)], limit=1
+        )
+        if producto:
+            return producto, None
+        return (
+            None,
+            _(
+                'El nombre "%s" corresponde al producto "%s" según la regla, '
+                "pero ese producto no existe en el catálogo de la aseguradora."
+            )
+            % (nombre_limpio, canonico),
+        )
 
     candidatos, ramo_soft = _colectar_candidatos(
         Producto, dominio_base, ramo, nombre_limpio, aseguradora_id
