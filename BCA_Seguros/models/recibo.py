@@ -254,6 +254,39 @@ class BcaRecibo(models.Model):
                     )
         return super().write(vals)
 
+    @api.model
+    def _bloquear_recibos_poliza(self, poliza_ids) -> None:
+        """Lock de filas de TODOS los recibos de la(s) póliza(s) en orden global.
+
+        La validación FIFO (pago y cancelación) lee el conjunto completo de
+        recibos hermanos de la póliza — pendientes y pagados — y su estado
+        puede cambiar por otra operación concurrente. Bloquear solo los
+        recibos de ``self`` deja libre a los hermanos, por lo que otra
+        transacción puede pagar/cancelar un recibo adyacente mientras se
+        valida FIFO (doble pago o pago fuera de orden).
+
+        Adquiere el lock en ``(poliza_id, numero_recibo)``, el mismo orden
+        global del modelo (``_order``) y el mismo que usan
+        ``_aplicar_lote`` y ``action_cancelar_pago``: todos los caminos
+        bloquean el conjunto en formación idéntica, sin deadlock por orden
+        inverso entre operaciones concurrentes.
+
+        Devuelve la lista de IDs de póliza lockeadas (para invalidar caché).
+        """
+        if not poliza_ids:
+            return []
+        poliza_ids = sorted(set(poliza_ids))
+        # Flush previo: materializa writes ORM pendientes de la misma
+        # transacción antes de SQL crudo (patrón OCA).
+        self.env.flush_all()
+        self.env.cr.execute(
+            "SELECT id FROM bca_recibo "
+            "WHERE poliza_id IN %s "
+            "ORDER BY poliza_id, numero_recibo FOR UPDATE",
+            (tuple(poliza_ids),),
+        )
+        return poliza_ids
+
     def action_registrar_pago(self, vals: dict) -> bool:
         """R-COB-09: valida precondiciones ANTES de tocar BD.
 
@@ -265,28 +298,19 @@ class BcaRecibo(models.Model):
         if not vals.get("prima_total_pagada") or vals["prima_total_pagada"] <= 0:
             raise ValidationError(_("El importe pagado debe ser positivo."))
 
-        # Orden fijo: AIDL (alternative interpretation of deadlock) —
-        # bloquear en `id` ascendente evita esperas circulares entre imports
-        # concurrentes que tocan varios recibos en distinto orden.
-        ids_ordenados = tuple(sorted(set(self.ids)))
-
-        # Row-level lock: SELECT … FOR UPDATE blocks concurrent transactions
-        # on the same recibo rows until this transaction commits/rolls back.
-        # Raw SQL: BaseModel.search() in this Odoo build has no for_update kwarg.
-        # El flush previo materializa writes pendientes de la misma transacción
-        # (patrón OCA para SQL crudo) antes del lock.
-        if ids_ordenados:
-            self.env.flush_all()
-            self.env.cr.execute(
-                "SELECT id FROM bca_recibo WHERE id IN %s ORDER BY id FOR UPDATE",
-                (ids_ordenados,),
-            )
+        # Lock de TODOS los recibos de cada póliza implicada (no solo los de
+        # `self`): el check FIFO de abajo lee los recibos hermanos pendientes
+        # y su estado puede cambiar por un pago o cancelación concurrente.
+        # Orden global (poliza_id, numero_recibo) idéntico a _aplicar_lote y
+        # action_cancelar_pago → sin esperas circulares entre operaciones.
+        poliza_ids = self._bloquear_recibos_poliza(self.mapped("poliza_id").ids)
 
         # Invalidate ORM cache so the estado check below reads the fresh,
         # post-lock snapshot — a pre-lock cached value would be stale if
         # another transaction already paid these recibos. Invalida también
         # las pólizas: su One2many recibo_ids se cachea en el registro de
         # póliza y los checks FIFO / anualidad lo releen recién.
+        self.env["bca.poliza"].browse(poliza_ids).invalidate_recordset()
         for rec in self:
             rec.poliza_id.invalidate_recordset()
         self.invalidate_recordset()
@@ -426,12 +450,14 @@ class BcaRecibo(models.Model):
 
         # 1. Lock ordenado de pendientes + lock de póliza (anualidad).
         #    Flush previo: materializa cualquier write ORM pendiente de la tx
-        #    antes de SQL crudo (patrón OCA).
+        #    antes de SQL crudo (patrón OCA). Orden (poliza_id, numero_recibo)
+        #    idéntico a _bloquear_recibos_poliza / action_registrar_pago:
+        #    mismo orden de adquisición en todos los caminos evita deadlock.
         self.env.flush_all()
         self.env.cr.execute(
             "SELECT id FROM bca_recibo "
             "WHERE poliza_id = %s AND estado = 'pendiente' "
-            "ORDER BY id FOR UPDATE",
+            "ORDER BY poliza_id, numero_recibo FOR UPDATE",
             (poliza_id,),
         )
         self.env.cr.execute(
@@ -482,9 +508,9 @@ class BcaRecibo(models.Model):
             }
 
         # 5. Pago delegado a action_registrar_pago (FIFO + PCA + write + P5).
-        #    El lock del recibo individual ya está activo (FOR UPDATE del paso 1);
-        #    la re-entrada en action_registrar_pago es inmediata y re-valida
-        #    estado + FIFO bajo caché fresco.
+        #    La re-entrada re-bloquea el full-set de la póliza (mismo orden,
+        #    cooperativo en la misma transacción) y re-valida estado + FIFO
+        #    bajo caché fresco.
         with self.env.cr.savepoint():
             recibo.action_registrar_pago(vals)
 
@@ -510,6 +536,16 @@ class BcaRecibo(models.Model):
             raise AccessError(
                 _("Solo Director General o Director Comercial pueden cancelar pagos.")
             )
+
+        # Lock de TODOS los recibos de la(s) póliza(s) ANTES de validar la
+        # guardia FIFO (recibos pagados posteriores): sin este bloqueo, un
+        # pago concurrente podría confirmar un recibo posterior mientras esta
+        # cancelación valida estados — y la orden FIFO quedaría inválida.
+        # Mismo orden (poliza_id, numero_recibo) que pago e import.
+        poliza_ids = self._bloquear_recibos_poliza(self.mapped("poliza_id").ids)
+        self.env["bca.poliza"].browse(poliza_ids).invalidate_recordset()
+        self.invalidate_recordset()
+
         for rec in self:
             if rec.estado != "pagado":
                 raise UserError(
