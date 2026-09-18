@@ -1,6 +1,6 @@
 {
     "name": "BCA Seguros — Gestión de Pólizas y Cobranza",
-    "version": "19.0.1.14.2",
+    "version": "19.0.1.16.0",
     "category": "Insurance",
     "summary": "Módulo vertical BCA para pólizas, cobranza, PCA y comisiones",
     "author": "Hábitat Digital",
@@ -42,6 +42,7 @@
         "views/cambio_promotoria_views.xml",
         "views/product_template_views.xml",
         "views/hr_applicant_views.xml",
+        "views/hr_job_views.xml",
         "views/hr_employee_views.xml",
         "views/bca_sede_views.xml",
         "views/reclutamiento_views.xml",

@@ -10,6 +10,7 @@ from . import (
     test_record_rules,
     test_bca_sede,
     test_hr_applicant,
+    test_hr_job_crear_postulante,
     test_crm_lead,
     test_views_xml,
     test_parsers,

@@ -53,6 +53,9 @@ class ParserMetLifeVida(ParserBase):
                 "numero_poliza_raw": raw,
             }
 
+        if self._poliza_sin_recibos_pendientes(env, poliza.id):
+            return self._linea_sin_recibo(raw)
+
         vigencia_desde = self.normalizar_fecha(fila.get("vigencia_desde"))
         vigencia_hasta = self.normalizar_fecha(fila.get("vigencia_hasta"))
         fecha_pago = self.normalizar_fecha(fila.get("fecha_aplicacion"))

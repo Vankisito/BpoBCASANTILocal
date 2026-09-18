@@ -4,6 +4,142 @@
 
 ---
 
+## Sesión 2026-09-18 — Fix kanban por defecto hr.job · `BCA_Seguros 19.0.1.16.0`
+
+### Qué se hizo
+Defecto SI-2 detectado en test: los heredados kanban (`view_hr_job_kanban_bca`) nunca
+resolvían por defecto. `hr.job` tiene **dos kanban primarias** — `hr.hr_job_view_kanban`
+(minimal, sin menú) y `hr_recruitment.view_hr_job_kanban` — ambas `priority=16`. La
+resolución por defecto (`get_view(False, 'kanban')`, `order priority,id ASC`) eLige la de
+menor id → 741 `hr`, sin `t-name='menu'` → la Reclutadora BCA no veía
+**Nuevo → Application** aunque el menú estuviera expuesto en las herencias de 829.
+
+Fix: `priority=1` sobre `hr_recruitment.view_hr_job_kanban` vía data de BCA. Seguro por
+dependencia ya existente de `hr_recruitment`. No toca `hr` ni el filtrado por grupos.
+
+Cambios:
+- `views/hr_job_views.xml`: `<record id="hr_recruitment.view_hr_job_kanban" model="ir.ui.view">`
+  con `priority=1` (vista reclutamiento vuelve a ser kanban por defecto).
+- `tests/test_views_xml.py`: `test_kanban_hr_job_por_defecto_es_reclutamiento` — assert
+  priority=1 y `get_view(False,'kanban')['id'] == env.ref('hr_recruitment.view_hr_job_kanban').id`.
+- `__manifest__.py`: bump `19.0.1.15.0 → 19.0.1.16.0`.
+
+### Tests
+- Suite `/BCA_Seguros` en `bca_clean`: pendiente (se re-corre tras upgrade).
+
+### Decisiones
+- D-28: La kanban por defecto de `hr.job` en el despliegue BCA = la de reclutamiento
+  (829). Correcto: es la que lleva trackers, menú de postulaciones e herencias BCA.
+
+### Pendientes
+- Re-test UI (reclutadora, puesto → Nuevo → Application crea postulante) y commit/push.
+
+---
+
+## Sesión 2026-09-18 — SI-2: Reclutadora BCA crea postulante desde puesto · `BCA_Seguros 19.0.1.15.0`
+
+### Qué se hizo
+Segundo camino de alta de postulante — "Puesto de trabajo → Nuevo" — habilitado para
+`group_bca_reclutadora`. Antes exclusivo de Encargado (`hr_recruitment.group_hr_recruitment_user`).
+
+Causa raíz de 2 capas:
+- **Capa 1 (bug nativo):** el kanban de puestos reserva el menú *Nuevo → Application*
+  al grupo Encargado (`hr_job_views.xml` nativo: `<t t-name='menu'>` con `groups=...user`)
+  y `action_hr_job_interviewer` trae `context={'create': False}`. La Reclutadora BCA solo
+  hereda `group_hr_recruitment_interviewer` → no veía el botón.
+- **Capa 2 (regla SI-1):** `hr.applicant: reclutadora ve solo sus candidatos` con
+  `perm_create=True` negaba el CREATE: `user_id` nativo es compute store que toma
+  `job.user_id`; el candidato nacía sin responsable o con uno ajeno a la creadora.
+  También afectaba "Todas las postulaciones → Nuevo".
+
+Cambios:
+- `views/hr_job_views.xml` **nuevo**: kanban heredado expone el menú de tarjeta a la
+  Reclutadora (Trackers y color/editar/archivar siguen acotados a Encargado por ACL);
+  form del puesto con botón stat **Nuevo Postulante** → acción nativa
+  `hr_recruitment.action_hr_job_new_application` (precarga `default_job_id`).
+- `models/hr_applicant.py`: `user_id` redefinido con `default=lambda self: self.env.user`.
+  El default entra en vals de create → se omite el compute → todo candidato nace con su
+  creadora como responsable (invarianza de la regla SI-1).
+- `tests/test_hr_job_crear_postulante.py` **nuevo**: 4 tests (crea como reclutadora, ve
+  solo su postulante del puesto, acción nativa precarga job, vistas exponen botón).
+- `tests/test_views_xml.py`: `_validate` de las dos vistas heredadas.
+- `__manifest__.py`: bump `19.0.1.14.3 → 19.0.1.15.0` + registro del view.
+
+### Tests
+- Suite `/BCA_Seguros` en `bca_clean` (2026-09-18): **226 tests, 0 failed, 0 error(s)**.
+  Los 4 tests de SI-2 correen desde `test_hr_job_crear_postulante.py` (crea como
+  reclutadora, ve solo su postulante del puesto, acción nativa precarga job, vistas
+  exponen botón) y `test_views_xml.test_herencia_hr_job` valida las vistas heredadas.
+
+### Decisiones
+- D-27: El responsable (`user_id`) del candidato = **creador** al nacer. Coherente con la
+  regla SI-1 y con el comportamiento del compute nativo omitido por el default en vals.
+
+### Pendientes
+- Configurar git en la copia local (`GpoBCA_Seguros-desarrollo` no es repo) y commit/push
+  a `Vankisito/BpoBCASANTILocal` (main-rebased).
+- Reiniciar `odoo_dev` tras el upgrade para ver el cambio en UI.
+
+---
+
+## Sesión 2026-09-17 — Revisión PR #20: vigencia en parsers, CI y retención OCR · `BCA_Seguros 19.0.1.14.3` · `BCA_seguros_ocr 19.0.1.1.1`
+
+### Qué se hizo
+Sesión de cierre de cobertura para el PR #20 tras revisión del jefe (2 bugs MEDIUM de
+vigencia en parsers + falta de CI + riesgos OCR). Tres hardenings aprobados + CI:
+
+**R1 — Pólizas sin recibo pendiente ya no revientan por fecha inválida.**
+- `parsers/base.py`: nuevos helpers `_linea_sin_recibo()` y `_poliza_sin_recibos_pendientes()`
+  (busca `estado == "pendiente"` sobre `bca.recibo`, mismos criterios que `_aplicar_lote`).
+- `parsers/metlife_lsp.py` y `parsers/metlife_gcaye.py`: short-circuit a `sin_recibo` **antes**
+  de `normalizar_fecha`. Antes, una fila con vigencia vacía/malformada en póliza ya pagada
+  estallaba con fecha inválida; ahora se marca `Sin recibo pendiente.` (misma semántica que
+  `_aplicar_lote` en `models/recibo.py`).
+- 6 tests nuevos en `tests/test_parsers.py` (19 → 24): fecha vacía e inválida en Vida y GMM.
+
+**R2 — CI en `.github/workflows/ci.yml`.**
+- Job `pre-commit`: scoped al diff del PR (no `--all-files`), fallback a árbol vacío
+  `4b825dc…`.
+- Job `odoo-tests`: container `odoo:19`, service `postgres:17`, upgrade con tests
+  `-i BCA_Seguros,BCA_seguros_ocr --test-enable --test-tags=/BCA_Seguros,/BCA_seguros_ocr`.
+
+**R3 — Retención y eliminación de documentos OCR.**
+- `BCA_seguros_ocr/data/cron_purga_ocr.xml`: `ir.cron` diario (noupdate, sin `numbercall`,
+  campo eliminado en Odoo 19).
+- `BCA_seguros_ocr/models/bca_ocr_documento.py`: `_cron_purga_documentos_antiguos()`
+  purga documentos > 30 días, excluye `procesando`.
+- `BCA_seguros_ocr/tests/test_purga_cron.py`: 5 tests (antiguo extraído/abandonado,
+  reciente, procesando, eliminación del adjunto PDF), con `@tagged("BCA_seguros_ocr")`.
+- Registrado en `__manifest__.py` y `tests/__init__.py`.
+
+**R3 adicional — Póliza duplicada desde OCR con mensaje amigable.**
+- `bca_ocr_documento.py::_crear_poliza_from_staging`: pre-check `bca.poliza` por
+  `name` + `aseguradora_id` antes de crear → `UserError("Ya existe la póliza %s para %s. …")`.
+  Complementa la constraint `UNIQUE(name, aseguradora_id)` (D-23/complemento) que antes
+  soltaba un `ConstraintError` crudo.
+- `BCA_seguros_ocr/tests/test_crear_poliza.py`: 2 tests.
+
+**Versión:** bump `BCA_Seguros 19.0.1.14.2 → 19.0.1.14.3`, `BCA_seguros_ocr 19.0.1.1.0 → 19.0.1.1.1`.
+
+### Tests
+- Suite completa en BD fresca `test_bca_ci` (2026-09-17): **283 tests, 0 faltas**
+  (221 `BCA_Seguros` + 62 `BCA_seguros_ocr`).
+- `pre-commit` verde (black/isort/eof/check-xml) sobre los archivos tocados.
+- Nota metodológica: con `-i` sobre BD ya instalada no se re-ejecutan tests; usar BD fresca.
+
+### Decisiones
+- D-24: Semántica `sin_recibo` == marca válida, decidida **antes** de validar vigencias.
+- D-25: Cron diario de purga OCR con retención de 30 días.
+- D-26: Pre-check de póliza duplicada en OCR → `UserError` amigable.
+
+### Pendientes
+- Gate de `validado` obligatorio en el flujo OCR se deja como ticket aparte (no se bloquea
+  la creación de pólizas borrador por diseño).
+- Pre-flight no verificable del lado local: confirmar GitHub Actions habilitado en el repo
+  privado y que el head del PR #20 sea `main` del fork.
+
+---
+
 ## Sesión 2026-09-09 — R-COB-11: Match de cobranza por póliza + vigencia · `19.0.1.14.0`
 
 ### Qué se hizo

@@ -204,7 +204,39 @@ class TestParserMetLifeVida(TransactionCase):
             )
 
     def test_metlife_vida_sin_recibo_pendiente(self) -> None:
-        for r in self.poliza.recibo_ids:
+        self._pagar_todos_los_recibos()
+        resultado = self.parser.procesar_fila(self.env, self._fila_valida(), 1)
+        self.assertEqual(resultado["marca"], "sin_recibo")
+        self.assertFalse(resultado["recibo_id"])
+
+    def test_metlife_vida_sin_recibo_con_fecha_vacia(self) -> None:
+        self._pagar_todos_los_recibos()
+        resultado = self.parser.procesar_fila(
+            self.env, self._fila_valida(vigencia_desde="", vigencia_hasta=""), 1
+        )
+        self.assertEqual(
+            resultado["marca"],
+            "sin_recibo",
+            "Póliza sin recibos pendientes no debe marcar error aunque la "
+            "vigencia venga vacía",
+        )
+        self.assertFalse(resultado["recibo_id"])
+
+    def test_metlife_vida_sin_recibo_con_fecha_invalida(self) -> None:
+        self._pagar_todos_los_recibos()
+        resultado = self.parser.procesar_fila(
+            self.env, self._fila_valida(vigencia_desde="2026-01-01"), 1
+        )
+        self.assertEqual(
+            resultado["marca"],
+            "sin_recibo",
+            "Póliza sin recibos pendientes no debe marcar error aunque la "
+            "vigencia venga en formato inválido",
+        )
+        self.assertFalse(resultado["recibo_id"])
+
+    def _pagar_todos_los_recibos(self) -> None:
+        for r in self.poliza.recibo_ids.filtered(lambda r: r.estado == "pendiente"):
             r.sudo().write(
                 {
                     "estado": "pagado",
@@ -213,9 +245,6 @@ class TestParserMetLifeVida(TransactionCase):
                     "factor_aplicado": 0.0,
                 }
             )
-        resultado = self.parser.procesar_fila(self.env, self._fila_valida(), 1)
-        self.assertEqual(resultado["marca"], "sin_recibo")
-        self.assertFalse(resultado["recibo_id"])
 
     def test_metlife_vida_conducto_no_match_continua(self) -> None:
         resultado = self.parser.procesar_fila(
@@ -376,6 +405,49 @@ class TestParserMetLifeGMM(TransactionCase):
         self.assertEqual(resultado["marca"], "aplicado")
         recibo = self.env["bca.recibo"].browse(resultado["recibo_id"])
         self.assertEqual(recibo.folio_endoso, "ENDOSO-XYZ")
+
+    def test_metlife_gmm_sin_recibo_pendiente(self) -> None:
+        self._pagar_todos_los_recibos()
+        resultado = self.parser.procesar_fila(self.env, self._fila_valida(), 1)
+        self.assertEqual(resultado["marca"], "sin_recibo")
+        self.assertFalse(resultado["recibo_id"])
+
+    def test_metlife_gmm_sin_recibo_con_fecha_vacia(self) -> None:
+        self._pagar_todos_los_recibos()
+        resultado = self.parser.procesar_fila(
+            self.env, self._fila_valida(vigencia_desde="", vigencia_hasta=""), 1
+        )
+        self.assertEqual(
+            resultado["marca"],
+            "sin_recibo",
+            "Póliza sin recibos pendientes no debe marcar error aunque la "
+            "vigencia venga vacía",
+        )
+        self.assertFalse(resultado["recibo_id"])
+
+    def test_metlife_gmm_sin_recibo_con_fecha_invalida(self) -> None:
+        self._pagar_todos_los_recibos()
+        resultado = self.parser.procesar_fila(
+            self.env, self._fila_valida(vigencia_desde="2026-01-01"), 1
+        )
+        self.assertEqual(
+            resultado["marca"],
+            "sin_recibo",
+            "Póliza sin recibos pendientes no debe marcar error aunque la "
+            "vigencia venga en formato inválido",
+        )
+        self.assertFalse(resultado["recibo_id"])
+
+    def _pagar_todos_los_recibos(self) -> None:
+        for r in self.poliza.recibo_ids.filtered(lambda r: r.estado == "pendiente"):
+            r.sudo().write(
+                {
+                    "estado": "pagado",
+                    "fecha_pago": date(2026, 1, 1),
+                    "pca_aplicada": 0.0,
+                    "factor_aplicado": 0.0,
+                }
+            )
 
     def test_metlife_gmm_estructura_requiere_folio_endoso(self) -> None:
         fieldnames = [c for c in self.parser.columnas_requeridas if c != "folio_endoso"]
