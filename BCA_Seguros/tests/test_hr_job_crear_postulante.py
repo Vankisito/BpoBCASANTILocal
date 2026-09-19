@@ -100,3 +100,18 @@ class TestCrearPostulanteDesdePuesto(TransactionCase):
         accion = self.env.ref('hr_recruitment.action_hr_job_new_application')
         self.assertIn(f'name="{accion.id}"', arch_form,
                       'El botón stat debe llamar a la acción nativa precargadora.')
+
+    def test_accion_entrevistador_sin_create_context(self) -> None:
+        """SL-2 v2 — action_hr_job_interviewer sin create=False en context.
+
+        El web client forwardea el context de la acción actual a las acciones
+        hijas (no filtra la clave 'create'): el create=False nativo llegaba al
+        dashboard de postulantes del puesto y al form del postulante,
+        ocultando el ODK "Nuevo" pese a la ACL de la Reclutadora. Al limpiarlo,
+        la creación de puestos sigue bloqueada por ACL
+        (access_hr_job_interviewer: perm_create=0).
+        """
+        action = self.env.ref('hr_recruitment.action_hr_job_interviewer')
+        self.assertNotIn('create', action.context,
+                         'create=False nativo se forwardea a acciones hijas y '
+                         'oculta el ODK "Nuevo" a la Reclutadora.')

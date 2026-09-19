@@ -70,4 +70,31 @@
         </field>
     </record>
 
+    <!-- ================================================================
+         SL-2 v2 — Capa 3: context nativo create=False sobre la acción del
+         entrevistador (19.0.1.16.1).
+
+         Root cause confirmada en el re-test de UI: la Reclutadora BCA seguía
+         sin ver el ODK "Nuevo" aunque las vistas (capa 1) y la ACL (capa 2)
+         ya la habilitaban.
+
+         Mecanismo: menú Reclutamiento > Applications > By Job Positions
+         (interviewer) usa action_hr_job_interviewer con
+         context={'create': False}. El web client pasa el contexto completo
+         de la acción actual a las acciones hijas (kanban
+         kanban_record.onGlobalClick → doActionButton con record.context;
+         action_service.js: el merge filtra default_*/search_default_*,
+         pero NO 'create'). Así create=False llega al dashboard de
+         postulantes del puesto (#291) y al form del postulante (#304),
+         ocultando el ODK "Nuevo" pese a la ACL.
+
+         Fix: limpiar el context de la acción nativa. La creación de PUESTOS
+         por el entrevistador sigue bloqueada por ACL nativa
+         (access_hr_job_interviewer: perm_create=0), por lo que no se
+         necesita guard de vista.
+         ================================================================ -->
+    <record id="hr_recruitment.action_hr_job_interviewer" model="ir.actions.act_window">
+        <field name="context">{}</field>
+    </record>
+
 </odoo>

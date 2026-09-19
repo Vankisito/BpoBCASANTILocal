@@ -4,6 +4,50 @@
 
 ---
 
+## Sesión 2026-09-19 — SI-2 capa 3: context create=False del entrevistador · `BCA_Seguros 19.0.1.16.1`
+
+### Qué se hizo
+Re-test de UI del fix SI-2 (19.0.1.15.0/16.0) confirmó que la Reclutadora BCA seguía
+sin ver el ODK **Nuevo** dentro del flujo "Puesto de trabajo". Causa raíz de **capa 3**
+(sin tocar las capas 1 y 2 ya corregidas):
+
+- El menú del entrevistador (`Recruitment > Applications > By Job Positions`) usa
+  `action_hr_job_interviewer` con `context={'create': False}` nativo.
+- El web client forwardea el context de la acción actual a las acciones hijas: al
+  hacer click en la tarjeta del puesto, `kanban_record.onGlobalClick` → `doActionButton`
+  con `record.context` (contexto completo de la acción) → merge en `action_service.js`
+  que filtra `default_*`/`search_default_*`/`group_by` pero **NO** `create`. Así
+  `create=False` llegaba al dashboard de postulantes del puesto (#291) y al form del
+  postulante (#304), ocultando el ODK "Nuevo" pese a que la ACL de Reclutadora permite
+  crear.
+
+Cambios:
+- `views/hr_job_views.xml`: override `<record id="hr_recruitment.action_hr_job_interviewer">`
+  con `context={}`. La creación de **puestos** sigue bloqueada por ACL nativa
+  (`access_hr_job_interviewer`: perm_create=0); no hace falta guard de vista.
+- `tests/test_hr_job_crear_postulante.py`: `test_accion_entrevistador_sin_create_context`
+  — regresión sobre el context de la acción (no debe contener la clave `create`).
+- `__manifest__.py`: bump `19.0.1.16.0 → 19.0.1.16.1`.
+
+### Tests
+- Regresión verificada en `bca_clean` tras upgrade (2026-09-19): `action_hr_job_interviewer.context == '{}'`
+  (sin clave `create`) y vistas BCA siguen exponiendo el alta a la Reclutadora.
+- Suite completa `/BCA_Seguros,/BCA_seguros_ocr` en `bca_clean` (2026-09-19): **290 tests, 0 failed, 0 error(s)**
+  (los `SerializationFailure` de `test_cobranza_match` son pruebas negativas de rutas de error concurrente).
+- Re-test de UI como reclutadora `REC`: puesto → Nuevo crea postulante con `job_id` precargado. **OK (validado por usuario).**
+
+### Decisiones
+- D-29: el guard de creación de puestos para entrevistadores queda en la ACL nativa,
+  no en el context de la acción (el context se forwardea a acciones hijas y rompía el
+  alta de postulantes).
+
+### Pendientes
+- Upgrade `BCA_Seguros` en `bca_clean` (`-u`) + reinicio `odoo_dev`.
+- Re-test UI (reclutadora `REC`, puesto → Nuevo crea postulante con job precargado).
+- Commit/push a `Vankisito/BpoBCASANTILocal`.
+
+---
+
 ## Sesión 2026-09-18 — Fix kanban por defecto hr.job · `BCA_Seguros 19.0.1.16.0`
 
 ### Qué se hizo
