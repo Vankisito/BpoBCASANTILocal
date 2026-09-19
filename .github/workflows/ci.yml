@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [desarrollo, main]
+  pull_request:
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lint (solo archivos del diff)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+            if git rev-parse HEAD^ >/dev/null 2>&1; then BASE="HEAD^"; fi
+          fi
+          FILES="$(git diff --name-only "$BASE" HEAD -- '*.py' '*.xml' || true)"
+          if [ -n "$FILES" ]; then
+            pre-commit run --files $FILES
+          else
+            echo "Sin archivos .py/.xml en el diff; nada que lintear."
+          fi
+
+  odoo-tests:
+    runs-on: ubuntu-latest
+    container: odoo:19
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar dependencias python declaradas
+        run: |
+          pip install --break-system-packages pypdf \
+            || pip install pypdf
+
+      - name: Instalar módulos y correr test suite completa
+        run: |
+          odoo \
+            --addons-path="$GITHUB_WORKSPACE" \
+            --db_host=postgres \
+            --db_port=5432 \
+            --db_user=odoo \
+            --db_password=odoo \
+            -d test_bca \
+            -i BCA_Seguros,BCA_seguros_ocr \
+            --test-enable \
+            --test-tags=/BCA_Seguros,/BCA_seguros_ocr \
+            --stop-after-init \
+            --log-level=test
