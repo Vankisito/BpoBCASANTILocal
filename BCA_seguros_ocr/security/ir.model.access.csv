@@ -3,9 +3,7 @@ acl_ocr_documento_operador,bca.ocr.documento operador,model_bca_ocr_documento,BC
 acl_ocr_documento_lider,bca.ocr.documento lider,model_bca_ocr_documento,BCA_Seguros.group_bca_lider,1,1,1,1
 acl_ocr_documento_dir_comercial,bca.ocr.documento dir_comercial,model_bca_ocr_documento,BCA_Seguros.group_bca_director_comercial,1,1,1,1
 acl_ocr_documento_director,bca.ocr.documento director,model_bca_ocr_documento,BCA_Seguros.group_bca_director,1,1,1,1
-acl_ocr_documento_agente,bca.ocr.documento agente,model_bca_ocr_documento,BCA_Seguros.group_bca_agente,1,0,0,0
 acl_ocr_wizard_operador,bca.ocr.wizard operador,model_bca_ocr_wizard,BCA_Seguros.group_bca_operador,1,1,1,1
 acl_ocr_wizard_lider,bca.ocr.wizard lider,model_bca_ocr_wizard,BCA_Seguros.group_bca_lider,1,1,1,1
 acl_ocr_wizard_dir_comercial,bca.ocr.wizard dir_comercial,model_bca_ocr_wizard,BCA_Seguros.group_bca_director_comercial,1,1,1,1
 acl_ocr_wizard_director,bca.ocr.wizard director,model_bca_ocr_wizard,BCA_Seguros.group_bca_director,1,1,1,1
-acl_ocr_wizard_agente,bca.ocr.wizard agente,model_bca_ocr_wizard,BCA_Seguros.group_bca_agente,1,0,0,0

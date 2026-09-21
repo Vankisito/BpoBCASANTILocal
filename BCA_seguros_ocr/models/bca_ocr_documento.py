@@ -13,10 +13,9 @@ from __future__ import annotations
 
 import base64
 import logging
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
-from dateutil.relativedelta import relativedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -276,6 +275,21 @@ class BcaOcrDocumento(models.Model):
             raise UserError(_("Falta el número de póliza."))
         if self.poliza_id:
             raise UserError(_("Ya se creó la póliza %s.") % self.poliza_id.display_name)
+        if not self.fecha_inicio or not self.fecha_fin:
+            raise UserError(
+                _(
+                    "No se pudo determinar la vigencia. Complete fecha de inicio "
+                    "y fecha de fin antes de crear la póliza."
+                )
+            )
+        if self.fecha_inicio >= self.fecha_fin:
+            raise UserError(
+                _("La fecha de inicio debe ser anterior a la fecha de fin.")
+            )
+        if not self.prima_monto or self.prima_monto <= 0:
+            raise UserError(
+                _("La prima debe ser mayor que cero antes de crear la póliza.")
+            )
 
         poliza = self._crear_poliza_from_staging()
         self.write(
@@ -498,16 +512,6 @@ class BcaOcrDocumento(models.Model):
         fecha_emision = self.fecha_emision
         fecha_inicio = self.fecha_inicio or fecha_emision
         fecha_fin = self.fecha_fin
-
-        # Auto-calculate fecha_fin if missing: +1 year from inicio
-        if fecha_inicio and not fecha_fin:
-            fecha_fin = fecha_inicio + relativedelta(years=1)
-
-        # Fallback: if no dates at all, use today + 1 year
-        if not fecha_inicio:
-            today = fields.Date.context_today(self)
-            fecha_inicio = today
-            fecha_fin = today + timedelta(days=365)
 
         # 9) Build vals
         vals: dict[str, Any] = {

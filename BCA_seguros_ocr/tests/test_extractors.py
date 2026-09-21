@@ -77,6 +77,7 @@ VIDA_GOLDEN = {
         "agente_clave": "74570",
         "periodicidad": "anual",
         "prima_anual": 26551.50,
+        "prima_total": 26551.50,
         "prima_forma_pago": 26551.50,
         "recargo_fijo": 900.0,
         "suma_asegurada": 100000.0,
@@ -235,6 +236,11 @@ class TestGmmExtractor(TransactionCase):
     def test_0001420597(self):
         self._extract_and_compare("0001420597", GMM_GOLDEN["0001420597"])
 
+    def test_0001420597_extrae_vigencia(self):
+        data = self.extractor.extract(_load_fixture("0001420597"))
+        self.assertEqual(data["fecha_inicio"], "2026-03-31")
+        self.assertEqual(data["fecha_fin"], "2027-03-31")
+
     def test_0000018128(self):
         self._extract_and_compare("0000018128", GMM_GOLDEN["0000018128"])
 
@@ -266,6 +272,11 @@ class TestVidaExtractor(TransactionCase):
 
     def test_8497462_tempolife(self):
         self._extract_and_compare("8497462", VIDA_GOLDEN["8497462"])
+
+    def test_8497462_extrae_vigencia(self):
+        data = self.extractor.extract(_load_fixture("8497462"))
+        self.assertEqual(data["fecha_inicio"], "2026-03-30")
+        self.assertEqual(data["fecha_fin"], "2036-03-30")
 
     def test_8495803_flexi(self):
         self._extract_and_compare("8495803", VIDA_GOLDEN["8495803"])
