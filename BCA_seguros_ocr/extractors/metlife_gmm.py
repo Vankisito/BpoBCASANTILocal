@@ -129,8 +129,7 @@ class MetlifeGmmExtractor(ExtractorBase):
 
         # --- Dates ---
         data["fecha_emision"] = self._extract_fecha_emision(texto)
-        data["fecha_inicio"] = None  # complex layout — set from emision
-        data["fecha_fin"] = None
+        data["fecha_inicio"], data["fecha_fin"] = self._extract_vigencia(texto)
 
         # --- Beneficiarios (GMM = asegurados adicionales) ---
         data["beneficiarios"] = self._extract_asegurados(texto)
@@ -161,6 +160,35 @@ class MetlifeGmmExtractor(ExtractorBase):
             return date(anio, mes, dia).isoformat()
         except ValueError:
             return None
+
+    @staticmethod
+    def _extract_vigencia(texto: str) -> tuple[str | None, str | None]:
+        """Extract GMM validity from OCR's compact ``AñoMesDía`` table."""
+        seccion = re.search(
+            r"Vigencia de la Póliza.*?ASEGURADOS DE LA POLIZA",
+            texto,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not seccion:
+            return None, None
+        match = re.search(
+            r"Desde\s+Hasta\s+(\d{1,2})\s+AñoMesDía\s+"
+            r"(\d{4})(\d{2})(\d{2})(\d{2})\s+(\d{4})",
+            seccion.group(0),
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not match:
+            return None, None
+        try:
+            fecha_fin = date(
+                int(match.group(2)), int(match.group(3)), int(match.group(4))
+            )
+            fecha_inicio = date(
+                int(match.group(6)), int(match.group(5)), int(match.group(1))
+            )
+        except ValueError:
+            return None, None
+        return fecha_inicio.isoformat(), fecha_fin.isoformat()
 
     @staticmethod
     def _extract_asegurados(texto: str) -> list[dict]:

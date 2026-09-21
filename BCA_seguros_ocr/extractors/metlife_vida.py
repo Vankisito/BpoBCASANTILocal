@@ -11,7 +11,7 @@ import contextlib
 import re
 from datetime import date
 
-from .base import MESES_ES, ExtractorBase, normalizar_monto
+from .base import MESES_ES, ExtractorBase, extraer_fechas, normalizar_monto
 
 # ---------------------------------------------------------------------------
 # Regex patterns — COPIAR TAL CUAL del plan validado
@@ -145,6 +145,7 @@ class MetlifeVidaExtractor(ExtractorBase):
         if not data["prima_anual"]:
             # Layout VV con fila simple en mayúsculas
             data["prima_anual"] = self._monto_desde(_PRIMA_ANUAL_VV, texto)
+        data["prima_total"] = data["prima_anual"]
 
         # --- Prima según forma de pago ---
         data["prima_forma_pago"] = self._monto_desde(_PRIMA_PAGO_RECARGO, texto)
@@ -166,11 +167,11 @@ class MetlifeVidaExtractor(ExtractorBase):
 
         # --- Fechas ---
         data["fecha_emision"] = self._extract_fecha_emision(texto)
-        data["fecha_inicio"] = None  # derived from emision in staging
-        data["fecha_fin"] = None
+        data["fecha_inicio"], data["fecha_fin"] = self._extract_vigencia(
+            texto, data["fecha_emision"]
+        )
 
         # --- GMM-only fields (empty for Vida) ---
-        data["prima_total"] = 0.0
         data["prima_neta"] = 0.0
         data["iva"] = 0.0
         data["recargo_frac"] = 0.0
@@ -263,6 +264,28 @@ class MetlifeVidaExtractor(ExtractorBase):
                 ).isoformat()
 
         return None
+
+    @staticmethod
+    def _extract_vigencia(
+        texto: str, fecha_emision: str | None
+    ) -> tuple[str | None, str | None]:
+        """Infer Vida validity from dates printed in the coverage table."""
+        fechas = extraer_fechas(texto)
+        if not fechas:
+            return None, None
+        emision = date.fromisoformat(fecha_emision) if fecha_emision else None
+        posteriores = [fecha for fecha in fechas if not emision or fecha > emision]
+        if not posteriores:
+            return None, None
+        fecha_fin = max(posteriores)
+        inicios = [
+            fecha
+            for fecha in fechas
+            if fecha < fecha_fin and (not emision or fecha.year == emision.year)
+        ]
+        if not inicios:
+            return None, None
+        return max(inicios).isoformat(), fecha_fin.isoformat()
 
     @staticmethod
     def _extract_beneficiarios(texto: str) -> list[dict]:

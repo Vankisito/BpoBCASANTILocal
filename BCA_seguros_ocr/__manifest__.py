@@ -1,6 +1,6 @@
 {
     "name": "BCA Seguros — OCR por Patrones de Carátulas MetLife",
-    "version": "19.0.1.1.1",
+    "version": "19.0.1.2.0",
     "category": "Insurance",
     "summary": "Extracción de carátulas PDF MetLife con regex (sin IA)",
     "description": """
@@ -22,6 +22,7 @@ vista previa editable → crear póliza en borrador.
     "data": [
         "security/ir.model.access.csv",
         "data/cron_purga_ocr.xml",
+        "security/record_rules.xml",
         "views/bca_ocr_documento_views.xml",
         "views/wizard_ocr_views.xml",
         "views/menu.xml",

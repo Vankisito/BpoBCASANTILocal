@@ -121,6 +121,27 @@ def normalizar_fecha_ocr(texto: str) -> date | None:
     return None
 
 
+def extraer_fechas(texto: str) -> list[date]:
+    """Extract slash- or space-separated dates from OCR text."""
+    fechas = []
+    for patron in (
+        r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})",
+        r"(\d{1,2})\s+(\d{1,2})\s+(\d{4})",
+    ):
+        for match in re.finditer(patron, texto):
+            try:
+                valor = date(
+                    int(match.group(3)),
+                    int(match.group(2)),
+                    int(match.group(1)),
+                )
+            except ValueError:
+                continue
+            if valor not in fechas:
+                fechas.append(valor)
+    return fechas
+
+
 # ---------------------------------------------------------------------------
 # Base extractor
 # ---------------------------------------------------------------------------

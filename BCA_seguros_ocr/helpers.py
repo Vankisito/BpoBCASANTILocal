@@ -190,9 +190,8 @@ def resolver_producto(env, nombre: str, ramo: str, aseguradora_id: int):
        product-name token (case-, accent- and typo-insensitive), e.g.
        carátula ``METALIFE UNIVERSALES`` → producto ``MetLife Universales``.
 
-    ``ramo`` is a *soft* filter: it narrows the candidate pool first, but if
-    no match is found the search retries without it. ``aseguradora_id`` stays
-    a hard filter. When several candidates tie on token overlap, the
+    ``ramo`` and ``aseguradora_id`` are hard filters. When several candidates
+    tie on token overlap, the
     shortest name (most specific) wins and a warning flags the ambiguity.
 
     Returns ``(product, warning_or_None)`` — never raises, the caller
@@ -245,7 +244,7 @@ def resolver_producto(env, nombre: str, ramo: str, aseguradora_id: int):
             % (nombre_limpio, canonico),
         )
 
-    candidatos, ramo_soft = _colectar_candidatos(
+    candidatos = _colectar_candidatos(
         Producto, dominio_base, ramo, nombre_limpio, aseguradora_id
     )
 
@@ -257,14 +256,6 @@ def resolver_producto(env, nombre: str, ramo: str, aseguradora_id: int):
 
     mejor, ambiguos = _elegir_mejor(candidatos, nombre_limpio)
     advertencias = []
-    if ramo_soft:
-        advertencias.append(
-            _(
-                'Producto "%s" no hallado en ramo %s; se usó "%s" sin filtrar '
-                "por ramo."
-            )
-            % (nombre, ramo, mejor.display_name)
-        )
     if ambiguos:
         otros = ", ".join(p.display_name for p in ambiguos)
         advertencias.append(
@@ -275,22 +266,9 @@ def resolver_producto(env, nombre: str, ramo: str, aseguradora_id: int):
 
 def _colectar_candidatos(
     Producto, dominio: list, ramo: str, nombre: str, aseguradora_id: int
-) -> tuple[list, bool]:
-    """Assemble candidate pool: ilike substring hits + fuzzy word matches.
-
-    Returns ``(candidates, ramo_soft)`` where ``ramo_soft`` signals the pool
-    only filled after dropping the ramo filter.
-    """
-    candidatos = _candidatos_pool(Producto, dominio, nombre)
-    if candidatos or not ramo:
-        return candidatos, False
-
-    dominio_sin_ramo = [
-        ("bca_es_producto_seguro", "=", True),
-        ("bca_aseguradora_id", "=", aseguradora_id),
-    ]
-    candidatos = _candidatos_pool(Producto, dominio_sin_ramo, nombre)
-    return candidatos, bool(candidatos)
+) -> list:
+    """Assemble candidates while preserving hard ramo filtering."""
+    return _candidatos_pool(Producto, dominio, nombre)
 
 
 def _candidatos_pool(Producto, dominio: list, nombre: str) -> list:

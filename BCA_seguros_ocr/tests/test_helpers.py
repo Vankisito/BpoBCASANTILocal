@@ -4,8 +4,8 @@ Validates `resolver_producto`:
 - canonical MetLife rules (ported from the Convertidor BCA) that run before
   fuzzy matching and encode the semantic equivalences BCA confirmed
   (e.g. ``METALIFE EDUCACION`` → ``Metlife Educalife``).
-- fuzzy word matching fallback: case/accent-insensitive word matching,
-  soft ramo fallback, and ambiguity warnings.
+ - fuzzy word matching fallback: case/accent-insensitive word matching,
+   hard ramo filtering, and ambiguity warnings.
 
 Fixtures mirror the real MetLife catalog present in the client DB.
 
@@ -283,7 +283,14 @@ class TestResolverProductoReglas(_ProductoFixtures):
 
 
 class TestResolverProductoFallback(_ProductoFixtures):
-    """Fuzzy matching, soft ramo, ambiguity, and failure paths."""
+    """Fuzzy matching, hard ramo, ambiguity, and failure paths."""
+
+    def test_no_cruza_productos_entre_ramos(self):
+        producto, warning = resolver_producto(
+            self.env, "PRIMORDIAL", "vida", self.aseguradora.id
+        )
+        self.assertIsNone(producto)
+        self.assertIsNotNone(warning)
 
     def test_case_insensitive_mix(self):
         producto, warning = resolver_producto(

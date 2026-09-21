@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_ocr_documento_operador" model="ir.rule">
+        <field name="name">bca.ocr.documento: acceso global operador</field>
+        <field name="model_id" ref="model_bca_ocr_documento"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_operador'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_ocr_documento_lider" model="ir.rule">
+        <field name="name">bca.ocr.documento: acceso global líder</field>
+        <field name="model_id" ref="model_bca_ocr_documento"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_lider'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_ocr_documento_dir_comercial" model="ir.rule">
+        <field name="name">bca.ocr.documento: acceso global director comercial</field>
+        <field name="model_id" ref="model_bca_ocr_documento"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director_comercial'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_ocr_documento_director" model="ir.rule">
+        <field name="name">bca.ocr.documento: acceso global director</field>
+        <field name="model_id" ref="model_bca_ocr_documento"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_director'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+</odoo>
