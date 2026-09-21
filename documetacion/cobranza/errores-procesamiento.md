@@ -42,3 +42,4 @@ Durante una corrida de cobranza pueden presentarse distintos tipos de resultado.
 ## Notas
 
 - Antes de reimportar, corrige las filas con error o resuelve la causa (alta de póliza, conducto, formato).
+- Desde `19.0.1.14.3` (D-24): una póliza **sin recibos pendientes** se marca **Sin recibo** aunque la fila traiga vigencia vacía o con formato inválido — la fecha ya no se valida en ese caso. Si ves "Sin recibo", revisa los recibos de la póliza, no el formato del archivo.

@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <list string="Bitácoras de Importación"
                   decoration-danger="errores_procesamiento &gt; 0"
-                  decoration-warning="polizas_no_encontradas &gt; 0"
+                  decoration-warning="polizas_no_encontradas &gt; 0 or recibos_sin_coincidencia &gt; 0"
                   default_order="fecha_ejecucion desc">
                 <field name="name"/>
                 <field name="fecha_ejecucion"/>
@@ -19,6 +19,7 @@
                 <field name="recibos_aplicados" sum="Total Aplicados"/>
                 <field name="anulaciones_ignoradas" optional="hide"/>
                 <field name="polizas_no_encontradas"/>
+                <field name="recibos_sin_coincidencia"/>
                 <field name="errores_procesamiento"/>
                 <field name="pca_total_sesion" widget="monetary"
                        sum="PCA Sesión"/>
@@ -57,6 +58,7 @@
                             <field name="recibos_aplicados" readonly="1"/>
                             <field name="anulaciones_ignoradas" readonly="1"/>
                             <field name="polizas_no_encontradas" readonly="1"/>
+                            <field name="recibos_sin_coincidencia" readonly="1"/>
                             <field name="errores_procesamiento" readonly="1"/>
                             <field name="currency_id" readonly="1"/>
                             <field name="pca_total_sesion" readonly="1"/>
@@ -67,7 +69,7 @@
                             <field name="linea_ids" readonly="1">
                                 <list decoration-success="marca == 'aplicado'"
                                       decoration-danger="marca == 'error'"
-                                      decoration-warning="marca in ('no_encontrada', 'sin_recibo', 'advertencia')"
+                                      decoration-warning="marca in ('no_encontrada', 'sin_recibo', 'sin_coincidencia', 'advertencia')"
                                       decoration-muted="marca == 'anulado'">
                                     <field name="numero_fila"/>
                                     <field name="numero_poliza_raw"/>

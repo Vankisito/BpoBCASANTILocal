@@ -336,3 +336,114 @@ Se retira `bca_tipo_candidato` (duplicaba el origen nativo `source_id`; `DROP CO
 - Ningún rol ve "SIC Reclutamiento" bajo Reportes tras actualizar el módulo.
 - Si algún día se quiere visible solo para un grupo, cambiar `active="False"` por `groups="..."` (decisión futura, no implementada).
 - Referencia cruzada: BUG-022 en `Specs/Bugs.md`.
+
+---
+
+## D-23 — Match de cobranza por póliza + vigencia (sin prima)
+
+**Fecha:** 2026-09-09
+**Decidido por:** Rafael Viera (usuario) · Resuelve duplicación de pagos
+
+**Contexto:** Al subir el archivo de cobranza dos veces (o cuando una misma póliza aparece dos veces en el archivo), el sistema aplicaba el pago al siguiente recibo pendiente (FIFO) sin verificar que la vigencia del CSV coincidiera con la del recibo. Resultado: se cobraba un periodo distinto al que la aseguradora reportaba.
+
+**Decisión:** Cada fila del CSV se aplica **solo si** encuentra un recibo pendiente que cumpla:
+- Número de póliza (`poliza_id.name`)
+- Vigencia desde (`fecha_desde` del recibo == `vigencia_desde` del CSV)
+- Vigencia hasta (`fecha_hasta` del recibo == `vigencia_hasta` del CSV)
+
+**Se elimina** el criterio de prima del plan original (R-COB-11). La prima no se usa como criterio de match porque los archivos reales incluyen impuestos y recargos que el plan de pagos del sistema no modela.
+
+Si la fila no cumple el match → se registra marca `sin_coincidencia` en la bitáconera con el motivo exacto y la lista de recibos pendientes reales de la póliza.
+
+**Razón:**
+- Evita duplicación de pagos al subir el mismo archivo dos veces.
+- Evita aplicación a periodos equivocados cuando la póliza tiene múltiples recibos pendientes.
+- La prima no es un criterio confiable porque `prima_total` del CSV incluye impuestos (16%) y recargos que no están en el plan de pagos.
+- FIFO se mantiene como regla de ordenamiento, pero el match por vigencia es el filtro principal.
+
+**Consecuencias:**
+- Nueva marca `sin_coincidencia` en `MARCA_LINEA_SELECTION` (`bitacora.py`).
+- Nuevo campo `recibos_sin_coincidencia` en `bca.bitacora.importacion`.
+- Nuevo método `_buscar_recibo_por_poliza_vigencia()` en `parsers/base.py`.
+- Ambos parsers (Vida y GMM) usan el nuevo método en lugar de `_primer_recibo_pendiente()`.
+- Versión del módulo: `19.0.1.14.0`.
+- Referencia cruzada: BUG-023 (prima_total_pagada) + R-COB-11 en specs.
+
+---
+
+## D-24 — `sin_recibo` es marca válida y se decide antes de validar vigencias
+
+**Fecha:** 2026-09-17
+**Decidido por:** Rafael Viera (usuario) · Revisión PR #20 (bug MEDIUM vigencia)
+
+**Contexto:** Una fila de cobranza de una póliza **sin recibos pendientes** (p. ej. ya pagada)
+con vigencia vacía o malformada explotaba en `UserError: fecha inválida`. El orden del parser
+normalizaba las fechas **antes** de verificar si existía recibo pendiente: cuando la póliza no
+tiene recibos, la vigencia del archivo es irrelevante y no debe validarse.
+
+**Decisión:** En `metlife_lsp.py` y `metlife_gcaye.py`, la marca `sin_recibo` se resuelve con
+short-circuit **antes** de `normalizar_fecha`, vía helpers `_linea_sin_recibo()` /
+`_poliza_sin_recibos_pendientes()` (criterios idénticos a `_aplicar_lote` en `recibo.py`:
+existe póliza cuya búsqueda de recibos con `estado == "pendiente"` no arroja resultado).
+`sin_recibo` queda como resultado normal de una corrida, no como error.
+
+**Razón:**
+- Replica exactamente la semántica de `_aplicar_lote`, que ya devolvía `sin_recibo` sin
+  excepción (recibo.py:479–481).
+- La bitácora ya contempla `sin_recibo` como marca válida (`MARCA_LINEA_SELECTION`).
+- Evita falsos "error de fecha" en pólizas pagadas, que inflaban el contador de errores.
+
+**Consecuencias:**
+- `test_parsers.py` 19 → 24 (6 casos nuevos: fecha vacía/inválida en Vida y GMM con póliza sin recibos).
+- Hueco conocido (no cubierto): línea `sin_recibo` por cabecera no se agrupa en el contador
+  `recibos_sin_coincidencia`; el dashboard solo muestra errores.
+- Versión del módulo: `BCA_Seguros 19.0.1.14.3`.
+
+---
+
+## D-25 — Retención de 30 días y purga diaria de documentos OCR
+
+**Fecha:** 2026-09-17
+**Decidido por:** Rafael Viera (usuario) · Revisión PR #20 (riesgo OCR: retención de datos)
+
+**Contexto:** Los PDFs de carátulas y sus adjuntos se acumulaban sin límite. Riesgo de
+crecimiento descontrolado de `ir.attachment` y de retener datos personales indefinidamente.
+
+**Decisión:** `ir.cron` **diario** (noupdate) ejecuta `_cron_purga_documentos_antiguos()`:
+elimina documentos OCR con más de 30 días de antigüedad y sus adjuntos, **excluye** el estado
+`procesando` (no cortar un proceso en curso). Sin campo `numbercall` (eliminado en Odoo 19).
+
+**Razón:**
+- 30 días cubren el ciclo de revisión manual sin almacenar datos personales de más.
+- Excluir `procesando` evita un estado a medio borrar (adjunto ya con `res_id`/`res_model`
+  apuntando).
+
+**Consecuencias:**
+- `BCA_seguros_ocr/data/cron_purga_ocr.xml` + `_cron_purga_documentos_antiguos()`.
+- 5 tests en `test_purga_cron.py` (purga anciano, preserva reciente/procesando, borra adjunto).
+- Versión del módulo: `BCA_seguros_ocr 19.0.1.1.1`.
+
+---
+
+## D-26 — Póliza duplicada en OCR → `UserError` amigable (pre-check)
+
+**Fecha:** 2026-09-17
+**Decidido por:** Rafael Viera (usuario) · Revisión PR #20 (riesgo OCR: duplicados)
+
+**Contexto:** La constraint `UNIQUE(name, aseguradora_id)` de `bca.poliza` ya bloqueaba el
+duplicado, pero el usuario recibía un `ConstraintError` crudo (traza interna), inaceptable en
+un flujo asistido.
+
+**Decisión:** `_crear_poliza_from_staging` hace **pre-check** después de resolver la
+aseguradora (`search` por `name` + `aseguradora_id`): si existe, `UserError` con mensaje
+legible ("Ya existe la póliza %s para %s. Revise el número en la carátula."). La constraint
+se mantiene como red de seguridad final.
+
+**Razón:**
+- Mensaje accionable para el operador (revisar carátula).
+- Sin TOCTOU crítico: el pre-check corre en la misma transacción que el `create`.
+
+**Consecuencias:**
+- Flujo OCR mantiene creación de pólizas **borrador** (gate `validado` obligatorio = ticket aparte).
+- 2 tests en `test_crear_poliza.py` (duplicado → `UserError`; no-duplicado → no reaparece el aviso).
+- Versión del módulo: `BCA_seguros_ocr 19.0.1.1.1`.

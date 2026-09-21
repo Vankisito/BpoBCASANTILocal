@@ -39,6 +39,20 @@ _CURP_REGEX = re.compile(
 class HrApplicant(models.Model):
     _inherit = 'hr.applicant'
 
+    # Responsable (SI-2 / D-27): nace como el CREADOR del candidato.
+    # El nativo es compute store que toma `job.user_id`; sin default, el
+    # postulante nacía sin responsable (o con uno ajeno) y la regla SI-1
+    # (hr.applicant: reclutadora ve solo user_id == uid) negaba el CREATE.
+    # El default entra en vals de create → el compute se omite → todo
+    # candidato nace con su creador como responsable (invarianza de la regla).
+    user_id = fields.Many2one(
+        'res.users', "Recruiter",
+        compute='_compute_user',
+        domain="[('share', '=', False), ('company_ids', 'in', company_id)]",
+        default=lambda self: self.env.user,
+        tracking=True, store=True, readonly=False,
+    )
+
     bca_promotoria_destino_id: int = fields.Many2one(
         'res.partner',
         string='Promotoría destino',

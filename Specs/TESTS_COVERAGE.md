@@ -1,21 +1,24 @@
 # Cobertura de Pruebas — Módulo BCA_Seguros
 
-> Estado de la suite automatizada al cierre de la **Etapa 11 — Pruebas** (`v19.0.1.6.1`).
-> Este documento es el artefacto de cierre de la etapa: inventaría la cobertura real,
-> reconoce los huecos aceptados y fija convenciones para no reintroducir fragilidad.
+> Estado vivo de la suite automatizada (inicia su inventario al cierre de la **Etapa 11**,
+> `v19.0.1.6.1`; se actualiza en cada sesión).
 >
-> **Última actualización:** 2026-07-03 (D-21, `v19.0.1.7.8`): suite total **164 tests, 0 failed**.
-> `test_hr_applicant.py` reescrito al flujo de conversión por 3 fases. Mantener sincronizado.
+> **Última actualización:** 2026-09-17 (sesión revisión PR #20, `BCA_Seguros 19.0.1.14.3` +
+> `BCA_seguros_ocr 19.0.1.1.1`): suite total **283 tests, 0 failed** (221 `BCA_Seguros` +
+> 62 `BCA_seguros_ocr`, contados por `def test_`). Se añade la sección OCR (§1.c). Mantener
+> sincronizado.
 
 ---
 
 ## 1. Resumen
 
-- **14 archivos de test**, **~127 métodos**, todos bajo el tag `BCA_Seguros`.
+- **20 archivos de test**, **221 métodos** bajo el tag `BCA_Seguros`; **62 métodos** bajo el
+  tag `BCA_seguros_ocr` (§1.c). **283 en total.**
 - **0** tests marcados `@skip` / `@expectedFailure`; **0** `TODO`/`FIXME` en la suite.
-- Comando de ejecución:
+- Comandos de ejecución (BD fresca; con `-i` sobre BD ya instalada no se re-ejecutan tests):
   ```bash
-  odoo -d <bd> -u BCA_Seguros --test-enable --test-tags BCA_Seguros --stop-after-init
+  odoo -d <bd> -i BCA_Seguros --test-enable --test-tags BCA_Seguros --stop-after-init
+  odoo -d <bd> -i BCA_Seguros,BCA_seguros_ocr --test-enable --test-tags BCA_Seguros,BCA_seguros_ocr --stop-after-init
   ```
 
 | Archivo | Tests | Cubre | Etapa |
@@ -23,17 +26,23 @@
 | `test_poliza.py` | 9 | `bca.poliza`: alta, confirmación, plan de recibos, cambio de agente, anualidad | 2 |
 | `test_poliza_vida.py` | 7 | Póliza ramo Vida: beneficiarios, conducto, asegurado, demográficos | 2 |
 | `test_poliza_gmm.py` | 6 | Póliza ramo GMM: sub-ramo, deducible, coaseguro, IVA, conducto | 2 |
-| `test_cobranza_fifo.py` | 10 | Wizard cobranza diaria: FIFO, errores no fatales, plantilla CSV | 8 |
+| `test_poliza_coberturas.py` | 6 | Coberturas ofrecidas (`bca.cobertura`), notas, coberturas junto a póliza | 13 |
+| `test_cobranza_fifo.py` | 12 | Wizard cobranza diaria: FIFO, errores no fatales, plantilla CSV | 8 |
+| `test_cobranza_match.py` | 11 | Match cobranza por póliza+vigencia (R-COB-11), doble subida, concurrencia de pago | 13 |
 | `test_pca_metlife.py` | 10 | `CalculadorPCAMetLife`: factores ramo/moneda, exclusiones, congelamiento | 7 |
 | `test_inmutabilidad.py` | 9 | `bca.recibo`: `pagado_hasta` computed, PCA bloqueada, bitácora inmutable | 2 |
-| `test_record_rules.py` | 6 | Acceso por rol: agente/operador/líder/DC/director | 4 |
-| `test_hr_applicant.py` | 5 | `hr.applicant` → alta de agente/promotoría, idempotencia | 3 |
+| `test_record_rules.py` | 8 | Acceso por rol: agente/operador/líder/DC/director (+ reclutamiento) | 4 |
+| `test_hr_applicant.py` | 34 | `hr.applicant` → alta de agente/promotoría, idempotencia, RFC/CURP, traspaso CH | 3 |
 | `test_crm_lead.py` | 5 | `crm.lead`: campos `bca_*`, generación de póliza, onchange | 3 |
-| `test_parsers.py` | 19 | `ParserRegistry`/`Base`, MetLife Vida/GMM, Qualitas (stub) | 6 |
-| `test_carga_portafolio.py` | 16 | Wizard carga portafolio (XLSX): validación, grabado, `estatus_pago` | 5 |
+| `test_parsers.py` | 24 | `ParserRegistry`/`Base`, MetLife Vida/GMM, Qualitas (stub), `sin_recibo` con fecha vacía/inválida (D-24) | 6 |
+| `test_carga_portafolio.py` | 32 | Wizard carga portafolio (XLSX): validación, grabado, `estatus_pago`, beneficiarios, coberturas | 5 |
 | `test_reportes.py` | 7 | Reportes SQL SIC 1–4 + foto inmutable | 9 |
-| `test_dashboard.py` | 5 | `bca.dashboard`: contrato §6, cuadre con `search_count`, no-escritura | 3.5 |
-| `test_views_xml.py` | 13 | Validación estática de vistas/acciones/menú/reportes | 10 |
+| `test_dashboard.py` | 7 | `bca.dashboard`: contrato §6, cuadre con `search_count`, no-escritura | 3.5 |
+| `test_views_xml.py` | 15 | Validación estática de vistas/acciones/menú/reportes | 10 |
+| `test_bca_sede.py` | 4 | `bca.sede`: CRUD, archivado, código único | 12 |
+| `test_display_name_red.py` | 3 | `display_name` reducido (agente/promotoría) vs formato nativo | 12 |
+| `test_independencia_fiscal.py` | 6 | Independencia fiscal: emisión/impresión, claves, no re-emisión | 12 |
+| `test_promotoria_governance.py` | 6 | Gobernanza de promotoría: director, cambio, validaciones | 12 |
 
 ---
 
@@ -54,6 +63,20 @@
 
 **Cruce crítico de seguridad PCA:** `test_agente_clave_arranque_no_computa_pca` debe verificar contra
 los reportes SQL de E9 que un agente en `clave_arranque` **no** aparece en la PCA (red de seguridad de D-14/F1).
+
+---
+
+## 1.c Cobertura — Módulo `BCA_seguros_ocr` (62 tests, tag `BCA_seguros_ocr`)
+
+> Módulo extensión OCR por patrones de carátulas MetLife (`19.0.1.1.1`). Verificado por
+> primera vez en suite completa durante la sesión 2026-09-17.
+
+| Archivo | Tests | Cubre |
+|---|---|---|
+| `test_helpers.py` | 33 | Normalización, mapeo vida/GMM, equivalente semántico, carátulas reales |
+| `test_extractors.py` | 22 | Marcadores vida/GMM, formato de montos, números de documento reales |
+| `test_purga_cron.py` | 5 | Cron diario purga >30 días (D-25): preserva reciente/`procesando`, borra adjunto |
+| `test_crear_poliza.py` | 2 | Póliza duplicada desde OCR → `UserError` amigable (D-26), no-duplicado limpio |
 
 ---
 

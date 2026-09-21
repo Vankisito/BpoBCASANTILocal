@@ -159,7 +159,13 @@ automatización ocurre sola al cruzar cada etapa clave.
 Es el flujo principal y el que recorre las 3 fases. *Rol que inicia:* **Reclutadora**.
 
 ### 7.1 Contacto y alta del candidato
-1. App **Reclutamiento** → puesto **Agentes** → botón **Nuevo**.
+> **Nota de rol (SI-2):** la Reclutadora BCA puede dar de alta postulantes por **dos caminos**:
+> (a) **Reclutamiento → Todas las postulaciones → Nuevo**, y (b) **Reclutamiento → Por puestos
+> de trabajo → Puesto → botón "Nuevo Postulante"** (o el menú *Nuevo → Application* del kanban
+> de puestos). Sus candidatos nacen con ella como responsable y solo ella los ve hasta que
+> se traspasa a Capital Humano. Trackers, color y edición del puesto quedan reservados a
+> Encargado.
+1. App **Reclutamiento** → puesto **Agentes** → **Nuevo Postulante** (o *Todas las postulaciones → Nuevo*).
 2. Captura el **nombre del candidato** y la **Promotoría destino** (obligatoria para agente).
 3. Elige la **Sede / Plaza**. Guarda. El candidato nace en la etapa **1. Recibido**.
 

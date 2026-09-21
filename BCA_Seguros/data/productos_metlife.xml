@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Productos MetLife — 11 Vida + 2 GMM = 13 productos.
+    <!-- Productos MetLife — 14 Vida + 3 GMM = 17 productos.
+
+         Incluye los 4 productos que el cliente dio de alta en la BD real y
+         que no estaban en el seed original (Grupo vida, FlexiLife,
+         Educacion, Metalife Mujer).
 
          Los 7 productos Vida con factor preexistente (Universales, TempoLife,
          TempoLife GP/RP, TotalLife, EducaLife, PerfectLife, Horizonte) están
@@ -155,10 +159,55 @@
             <field name="bca_es_capitalizable" eval="False"/>
         </record>
 
+        <!-- Productos dados de alta en la BD real del cliente (fuera del seed original).
+             La OCR los resuelve vía las reglas canónicas de BCA_seguros_ocr/helpers.py. -->
+
+        <record id="producto_metlife_flexilife" model="product.template">
+            <field name="name">Metlife FlexiLife</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="BCA_Seguros.product_cat_metlife_vida"/>
+            <field name="bca_es_producto_seguro" eval="True"/>
+            <field name="bca_aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+            <field name="bca_ramo">vida</field>
+            <field name="bca_temporalidad_anios">0</field>
+            <field name="bca_es_capitalizable" eval="False"/>
+        </record>
+
+        <record id="producto_metlife_educacion" model="product.template">
+            <field name="name">MetLife Educacion</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="BCA_Seguros.product_cat_metlife_vida"/>
+            <field name="bca_es_producto_seguro" eval="True"/>
+            <field name="bca_aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+            <field name="bca_ramo">vida</field>
+            <field name="bca_temporalidad_anios">0</field>
+            <field name="bca_es_capitalizable" eval="False"/>
+        </record>
+
+        <record id="producto_metlife_metalife_mujer" model="product.template">
+            <field name="name">MetLife Metalife Mujer</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="BCA_Seguros.product_cat_metlife_vida"/>
+            <field name="bca_es_producto_seguro" eval="True"/>
+            <field name="bca_aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+            <field name="bca_ramo">vida</field>
+            <field name="bca_temporalidad_anios">0</field>
+            <field name="bca_es_capitalizable" eval="False"/>
+        </record>
+
         <!-- ============================================================
-             GMM — 2 productos
+             GMM — 3 productos (Grupo vida se agregó de la BD real).
              Factor PCA se resuelve por coaseguro/deducible, no por producto.
              ============================================================ -->
+
+        <record id="producto_metlife_grupo_vida" model="product.template">
+            <field name="name">Grupo vida</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="BCA_Seguros.product_cat_metlife_gmm"/>
+            <field name="bca_es_producto_seguro" eval="True"/>
+            <field name="bca_aseguradora_id" ref="BCA_Seguros.partner_metlife"/>
+            <field name="bca_ramo">gmm</field>
+        </record>
 
         <record id="producto_metlife_gmm_medicalife" model="product.template">
             <field name="name">MetLife MedicaLife</field>
