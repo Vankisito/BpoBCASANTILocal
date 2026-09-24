@@ -23,10 +23,13 @@ _CONTRATANTE_LINE = r"Nombre del contratante\s*\n\s*([^\n]+)"
 # Asegurado
 _ASEGURADO = r"Nombre y domicilio del asegurado\s*\n([A-Z][A-Z ]+)"
 
-# Producto: ANTES o DESPUÉS de "POLIZA DE SEGURO" (incluye acentos/mayúsculas latinas)
+# Producto: ANTES o DESPUÉS de "POLIZA DE SEGURO" (incluye acentos/mayúsculas latinas).
+# La clase acepta dígitos/puntos/guiones porque nombres reales traen sufijos
+# (p. ej. "HORIZONTE PL 10"); sin dígitos el regex retrocedía a "VIDA INDIVIDUAL".
 _LETRAS_MAY = r"A-Z\xC0-\xD6\xD8-\xDE"
-_PRODUCTO_ANTES = rf"\n([{_LETRAS_MAY}][{_LETRAS_MAY} ]+?)\s+POLIZA DE SEGURO"
-_PRODUCTO_DESPUES = rf"POLIZA DE SEGURO\s+([{_LETRAS_MAY}][{_LETRAS_MAY} ]+)"
+_LETRAS_PRODUCTO = rf"{_LETRAS_MAY}0-9\.\-"
+_PRODUCTO_ANTES = rf"\n([{_LETRAS_PRODUCTO}][{_LETRAS_PRODUCTO} ]+?)\s+POLIZA DE SEGURO"
+_PRODUCTO_DESPUES = rf"POLIZA DE SEGURO\s+([{_LETRAS_PRODUCTO}][{_LETRAS_PRODUCTO} ]+)"
 
 # Agente
 _AGENTE = r"AGENTE[- ]?\d+\s*:\s*(\d+)"

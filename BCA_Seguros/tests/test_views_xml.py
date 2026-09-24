@@ -69,6 +69,30 @@ class TestViewsXml(TransactionCase):
     def test_herencia_hr_applicant(self) -> None:
         self._validate('BCA_Seguros.view_hr_applicant_form_bca')
 
+    def test_herencia_hr_job(self) -> None:
+        """SI-2 — kanban y form de puesto heredados parsean (menú + botón postulante)."""
+        self._validate('BCA_Seguros.view_hr_job_kanban_bca')
+        self._validate('BCA_Seguros.view_hr_job_form_bca')
+
+    def test_kanban_hr_job_por_defecto_es_reclutamiento(self) -> None:
+        """SI-2 — hr.job tiene dos kanban primarias y la resolución por defecto
+        debe caer en hr_recruitment.view_hr_job_kanban (menu "Nuevo → Application"),
+        no en hr.hr_job_view_kanban. Se fija priority 1 sobre la de reclutamiento."""
+        v_rec = self.env.ref('hr_recruitment.view_hr_job_kanban')
+        self.assertEqual(
+            v_rec.priority,
+            1,
+            'Kanban de reclutamiento debe tener priority 1 para ganar '
+            'en la resolución por defecto (order priority,id ASC)',
+        )
+        v_default = self.env['hr.job'].get_view(False, 'kanban')
+        self.assertEqual(
+            v_default['id'],
+            v_rec.id,
+            'La kanban por defecto de hr.job debe ser '
+            'hr_recruitment.view_hr_job_kanban, no la mínima de hr',
+        )
+
     def test_herencia_hr_employee(self) -> None:
         self._validate('BCA_Seguros.view_hr_employee_form_bca')
 

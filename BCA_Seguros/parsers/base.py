@@ -100,6 +100,22 @@ class ParserBase:
             "numero_poliza_raw": raw,
         }
 
+    def _linea_sin_recibo(self, raw: str) -> dict:
+        return {
+            "marca": "sin_recibo",
+            "recibo_id": False,
+            "mensaje": "Póliza sin recibos pendientes",
+            "numero_poliza_raw": raw,
+        }
+
+    def _poliza_sin_recibos_pendientes(self, env, poliza_id: int) -> bool:
+        return (
+            env["bca.recibo"].search_count(
+                [("poliza_id", "=", poliza_id), ("estado", "=", "pendiente")]
+            )
+            == 0
+        )
+
     def _buscar_poliza(self, env, raw: str):
         return env["bca.poliza"].search(
             [

@@ -377,6 +377,18 @@ class TestCobranzaConcurrencia(BaseCase):
                 }
             )
             poliza.action_confirmar()
+            # Usuario Director para ejercitar action_cancelar_pago (SUPERUSER
+            # no pasa el check de grupo: has_group no devuelve True por ser su).
+            director = env["res.users"].with_context(no_reset_password=True).create(
+                {
+                    "name": "Director %s" % tag,
+                    "login": "CONC-%s-DIR" % tag,
+                    "group_ids": [
+                        (4, env.ref("base.group_user").id),
+                        (4, env.ref("BCA_Seguros.group_bca_director").id),
+                    ],
+                }
+            )
             cr.commit()
             return {
                 "poliza_id": poliza.id,
@@ -390,6 +402,7 @@ class TestCobranzaConcurrencia(BaseCase):
                 "conducto_id": conducto.id,
                 "clave_agente": clave_agente,
                 "codigo_cond": codigo_cond,
+                "director_id": director.id,
             }
 
     def _fila_vida_con_fixture(self, fixtures: dict, **ov) -> dict:
@@ -510,6 +523,250 @@ class TestCobranzaConcurrencia(BaseCase):
             )
             self.assertEqual(len(pagados), 1, "solo 1 recibo pagado")
 
+    # -- concurrencia directa pago/cancelación (full-set lock) ---------------- #
+    def test_pago_recibo_posterior_vs_cancelacion_anterior(self) -> None:
+        """Escenario del review: REC-001 pagado, REC-002 pendiente.
+
+        Worker A paga REC-002; worker B cancela el pago de REC-001. Con el
+        lock full-set de la póliza ambas operaciones se serializan y el
+        resultado final NUNCA puede dejar REC-001 'pendiente' con REC-002
+        'pagado' (FIFO roto detectado por el reviewer).
+        """
+        fixtures = self._fixture_commiteada(ramo="vida", periodicidad="mensual")
+        try:
+            # Pago secuencial de REC-001 (deja la póliza: R1 pagado, R2 pendiente).
+            with self.registry.cursor() as cr:
+                env = api.Environment(cr, SUPERUSER_ID, {})
+                r1 = (
+                    env["bca.recibo"]
+                    .sudo()
+                    .search(
+                        [("poliza_id", "=", fixtures["poliza_id"])],
+                        order="numero_recibo",
+                    )[0]
+                )
+                r1.action_registrar_pago(
+                    {
+                        "fecha_pago": "2025-01-15",
+                        "prima_total_pagada": r1.prima_total or 1000.0,
+                    }
+                )
+                cr.commit()
+
+            def paga_recibo_dos() -> str:
+                try:
+                    gate.wait(timeout=30)
+                    with self.registry.cursor() as cr:
+                        env = api.Environment(cr, SUPERUSER_ID, {})
+                        r2 = (
+                            env["bca.recibo"]
+                            .sudo()
+                            .search(
+                                [("poliza_id", "=", fixtures["poliza_id"])],
+                                order="numero_recibo",
+                            )[1]
+                        )
+                        r2.action_registrar_pago(
+                            {
+                                "fecha_pago": "2025-01-15",
+                                "prima_total_pagada": r2.prima_total or 1000.0,
+                            }
+                        )
+                        cr.commit()
+                    return "PAGO_OK"
+                except SerializationFailure:
+                    # REPEATABLE READ: el SELECT FOR UPDATE sobre fila ya
+                    # commiteada por la otra tx → 40001 → reintento fresco.
+                    _logger.info("Concurrencia pago/cancel: retry por serialization")
+                    with self.registry.cursor() as cr:
+                        env = api.Environment(cr, SUPERUSER_ID, {})
+                        r2 = (
+                            env["bca.recibo"]
+                            .sudo()
+                            .search(
+                                [("poliza_id", "=", fixtures["poliza_id"])],
+                                order="numero_recibo",
+                            )[1]
+                        )
+                        r2.action_registrar_pago(
+                            {
+                                "fecha_pago": "2025-01-15",
+                                "prima_total_pagada": r2.prima_total or 1000.0,
+                            }
+                        )
+                        cr.commit()
+                    return "PAGO_OK"
+
+            def cancela_recibo_uno() -> str:
+                try:
+                    gate.wait(timeout=30)
+                    with self.registry.cursor() as cr:
+                        # Director (no sudo: `has_group` no pasa para SÚPERUSER
+                        # Síncrono — mismo patrón que el retry probado abajo).
+                        env = api.Environment(cr, fixtures["director_id"], {})
+                        r1 = (
+                            env["bca.recibo"]
+                            .search(
+                                [("poliza_id", "=", fixtures["poliza_id"])],
+                                order="numero_recibo",
+                            )[0]
+                        )
+                        r1.action_cancelar_pago()
+                        cr.commit()
+                    return "CANCEL_OK"
+                except SerializationFailure:
+                    _logger.info("Concurrencia pago/cancel: retry por serialization")
+                    with self.registry.cursor() as cr:
+                        env = api.Environment(cr, fixtures["director_id"], {})
+                        r1 = (
+                            env["bca.recibo"]
+                            .sudo()
+                            .search(
+                                [("poliza_id", "=", fixtures["poliza_id"])],
+                                order="numero_recibo",
+                            )[0]
+                        )
+                        r1.action_cancelar_pago()
+                        cr.commit()
+                    return "CANCEL_OK"
+
+            gate = threading.Event()
+            resultados: list = []
+            workers = [
+                threading.Thread(
+                    target=self._runner,
+                    args=(paga_recibo_dos, gate, resultados, "PAGO"),
+                ),
+                threading.Thread(
+                    target=self._runner,
+                    args=(cancela_recibo_uno, gate, resultados, "CANCEL"),
+                ),
+            ]
+            for w in workers:
+                w.start()
+            time.sleep(0.3)
+            gate.set()
+            for w in workers:
+                w.join(timeout=30)
+                self.assertFalse(w.is_alive(), "worker colgado (deadlock de lock)")
+
+            # Al menos una operación debe haber confirmado.
+            self.assertTrue(
+                "PAGO_OK" in resultados or "CANCEL_OK" in resultados,
+                "ninguna operación confirmó: %s" % resultados,
+            )
+            with self.registry.cursor() as cr:
+                env = api.Environment(cr, SUPERUSER_ID, {})
+                recs = (
+                    env["bca.recibo"]
+                    .sudo()
+                    .search(
+                        [("poliza_id", "=", fixtures["poliza_id"])],
+                        order="numero_recibo",
+                    )
+                )
+                r1, r2 = recs[0], recs[1]
+                # Invariante crítico: nunca REC-001 pendiente + REC-002 pagado.
+                self.assertFalse(
+                    r1.estado == "pendiente" and r2.estado == "pagado",
+                    "FIFO violado: REC-001 pendiente con REC-002 pagado",
+                )
+        finally:
+            self._limpiar_fixtures_commiteadas(fixtures)
+
+    def test_dos_pagos_directos_mismo_recibo_solo_uno_gana(self) -> None:
+        """2 tx directas pagando el MISMO recibo → exactamente 1 confirmado,
+        el perdedor ve el recibo ya pagado (ReciboPagadoConcurrenteError)."""
+        fixtures = self._fixture_commiteada(ramo="vida", periodicidad="mensual")
+        try:
+            def paga_nuevo_recibo() -> str:
+                try:
+                    gate.wait(timeout=30)
+                    with self.registry.cursor() as cr:
+                        env = api.Environment(cr, SUPERUSER_ID, {})
+                        r = (
+                            env["bca.recibo"]
+                            .sudo()
+                            .search(
+                                [("poliza_id", "=", fixtures["poliza_id"])],
+                                order="numero_recibo",
+                            )[0]
+                        )
+                        r.action_registrar_pago(
+                            {
+                                "fecha_pago": "2025-01-15",
+                                "prima_total_pagada": r.prima_total or 1000.0,
+                            }
+                        )
+                        cr.commit()
+                    return "PAGO_OK"
+                except SerializationFailure:
+                    _logger.info("Concurrencia doble pago: retry por serialization")
+                    with self.registry.cursor() as cr:
+                        env = api.Environment(cr, SUPERUSER_ID, {})
+                        r = (
+                            env["bca.recibo"]
+                            .sudo()
+                            .search(
+                                [("poliza_id", "=", fixtures["poliza_id"])],
+                                order="numero_recibo",
+                            )[0]
+                        )
+                        r.action_registrar_pago(
+                            {
+                                "fecha_pago": "2025-01-15",
+                                "prima_total_pagada": r.prima_total or 1000.0,
+                            }
+                        )
+                        cr.commit()
+                    return "PAGO_OK"
+
+            gate = threading.Event()
+            resultados: list = []
+            workers = [
+                threading.Thread(
+                    target=self._runner,
+                    args=(paga_nuevo_recibo, gate, resultados, "A"),
+                ),
+                threading.Thread(
+                    target=self._runner,
+                    args=(paga_nuevo_recibo, gate, resultados, "B"),
+                ),
+            ]
+            for w in workers:
+                w.start()
+            time.sleep(0.3)
+            gate.set()
+            for w in workers:
+                w.join(timeout=30)
+                self.assertFalse(w.is_alive(), "worker colgado (deadlock de lock)")
+
+            oks = [r for r in resultados if r == "PAGO_OK"]
+            self.assertEqual(len(oks), 1, "debe haber 1 solo PAGO_OK: %s" % resultados)
+            with self.registry.cursor() as cr:
+                env = api.Environment(cr, SUPERUSER_ID, {})
+                pagados = (
+                    env["bca.recibo"]
+                    .sudo()
+                    .search(
+                        [
+                            ("poliza_id", "=", fixtures["poliza_id"]),
+                            ("estado", "=", "pagado"),
+                        ]
+                    )
+                )
+                self.assertEqual(len(pagados), 1, "solo 1 recibo pagado")
+        finally:
+            self._limpiar_fixtures_commiteadas(fixtures)
+
+    def _runner(self, fn, gate, resultados: list, nombre: str) -> None:
+        """Ejecuta fn (que trae su propio cursor/commit) en un hilo worker."""
+        try:
+            resultados.append(fn())
+        except Exception as exc:  # noqa: BLE001 — registra fallos del worker
+            _logger.error("Concurrencia %s error: %r", nombre, exc, exc_info=True)
+            resultados.append("%s_ERROR:%s" % (nombre, exc))
+
     def _limpiar_fixtures_commiteadas(self, fixtures: dict) -> None:
         """Borra los fixtures propios (ya commiteados) para dejar la BD local
         sin residuos. Usa claves únicas del fixture, no constantes."""
@@ -522,6 +779,8 @@ class TestCobranzaConcurrencia(BaseCase):
                         ("nombre_archivo", "like", "concurrente_%"),
                     ]
                 ).unlink()
+                if fixtures.get("director_id"):
+                    env["res.users"].sudo().browse(fixtures["director_id"]).unlink()
                 env["bca.recibo"].sudo().search(
                     [
                         ("poliza_id", "=", fixtures["poliza_id"]),

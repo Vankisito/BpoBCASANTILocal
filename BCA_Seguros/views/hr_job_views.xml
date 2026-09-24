@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================
+         SI-2: Reclutadora BCA crea postulante desde puesto.
+
+         Capa 1 — Bug nativo hr_recruitment:
+         - El kanban de puestos reserva el menú de tarjeta ("menu") al grupo
+           Encargado (hr_recruitment.group_hr_recruitment_user); la Reclutadora
+           BCA (interviewer) no veía la entrada "Nuevo → Application".
+         - La acción nativa action_hr_job_interviewer trae context create=False.
+
+         Aquí se hereda el kanban para EXPONER el menú a la Reclutadora BCA y se
+         vuelven a acotar a Encargado los items que exigen ACL/escritura que la
+         Reclutadora no tiene (Trackers = hr.recruitment.source; el bloque de
+         color/editar/archivar = escritura sobre hr.job). El formulario del
+         puesto gana el botón stat "Nuevo Postulante" → acción nativa
+         hr_recruitment.action_hr_job_new_application (precarga default_job_id).
+         ================================================================ -->
+
+    <!-- Defecto nativo: hr.job tiene DOS kanban primarias — hr.hr_job_view_kanban
+         y hr_recruitment.view_hr_job_kanban — ambas con priority 16. La resolución
+         por defecto (order priority,id ASC) elige hr.hr_job_view_kanban (id menor),
+         que no tiene template menu. Se baja la priority de la de reclutamiento
+         para que sea la kanban por defecto y el menú "Nuevo → Application" llegue
+         al kanban mostrado. -->
+    <record id="hr_recruitment.view_hr_job_kanban" model="ir.ui.view">
+        <field name="priority" eval="1"/>
+    </record>
+
+    <record id="view_hr_job_kanban_bca" model="ir.ui.view">
+        <field name="name">hr.job.kanban.bca</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr_recruitment.view_hr_job_kanban"/>
+        <field name="arch" type="xml">
+            <!-- Expone el menú de tarjeta (Nuevo → Application) a la Reclutadora.
+                 Se conserva al Encargado (user) en la misma lista de grupos. -->
+            <xpath expr="//t[@t-name='menu']" position="attributes">
+                <attribute name="groups">hr_recruitment.group_hr_recruitment_user,BCA_Seguros.group_bca_reclutadora</attribute>
+            </xpath>
+            <!-- Trackers exige ACL de hr.recruitment.source (solo Encargado). -->
+            <xpath expr="//div[@name='menu_view_job_posts']" position="attributes">
+                <attribute name="groups">hr_recruitment.group_hr_recruitment_user</attribute>
+            </xpath>
+            <!-- Color / Configuración / Archivar exigen escritura sobre hr.job
+                 (ACL de creación/edición de puestos: solo Encargado). -->
+            <xpath expr="//div[hasclass('o_kanban_card_manage_settings')]" position="attributes">
+                <attribute name="groups">hr_recruitment.group_hr_recruitment_user</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_hr_job_form_bca" model="ir.ui.view">
+        <field name="name">hr.job.form.bca</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <!-- Botón stat en button_box: abre el formulario de postulante con
+                 default_job_id = puesto activo (acción nativa). -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="%(hr_recruitment.action_hr_job_new_application)d"
+                        type="action"
+                        class="oe_stat_button"
+                        icon="fa-user-plus"
+                        groups="hr_recruitment.group_hr_recruitment_user,BCA_Seguros.group_bca_reclutadora">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Nuevo Postulante</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         SL-2 v2 — Capa 3: context nativo create=False sobre la acción del
+         entrevistador (19.0.1.16.1).
+
+         Root cause confirmada en el re-test de UI: la Reclutadora BCA seguía
+         sin ver el ODK "Nuevo" aunque las vistas (capa 1) y la ACL (capa 2)
+         ya la habilitaban.
+
+         Mecanismo: menú Reclutamiento > Applications > By Job Positions
+         (interviewer) usa action_hr_job_interviewer con
+         context={'create': False}. El web client pasa el contexto completo
+         de la acción actual a las acciones hijas (kanban
+         kanban_record.onGlobalClick → doActionButton con record.context;
+         action_service.js: el merge filtra default_*/search_default_*,
+         pero NO 'create'). Así create=False llega al dashboard de
+         postulantes del puesto (#291) y al form del postulante (#304),
+         ocultando el ODK "Nuevo" pese a la ACL.
+
+         Fix: limpiar el context de la acción nativa. La creación de PUESTOS
+         por el entrevistador sigue bloqueada por ACL nativa
+         (access_hr_job_interviewer: perm_create=0), por lo que no se
+         necesita guard de vista.
+         ================================================================ -->
+    <record id="hr_recruitment.action_hr_job_interviewer" model="ir.actions.act_window">
+        <field name="context">{}</field>
+    </record>
+
+</odoo>

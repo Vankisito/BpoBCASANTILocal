@@ -117,7 +117,7 @@ VIDA_GOLDEN = {
     "8494374": {
         "poliza_numero": "8494374",
         "contratante_nombre": "MOISES PEREYRA MENESES",
-        "producto_pdf": "VIDA INDIVIDUAL",
+        "producto_pdf": "HORIZONTE PL 10",
         "agente_clave": "74511",
         "periodicidad": "mensual",
         "prima_anual": 42963.96,
