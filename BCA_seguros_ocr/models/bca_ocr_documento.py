@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import base64
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from odoo import _, api, fields, models
@@ -337,6 +337,20 @@ class BcaOcrDocumento(models.Model):
             "target": "current",
         }
 
+    def _cron_purga_documentos_antiguos(self) -> None:
+        """Elimina documentos OCR viejos (> 30 días) para no acumular PDFs.
+
+        Excluye los que están ``procesando`` — la extracción puede estar en
+        curso. El borrado en cascada limpia también el attachment del PDF
+        (``attachment=True`` en ``archivo_pdf``). Cron diario declarado en
+        ``data/cron_purga_ocr.xml``.
+        """
+        corte = fields.Datetime.now() - timedelta(days=30)
+        antiguos = self.search(
+            [("estado", "!=", "procesando"), ("create_date", "<", corte)]
+        )
+        antiguos.unlink()
+
     # ===================================================================
     # Extraction helpers
     # ===================================================================
@@ -436,6 +450,21 @@ class BcaOcrDocumento(models.Model):
                     'Debe existir un contacto con tipo "Aseguradora" y nombre '
                     'conteniendo "MetLife".'
                 )
+            )
+
+        # 1.5) Duplicado: R-POL-01 (UNIQUE(name, aseguradora_id)) ya protege;
+        # se anticipa con mensaje amigable en vez de un ConstraintError crudo.
+        duplicado = env["bca.poliza"].search(
+            [
+                ("name", "=", self.poliza_numero),
+                ("aseguradora_id", "=", aseguradora.id),
+            ],
+            limit=1,
+        )
+        if duplicado:
+            raise UserError(
+                _("Ya existe la póliza %s para %s. " "Revise el número en la carátula.")
+                % (duplicado.display_name, aseguradora.display_name)
             )
 
         # 2) Ramo from layout

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="cron_purga_documentos_ocr" model="ir.cron">
+            <field name="name">OCR: purgar documentos antiguos (&gt; 30 días)</field>
+            <field name="model_id" ref="model_bca_ocr_documento"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_purga_documentos_antiguos()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

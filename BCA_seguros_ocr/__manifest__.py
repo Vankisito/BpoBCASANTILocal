@@ -21,6 +21,7 @@ vista previa editable → crear póliza en borrador.
     "depends": ["BCA_Seguros", "mail"],
     "data": [
         "security/ir.model.access.csv",
+        "data/cron_purga_ocr.xml",
         "security/record_rules.xml",
         "views/bca_ocr_documento_views.xml",
         "views/wizard_ocr_views.xml",
