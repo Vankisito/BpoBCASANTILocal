@@ -4,7 +4,7 @@
 
 ---
 
-## Sesión 2026-09-24 — Referencias de pago MetLife: de res.partner a bca.poliza · `19.0.1.16.3`
+## Sesión 2026-09-24 — Referencias de pago MetLife: de res.partner a bca.poliza · `19.0.1.16.4`
 
 ### Qué se hizo
 Las referencias bancarias de cobro de MetLife (`bca_ref_prima_basica_trad`, `bca_ref_prima_medica`
@@ -32,11 +32,17 @@ portafolio, y los datos existentes se copiaron de los contratantes a sus póliza
 - `wizards/carga_portafolio.py`: `_construir_vals` escribe las referencias en el `vals` de la
   póliza (rama vida: TRAD + 6 fondos; rama GMM: prima médica). `_actualizar_poliza` las refresca en
   pólizas existentes. `_datos_contratante` ya no las incluye (solo demográficos/contacto).
-- `__manifest__.py`: Versión `19.0.1.16.3`.
+- `__manifest__.py`: Versión `19.0.1.16.4`.
 
 **Archivos creados:**
-- `migrations/19.0.1.16.3/post-migrate.py`: SQL backfill que copia `res_partner.bca_*` →
-  `bca_poliza.bca_*` por `contratante_id`. Ejecutado: **4716 pólizas** actualizadas.
+- `migrations/19.0.1.16.4/pre-migration.py`: SQL backfill que copia `res_partner.bca_*` →
+  `bca_poliza.bca_*` por `contratante_id`. **Debe ser pre-migración, no post-migrate**: en el
+  upgrade, el ORM elimina las columnas de campos removidos del modelo **antes** de que corran los
+  scripts post-migrate. Un post-migrate por tanto veía las columnas fuente de `res_partner` ya
+  borradas y el guard cortaba sin copiar nada. La pre-migración corre antes del drop del ORM, así
+  que la copia sí se ejecuta.
+- El `post-migrate.py` de `19.0.1.16.3` era defectuoso (ver incidencia abajo) y fue **eliminado**;
+  la carpeta `19.0.1.16.3` quedó sin scripts.
 
 **Archivos de tests modificados:**
 - `tests/test_poliza_vida.py`: `test_campos_contratante_persisten` ahora verifica referencias en la
@@ -45,17 +51,32 @@ portafolio, y los datos existentes se copiaron de los contratantes a sus póliza
 
 ### Tests
 - Upgrade del módulo en docker (`-u BCA_Seguros`): **116 módulos cargados, 0 errores**.
-- Migración `19.0.1.16.3`: referencias copiadas de contratantes a **4716 pólizas**.
+- Migración `19.0.1.16.4` probada en DB de test simulando estado pre-refactor (columnas fuente
+  recreadas en `res_partner` con datos en 2806 contratantes, columnas destino ausentes en
+  `bca_poliza`): la pre-migración creó las 8 columnas y copió **4716 pólizas** correctamente.
 - Contenedor reiniciado; servicio HTTP responde 200 con registry nuevo.
 - Suite completa del módulo en DB limpia (`--test-tags=/BCA_Seguros`): **228 tests, 0 fallos, 0 errores**.
   Incluye `test_poliza_vida.test_campos_contratante_persisten` y
   `test_poliza_gmm.test_ref_prima_medica_persiste` (las referencias se verifican ahora en la póliza).
+
+### Incidencia detectada y resuelta
+- **Bug migración `19.0.1.16.3`**: el `post-migrate.py` original tenía guard
+  `_has_column("res_partner", "bca_ref_prima_basica_trad")`. Al actualizar, Odoo elimina las
+  columnas de campos removidos del modelo antes de post-migrate → el guard cortaba y **nunca
+  copiaba**. En `bca_clean` los campos fuente siempre estuvieron vacíos (confirmado), así que no
+  hubo pérdida de datos, pero en un ambiente productivo con refs cargadas se perderían
+  silenciosamente.
+- **Fix**: se movió la copia a `migrations/19.0.1.16.4/pre-migration.py` (corre antes del drop
+  del ORM) y se bumpó la versión a `19.0.1.16.4`. El `post-migrate.py` defectuoso de 16.3 se
+  eliminó.
 
 ### Decisiones tomadas esta sesión
 - Las referencias MetLife son **dato de póliza**, no del contratante: un mismo contratante puede
   tener pólizas distintas (vida/gmm) con referencias distintas.
 - Se conservan como `Char` (desglose por concepto/fondo del layout), no se migran a
   `res.partner.bank` (ese modelo no modela concepto/fondo).
+- Las migraciones que mueven datos entre columnas de campos que se eliminan del modelo deben ir en
+  `pre-migration.py` (antes del sync del ORM), nunca en `post-migrate.py`.
 
 ### Pendientes para próxima sesión
 - Verificar visualmente la pestaña "Referencia de Pago" en una póliza vida y una GMM.
