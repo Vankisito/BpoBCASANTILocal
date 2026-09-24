@@ -130,15 +130,18 @@ class TestPolizaVida(TransactionCase):
         self.assertEqual(poliza.asegurado_id, self.contratante)
 
     def test_campos_contratante_persisten(self) -> None:
-        """Demográficos y referencias de pago en res.partner."""
+        """Demográficos en res.partner; referencias de pago en bca.poliza."""
         self.contratante.write({
             'bca_fecha_nacimiento': date(1985, 3, 20),
             'bca_estado_civil': 'casado',
             'bca_genero': 'masculino',
+        })
+        poliza = self._crear_poliza()
+        poliza.write({
             'bca_ref_prima_basica_trad': 'TRAD-001',
             'bca_fondo_variable_ppr': 'PPR-VAR-9',
         })
         self.assertEqual(self.contratante.bca_estado_civil, 'casado')
         self.assertEqual(self.contratante.bca_genero, 'masculino')
-        self.assertEqual(self.contratante.bca_ref_prima_basica_trad, 'TRAD-001')
-        self.assertEqual(self.contratante.bca_fondo_variable_ppr, 'PPR-VAR-9')
+        self.assertEqual(poliza.bca_ref_prima_basica_trad, 'TRAD-001')
+        self.assertEqual(poliza.bca_fondo_variable_ppr, 'PPR-VAR-9')

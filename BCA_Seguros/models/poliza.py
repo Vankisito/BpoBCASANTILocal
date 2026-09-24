@@ -208,6 +208,47 @@ class BcaPoliza(models.Model):
         currency_field='currency_id',
     )
 
+    # Referencias BANCARIAS de cobro que MetLife entrega en el layout de
+    # portafolio: son las referencias con las que el CONTRATANTE paga a MetLife
+    # cada concepto/fondo de su póliza (no importes, son cadenas de referencia).
+    # NO son inventadas: cada campo se alimenta 1:1 de una columna del layout
+    # (ver wizards/carga_portafolio.py). Se conservan como Char por decisión de
+    # negocio (mantener el desglose por concepto que trae la aseguradora).
+    # Viven en la póliza (conceptos/fondos son por-póliza), no en el contratante.
+    bca_ref_prima_basica_trad: str = fields.Char(
+        string='Referencia Prima Básica (TRAD)',
+        help="Layout MetLife Vida, columna 'Referencia Prima Básica (TRAD)'.",
+    )
+    bca_ref_prima_medica: str = fields.Char(
+        string='Referencia Prima (MÉDICA)',
+        help="Layout MetLife GMM, columna 'Referencia de cobro Prima (MEDICA)'.",
+    )
+    bca_fondo_variable: str = fields.Char(
+        string='Fondo Variable',
+        help="Layout MetLife Vida, columna 'Fondo Variable'.",
+    )
+    bca_fondo_fijo: str = fields.Char(
+        string='Fondo Fijo',
+        help="Layout MetLife Vida, columna 'Fondo Fijo'.",
+    )
+    bca_fondo_variable_ppr: str = fields.Char(
+        string='Fondo Variable PPR',
+        help="Layout MetLife Vida, 'Fondo Variable Plan Personal de Retiro (PPR)'.",
+    )
+    bca_fondo_fijo_ppr: str = fields.Char(
+        string='Fondo Fijo PPR',
+        help="Layout MetLife Vida, 'Fondo Fijo Plan Personal de Retiro (PPR)'.",
+    )
+    bca_fondo_variable_cpea: str = fields.Char(
+        string='Fondo Variable CPEA',
+        help="Layout MetLife Vida, 'Fondo Variable Cuenta Personal Especial de "
+             "Ahorro (CPEA)'.",
+    )
+    bca_fondo_fijo_cpea: str = fields.Char(
+        string='Fondo Fijo CPEA',
+        help="Layout MetLife Vida, 'Fondo Fijo Cuenta Especial de Ahorro (CPEA)'.",
+    )
+
     periodicidad: str = fields.Selection(
         PERIODICIDAD_SELECTION,
         string='Periodicidad',

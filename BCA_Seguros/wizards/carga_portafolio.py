@@ -804,6 +804,9 @@ class BcaWizardCargaPortafolio(models.TransientModel):
                     "iva": self._norm_monto(raw.get("IVA")),
                     "deducible": self._norm_monto(raw.get("Deducible")),
                     "coaseguro": self._norm_coaseguro(raw.get("Coaseguro")),
+                    "bca_ref_prima_medica": self._txt(
+                        raw.get("Referencia de cobro Prima (MEDICA)")
+                    ),
                 }
             )
             origen = self._buscar_poliza_origen(self._txt(raw.get("Póliza Original")))
@@ -811,6 +814,29 @@ class BcaWizardCargaPortafolio(models.TransientModel):
                 vals["poliza_origen_id"] = origen.id
         else:  # vida
             vals["tipo_cobertura"] = "estandar"
+            vals.update(
+                {
+                    "bca_ref_prima_basica_trad": self._txt(
+                        raw.get("Referencia Prima Básica (TRAD)")
+                    ),
+                    "bca_fondo_variable": self._txt(raw.get("Fondo Variable")),
+                    "bca_fondo_fijo": self._txt(raw.get("Fondo Fijo")),
+                    "bca_fondo_variable_ppr": self._txt(
+                        raw.get("Fondo Variable Plan Personal de Retiro (PPR)")
+                    ),
+                    "bca_fondo_fijo_ppr": self._txt(
+                        raw.get("Fondo Fijo Plan Personal de Retiro (PPR)")
+                    ),
+                    "bca_fondo_variable_cpea": self._txt(
+                        raw.get(
+                            "Fondo Variable Cuenta Personal Especial de Ahorro (CPEA)"
+                        )
+                    ),
+                    "bca_fondo_fijo_cpea": self._txt(
+                        raw.get("Fondo Fijo Cuenta Especial de Ahorro (CPEA)")
+                    ),
+                }
+            )
 
         # Contratante (datos completos) y asegurado.
         vals["_contratante_data"] = self._datos_contratante(raw, ramo)
@@ -878,6 +904,14 @@ class BcaWizardCargaPortafolio(models.TransientModel):
                 "coaseguro",
                 "nivel_hospitalario",
                 "coberturas_adicionales",
+                "bca_ref_prima_basica_trad",
+                "bca_ref_prima_medica",
+                "bca_fondo_variable",
+                "bca_fondo_fijo",
+                "bca_fondo_variable_ppr",
+                "bca_fondo_fijo_ppr",
+                "bca_fondo_variable_cpea",
+                "bca_fondo_fijo_cpea",
             )
             if k in vals
         }
@@ -1059,14 +1093,6 @@ class BcaWizardCargaPortafolio(models.TransientModel):
     # Construcción de datos auxiliares
     # ------------------------------------------------------------------ #
     def _datos_contratante(self, raw: dict, ramo: str) -> dict:
-        ref_field = (
-            "bca_ref_prima_medica" if ramo == "gmm" else "bca_ref_prima_basica_trad"
-        )
-        ref_col = (
-            "Referencia de cobro Prima (MEDICA)"
-            if ramo == "gmm"
-            else "Referencia Prima Básica (TRAD)"
-        )
         datos = {
             "name": self._txt(raw.get("Nombre del Contratante")),
             "vat": self._txt(raw.get("R.F.C. Contratante")),
@@ -1081,29 +1107,7 @@ class BcaWizardCargaPortafolio(models.TransientModel):
                 raw.get("Estado Civil"), ESTADO_CIVIL_MAP
             ),
             "bca_genero": self._map_simple(raw.get("Género"), GENERO_MAP),
-            ref_field: self._txt(raw.get(ref_col)),
         }
-        if ramo == "vida":
-            datos.update(
-                {
-                    "bca_fondo_variable": self._txt(raw.get("Fondo Variable")),
-                    "bca_fondo_fijo": self._txt(raw.get("Fondo Fijo")),
-                    "bca_fondo_variable_ppr": self._txt(
-                        raw.get("Fondo Variable Plan Personal de Retiro (PPR)")
-                    ),
-                    "bca_fondo_fijo_ppr": self._txt(
-                        raw.get("Fondo Fijo Plan Personal de Retiro (PPR)")
-                    ),
-                    "bca_fondo_variable_cpea": self._txt(
-                        raw.get(
-                            "Fondo Variable Cuenta Personal Especial de Ahorro (CPEA)"
-                        )
-                    ),
-                    "bca_fondo_fijo_cpea": self._txt(
-                        raw.get("Fondo Fijo Cuenta Especial de Ahorro (CPEA)")
-                    ),
-                }
-            )
         if not datos["name"]:
             raise UserError(_("Falta el nombre del contratante."))
         return {k: v for k, v in datos.items() if v}

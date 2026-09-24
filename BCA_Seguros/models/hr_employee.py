@@ -78,48 +78,6 @@ class HrEmployee(models.Model):
         readonly=True,
     )
 
-    # -- Referencias de pago (MetLife) -------------------------------------
-    bca_ref_prima_basica_trad: str = fields.Char(
-        string='Referencia Prima Básica (TRAD)',
-        related='work_contact_id.bca_ref_prima_basica_trad',
-        readonly=True,
-    )
-    bca_ref_prima_medica: str = fields.Char(
-        string='Referencia Prima (MÉDICA)',
-        related='work_contact_id.bca_ref_prima_medica',
-        readonly=True,
-    )
-    bca_fondo_variable: str = fields.Char(
-        string='Fondo Variable',
-        related='work_contact_id.bca_fondo_variable',
-        readonly=True,
-    )
-    bca_fondo_fijo: str = fields.Char(
-        string='Fondo Fijo',
-        related='work_contact_id.bca_fondo_fijo',
-        readonly=True,
-    )
-    bca_fondo_variable_ppr: str = fields.Char(
-        string='Fondo Variable PPR',
-        related='work_contact_id.bca_fondo_variable_ppr',
-        readonly=True,
-    )
-    bca_fondo_fijo_ppr: str = fields.Char(
-        string='Fondo Fijo PPR',
-        related='work_contact_id.bca_fondo_fijo_ppr',
-        readonly=True,
-    )
-    bca_fondo_variable_cpea: str = fields.Char(
-        string='Fondo Variable CPEA',
-        related='work_contact_id.bca_fondo_variable_cpea',
-        readonly=True,
-    )
-    bca_fondo_fijo_cpea: str = fields.Char(
-        string='Fondo Fijo CPEA',
-        related='work_contact_id.bca_fondo_fijo_cpea',
-        readonly=True,
-    )
-
     # -- Claves por Aseguradora --------------------------------------------
     # One2many no se espeja con `related` (Odoo lo rechaza). Se vuelca como
     # Many2many computed read-only; la edición sigue viviendo en el contacto.
