@@ -97,17 +97,7 @@
                             <field name="bca_estado_civil"/>
                             <field name="bca_genero"/>
                         </group>
-                        <group name="bca_referencias_pago" string="Referencias de Pago (MetLife)">
-                            <field name="bca_ref_prima_basica_trad"/>
-                            <field name="bca_ref_prima_medica"/>
-                            <field name="bca_fondo_variable"/>
-                            <field name="bca_fondo_fijo"/>
-                            <field name="bca_fondo_variable_ppr"/>
-                            <field name="bca_fondo_fijo_ppr"/>
-                            <field name="bca_fondo_variable_cpea"/>
-                            <field name="bca_fondo_fijo_cpea"/>
                         </group>
-                    </group>
                 </page>
             </xpath>
 
