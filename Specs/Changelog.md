@@ -4,6 +4,63 @@
 
 ---
 
+## Sesión 2026-09-24 — Referencias de pago MetLife: de res.partner a bca.poliza · `19.0.1.16.3`
+
+### Qué se hizo
+Las referencias bancarias de cobro de MetLife (`bca_ref_prima_basica_trad`, `bca_ref_prima_medica`
+y los 6 campos de fondos `bca_fondo_*`) **vivían en el contratante (`res.partner`)** dentro de la
+pestaña "BCA Seguros" del contacto, bajo el grupo "Referencias de Pago (MetLife)". Ese dato es
+**por-póliza** (cada concepto/fondo de cobro pertenece a una póliza concreta), por lo que se movió a
+la póliza: nueva pestaña **"Referencia de Pago"** en el formulario de `bca.poliza`.
+
+**Cambio clave:** el `res.partner` dejó de almacenar referencias de pago. Los 8 campos ahora son
+first-class en `bca.poliza`, se alimentan 1:1 de las columnas del layout MetLife en el wizard de
+portafolio, y los datos existentes se copiaron de los contratantes a sus pólizas vía migración.
+
+**Archivos modificados:**
+- `models/poliza.py`: Nuevos 8 campos Char (`bca_ref_prima_basica_trad`, `bca_ref_prima_medica`,
+  `bca_fondo_variable`, `bca_fondo_fijo`, `bca_fondo_variable_ppr`, `bca_fondo_fijo_ppr`,
+  `bca_fondo_variable_cpea`, `bca_fondo_fijo_cpea`) en `bca.poliza`.
+- `views/poliza_views.xml`: Nueva pestaña `referencia_pago` ("Referencia de Pago") en el form de
+  póliza con los 8 campos.
+- `models/res_partner.py`: Eliminados los 8 campos `bca_ref_*`/`bca_fondo_*` del contratante.
+- `views/res_partner_views.xml`: Eliminado el grupo "Referencias de Pago (MetLife)" de la pestaña
+  "BCA Seguros".
+- `models/hr_employee.py`: Eliminados los 8 `related` fields a las referencias.
+- `views/hr_employee_views.xml`: Eliminado el grupo "Referencias de Pago (MetLife)" del form de
+  empleado.
+- `wizards/carga_portafolio.py`: `_construir_vals` escribe las referencias en el `vals` de la
+  póliza (rama vida: TRAD + 6 fondos; rama GMM: prima médica). `_actualizar_poliza` las refresca en
+  pólizas existentes. `_datos_contratante` ya no las incluye (solo demográficos/contacto).
+- `__manifest__.py`: Versión `19.0.1.16.3`.
+
+**Archivos creados:**
+- `migrations/19.0.1.16.3/post-migrate.py`: SQL backfill que copia `res_partner.bca_*` →
+  `bca_poliza.bca_*` por `contratante_id`. Ejecutado: **4716 pólizas** actualizadas.
+
+**Archivos de tests modificados:**
+- `tests/test_poliza_vida.py`: `test_campos_contratante_persisten` ahora verifica referencias en la
+  póliza (demográficos siguen en el contratante).
+- `tests/test_poliza_gmm.py`: `test_ref_prima_medica_persiste` verifica la referencia en la póliza.
+
+### Tests
+- Upgrade del módulo en docker (`-u BCA_Seguros`): **116 módulos cargados, 0 errores**.
+- Migración `19.0.1.16.3`: referencias copiadas de contratantes a **4716 pólizas**.
+- Contenedor reiniciado; servicio HTTP responde 200 con registry nuevo.
+
+### Decisiones tomadas esta sesión
+- Las referencias MetLife son **dato de póliza**, no del contratante: un mismo contratante puede
+  tener pólizas distintas (vida/gmm) con referencias distintas.
+- Se conservan como `Char` (desglose por concepto/fondo del layout), no se migran a
+  `res.partner.bank` (ese modelo no modela concepto/fondo).
+
+### Pendientes para próxima sesión
+- Correr `tests/test_poliza_vida.py` y `tests/test_poliza_gmm.py` en entorno CI para confirmar
+  suite verde tras el refactor.
+- Verificar visualmente la pestaña "Referencia de Pago" en una póliza vida y una GMM.
+
+---
+
 ## Sesión 2026-09-19 — SI-2 capa 3: context create=False del entrevistador · `BCA_Seguros 19.0.1.16.1`
 
 ### Qué se hizo
