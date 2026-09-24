@@ -47,6 +47,9 @@ portafolio, y los datos existentes se copiaron de los contratantes a sus póliza
 - Upgrade del módulo en docker (`-u BCA_Seguros`): **116 módulos cargados, 0 errores**.
 - Migración `19.0.1.16.3`: referencias copiadas de contratantes a **4716 pólizas**.
 - Contenedor reiniciado; servicio HTTP responde 200 con registry nuevo.
+- Suite completa del módulo en DB limpia (`--test-tags=/BCA_Seguros`): **228 tests, 0 fallos, 0 errores**.
+  Incluye `test_poliza_vida.test_campos_contratante_persisten` y
+  `test_poliza_gmm.test_ref_prima_medica_persiste` (las referencias se verifican ahora en la póliza).
 
 ### Decisiones tomadas esta sesión
 - Las referencias MetLife son **dato de póliza**, no del contratante: un mismo contratante puede
@@ -55,8 +58,6 @@ portafolio, y los datos existentes se copiaron de los contratantes a sus póliza
   `res.partner.bank` (ese modelo no modela concepto/fondo).
 
 ### Pendientes para próxima sesión
-- Correr `tests/test_poliza_vida.py` y `tests/test_poliza_gmm.py` en entorno CI para confirmar
-  suite verde tras el refactor.
 - Verificar visualmente la pestaña "Referencia de Pago" en una póliza vida y una GMM.
 
 ---
