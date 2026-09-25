@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import base64
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from odoo import _, api, fields, models
