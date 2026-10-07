@@ -44,6 +44,7 @@
         "views/hr_applicant_views.xml",
         "views/hr_job_views.xml",
         "views/hr_employee_views.xml",
+        "views/res_users_views.xml",
         "views/bca_sede_views.xml",
         "views/reclutamiento_views.xml",
         "views/crm_lead_views.xml",

@@ -197,6 +197,12 @@ class ResPartner(models.Model):
         index=True,
         readonly=True,
     )
+    bca_promotor_user_ids: list[int] = fields.Many2many(
+        'res.users',
+        string='Usuarios promotores',
+        compute='_compute_bca_promotor_user_ids',
+        help='Usuarios asociados directamente o mediante contactos hijos de la promotoría.',
+    )
     bca_categoria_id: int = fields.Many2one(
         'res.partner.category',
         string='Categoría BCA',
@@ -266,6 +272,11 @@ class ResPartner(models.Model):
             rec.bca_promotoria_id = (
                 rec.parent_id if rec.bca_tipo == 'agente' else False
             )
+
+    @api.depends('user_ids', 'child_ids.user_ids')
+    def _compute_bca_promotor_user_ids(self) -> None:
+        for rec in self:
+            rec.bca_promotor_user_ids = rec.user_ids | rec.child_ids.mapped('user_ids')
 
     @api.depends('bca_polizas_como_contratante', 'bca_polizas_como_asegurado')
     def _compute_bca_roles_poliza(self) -> None:

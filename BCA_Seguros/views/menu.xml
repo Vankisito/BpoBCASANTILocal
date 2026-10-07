@@ -12,7 +12,7 @@
               name="BCA Seguros"
               web_icon="BCA_Seguros,static/description/icon.png"
               action="BCA_Seguros.action_dashboard"
-              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_promotor,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="50"/>
 
     <!-- ============================================================
@@ -33,7 +33,7 @@
     <menuitem id="menu_bca_polizas"
               name="Pólizas"
               parent="menu_bca_root"
-              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_promotor,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="10"/>
 
     <menuitem id="menu_bca_polizas_lista"
@@ -58,14 +58,14 @@
     <menuitem id="menu_bca_cobranza"
               name="Cobranza"
               parent="menu_bca_root"
-              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_promotor,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="20"/>
 
     <menuitem id="menu_bca_recibos"
               name="Recibos"
               parent="menu_bca_cobranza"
               action="BCA_Seguros.action_recibo"
-              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
+              groups="BCA_Seguros.group_bca_agente,BCA_Seguros.group_bca_promotor,BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
               sequence="10"/>
 
     <menuitem id="menu_bca_importar_cobranza"

@@ -247,6 +247,28 @@
         <field name="perm_unlink" eval="False"/>
     </record>
 
+    <record id="rule_partner_promotor" model="ir.rule">
+        <field name="name">res.partner: promotoría del usuario</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
+        <field name="domain_force">['|', ('user_ids', 'in', [user.id]), '|', ('id', '=', user.partner_id.parent_id.id), '|', ('bca_promotoria_id.user_ids', 'in', [user.id]), ('bca_promotoria_id.child_ids.user_ids', 'in', [user.id])]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_agente_aseg_promotor" model="ir.rule">
+        <field name="name">res.partner.agente.aseguradora: promotoría del usuario</field>
+        <field name="model_id" ref="model_res_partner_agente_aseguradora"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
+        <field name="domain_force">['|', ('agente_id.parent_id.user_ids', 'in', [user.id]), ('agente_id.parent_id', '=', user.partner_id.parent_id.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
     <!-- ================================================================
          ETAPA 4 — RECORD RULES DE NEGOCIO
          Pólizas, recibos, bitácora, cambio de agente y reportes SQL.
@@ -267,6 +289,17 @@
         <field name="model_id" ref="model_bca_poliza"/>
         <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
         <field name="domain_force">[('agente_id.user_ids', 'in', [user.id])]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_poliza_promotor" model="ir.rule">
+        <field name="name">bca.poliza: promotoría del usuario</field>
+        <field name="model_id" ref="model_bca_poliza"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
+        <field name="domain_force">['|', ('promotoria_id.user_ids', 'in', [user.id]), ('promotoria_id', '=', user.partner_id.parent_id.id)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
@@ -334,6 +367,17 @@
         <field name="perm_unlink" eval="False"/>
     </record>
 
+    <record id="rule_bca_beneficiario_promotor" model="ir.rule">
+        <field name="name">bca.poliza.beneficiario: promotoría del usuario</field>
+        <field name="model_id" ref="model_bca_poliza_beneficiario"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
+        <field name="domain_force">['|', ('poliza_id.promotoria_id.user_ids', 'in', [user.id]), ('poliza_id.promotoria_id', '=', user.partner_id.parent_id.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
     <record id="rule_bca_beneficiario_operador" model="ir.rule">
         <field name="name">bca.poliza.beneficiario: acceso global operador</field>
         <field name="model_id" ref="model_bca_poliza_beneficiario"/>
@@ -389,6 +433,17 @@
         <field name="model_id" ref="model_bca_recibo"/>
         <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_agente'))]"/>
         <field name="domain_force">[('poliza_id.agente_id.user_ids', 'in', [user.id])]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_bca_recibo_promotor" model="ir.rule">
+        <field name="name">bca.recibo: promotoría histórica del usuario</field>
+        <field name="model_id" ref="model_bca_recibo"/>
+        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
+        <field name="domain_force">['|', ('promotoria_id.user_ids', 'in', [user.id]), ('promotoria_id', '=', user.partner_id.parent_id.id)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
