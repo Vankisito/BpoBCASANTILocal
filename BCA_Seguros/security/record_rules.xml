@@ -251,7 +251,7 @@
         <field name="name">res.partner: promotoría del usuario</field>
         <field name="model_id" ref="base.model_res_partner"/>
         <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
-        <field name="domain_force">['|', ('user_ids', 'in', [user.id]), '|', ('id', '=', user.partner_id.parent_id.id), '|', ('bca_promotoria_id.user_ids', 'in', [user.id]), ('bca_promotoria_id.child_ids.user_ids', 'in', [user.id])]</field>
+        <field name="domain_force">['|', ('user_ids', 'in', [user.id]), '|', ('id', '=', user.partner_id.parent_id.id), '|', ('bca_promotoria_id.user_ids', 'in', [user.id]), '|', ('bca_promotoria_id.child_ids.user_ids', 'in', [user.id]), '|', ('bca_polizas_como_agente.promotoria_id.user_ids', 'in', [user.id]), ('bca_polizas_como_agente.promotoria_id', '=', user.partner_id.parent_id.id)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
@@ -299,7 +299,7 @@
         <field name="name">bca.poliza: promotoría del usuario</field>
         <field name="model_id" ref="model_bca_poliza"/>
         <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
-        <field name="domain_force">['|', ('promotoria_id.user_ids', 'in', [user.id]), ('promotoria_id', '=', user.partner_id.parent_id.id)]</field>
+        <field name="domain_force">['&amp;', ('promotoria_id', '!=', False), '|', ('promotoria_id.user_ids', 'in', [user.id]), ('promotoria_id', '=', user.partner_id.parent_id.id)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
@@ -443,7 +443,7 @@
         <field name="name">bca.recibo: promotoría histórica del usuario</field>
         <field name="model_id" ref="model_bca_recibo"/>
         <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
-        <field name="domain_force">['|', ('promotoria_id.user_ids', 'in', [user.id]), ('promotoria_id', '=', user.partner_id.parent_id.id)]</field>
+        <field name="domain_force">['&amp;', ('promotoria_id', '!=', False), '|', ('promotoria_id.user_ids', 'in', [user.id]), ('promotoria_id', '=', user.partner_id.parent_id.id)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>

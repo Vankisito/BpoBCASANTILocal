@@ -176,6 +176,11 @@ class ResPartner(models.Model):
         'asegurado_id',
         string='Pólizas como Asegurado',
     )
+    bca_polizas_como_agente: list[int] = fields.One2many(
+        'bca.poliza',
+        'agente_id',
+        string='Pólizas como Agente',
+    )
     bca_es_contratante: bool = fields.Boolean(
         string='Es Contratante',
         compute='_compute_bca_roles_poliza',

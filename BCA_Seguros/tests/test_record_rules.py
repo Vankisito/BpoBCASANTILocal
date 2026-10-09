@@ -19,6 +19,7 @@ class TestRecordRules(TransactionCase):
 
         group_internal = cls.env.ref('base.group_user')
         cls.group_agente = cls.env.ref('BCA_Seguros.group_bca_agente')
+        cls.group_promotor = cls.env.ref('BCA_Seguros.group_bca_promotor')
         cls.group_operador = cls.env.ref('BCA_Seguros.group_bca_operador')
         cls.group_lider = cls.env.ref('BCA_Seguros.group_bca_lider')
         cls.group_dc = cls.env.ref('BCA_Seguros.group_bca_director_comercial')
@@ -59,6 +60,13 @@ class TestRecordRules(TransactionCase):
             'parent_id': cls.promotoria_b.id,
             'user_ids': [(6, 0, [cls.user_agente_b.id])],
         })
+
+        cls.user_promotor = User.create({
+            'name': 'Promotor BCA Test',
+            'login': 'bca_test_promotor',
+            'group_ids': [(6, 0, [group_internal.id, cls.group_promotor.id])],
+        })
+        cls.user_promotor.partner_id.write({'parent_id': cls.promotoria_a.id})
 
         cls.user_operador = User.create({
             'name': 'Operador BCA Test',
@@ -162,6 +170,19 @@ class TestRecordRules(TransactionCase):
         visibles = Recibo.search([('poliza_id.name', 'like', 'POL-TEST-')])
         self.assertEqual(visibles, self.recibo_a)
         self.assertNotIn(self.recibo_b, visibles)
+
+    def test_promotor_ve_solo_sus_recibos(self) -> None:
+        """La cartera del Promotor usa la promotoria del recibo pagado."""
+        Recibo = self.env['bca.recibo'].with_user(self.user_promotor)
+        visibles = Recibo.search([('poliza_id.name', 'like', 'POL-TEST-')])
+        self.assertIn(self.recibo_a, visibles)
+        self.assertNotIn(self.recibo_b, visibles)
+
+    def test_promotor_no_lee_historial_de_agente(self) -> None:
+        """El Promotor consulta datos actuales, no historial operativo."""
+        Poliza = self.env['bca.poliza'].with_user(self.user_promotor)
+        self.assertNotIn('cambio_agente_ids', Poliza.fields_get())
+        self.assertNotIn('cambio_agente_count', Poliza.fields_get())
 
     def test_lider_ve_cross_promotoria(self) -> None:
         """Líder no debe heredar el filtro restrictivo del agente (A3)."""

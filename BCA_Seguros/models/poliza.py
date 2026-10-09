@@ -336,6 +336,12 @@ class BcaPoliza(models.Model):
         'bca.poliza.cambio.agente',
         'poliza_id',
         string='Historial de Cambios de Agente',
+        groups=(
+            'BCA_Seguros.group_bca_operador,'
+            'BCA_Seguros.group_bca_lider,'
+            'BCA_Seguros.group_bca_director_comercial,'
+            'BCA_Seguros.group_bca_director'
+        ),
     )
 
     recibo_count: int = fields.Integer(
@@ -345,6 +351,12 @@ class BcaPoliza(models.Model):
     cambio_agente_count: int = fields.Integer(
         string='# Cambios de Agente',
         compute='_compute_cambio_agente_count',
+        groups=(
+            'BCA_Seguros.group_bca_operador,'
+            'BCA_Seguros.group_bca_lider,'
+            'BCA_Seguros.group_bca_director_comercial,'
+            'BCA_Seguros.group_bca_director'
+        ),
     )
 
     # R-POL-01: número de póliza único por aseguradora.

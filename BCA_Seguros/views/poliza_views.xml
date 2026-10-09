@@ -78,6 +78,7 @@
                                 type="object"
                                 class="oe_stat_button"
                                 icon="fa-history"
+                                groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
                                 invisible="cambio_agente_count == 0">
                             <field name="cambio_agente_count" widget="statinfo"
                                    string="Cambios Agente"/>
@@ -253,6 +254,7 @@
                             </field>
                         </page>
                         <page name="historial_agentes" string="Historial de Agentes"
+                              groups="BCA_Seguros.group_bca_operador,BCA_Seguros.group_bca_lider,BCA_Seguros.group_bca_director_comercial,BCA_Seguros.group_bca_director"
                               invisible="cambio_agente_count == 0">
                             <field name="cambio_agente_ids" readonly="1">
                                 <list>
