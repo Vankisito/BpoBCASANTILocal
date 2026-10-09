@@ -184,6 +184,17 @@ class TestRecordRules(TransactionCase):
         self.assertIn(self.recibo_a, visibles)
         self.assertNotIn(self.recibo_b, visibles)
 
+    def test_promotor_ve_recibo_pendiente_de_poliza_vigente(self) -> None:
+        """Pendientes usan promotoría vigente porque aún no tienen snapshot."""
+        pendiente = self.recibo_b.copy({
+            'poliza_id': self.poliza_a.id,
+            'numero_recibo': 2,
+        })
+        visibles = self.env['bca.recibo'].with_user(self.user_promotor).search([
+            ('id', '=', pendiente.id),
+        ])
+        self.assertIn(pendiente, visibles)
+
     def test_promotor_no_lee_historial_de_agente(self) -> None:
         """El Promotor consulta datos actuales, no historial operativo."""
         Poliza = self.env['bca.poliza'].with_user(self.user_promotor)
@@ -204,6 +215,11 @@ class TestRecordRules(TransactionCase):
         self.assertEqual(poliza.cambio_agente_ids.promotoria_nueva_id,
                          self.promotoria_b)
 
+        pendiente = self.recibo_b.copy({
+            'poliza_id': poliza.id,
+            'numero_recibo': 2,
+        })
+
         visible_a = self.env['bca.poliza'].with_user(self.user_promotor).search([
             ('id', '=', poliza.id),
         ])
@@ -212,6 +228,15 @@ class TestRecordRules(TransactionCase):
         ])
         self.assertNotIn(poliza, visible_a)
         self.assertIn(poliza, visible_b)
+
+        recibo_visible_a = self.env['bca.recibo'].with_user(
+            self.user_promotor
+        ).search([('id', '=', pendiente.id)])
+        recibo_visible_b = self.env['bca.recibo'].with_user(
+            self.user_promotor_b
+        ).search([('id', '=', pendiente.id)])
+        self.assertNotIn(pendiente, recibo_visible_a)
+        self.assertIn(pendiente, recibo_visible_b)
 
     def test_promotor_poliza_view_omits_restricted_history_fields(self) -> None:
         """Promotor view must not send restricted fields to Owl."""
