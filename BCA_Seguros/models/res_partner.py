@@ -366,9 +366,9 @@ class ResPartner(models.Model):
             raise AccessError(
                 _('Solo Director Comercial o Director pueden cambiar la Promotoría.')
             )
-        if self.bca_tipo != 'agente' or not self.parent_id:
+        if self.bca_tipo != 'agente':
             raise ValidationError(
-                _('El Agente debe tener una Promotoría actual válida.')
+                _('El contacto seleccionado debe ser un Agente BCA.')
             )
         if nueva_promotoria.bca_tipo != 'promotoria':
             raise ValidationError(_('La nueva entidad debe ser una Promotoría BCA.'))
@@ -377,7 +377,7 @@ class ResPartner(models.Model):
             raise ValidationError(
                 _('La nueva Promotoría debe pertenecer a un Holding BCA.')
             )
-        if nueva_promotoria == self.parent_id:
+        if self.parent_id and nueva_promotoria == self.parent_id:
             raise ValidationError(
                 _('La nueva Promotoría debe ser diferente de la actual.')
             )

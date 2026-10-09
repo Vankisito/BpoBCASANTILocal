@@ -150,6 +150,38 @@ class TestCargaPortafolioValidacion(_PortafolioFixtures):
         wizard.action_validar()
         self.assertEqual(wizard.rechazadas, 1)
 
+    def test_validar_rechaza_agente_sin_promotoria(self) -> None:
+        """El portafolio no puede materializar pólizas sin red válida."""
+        agente = self.env['res.partner'].create({
+            'name': 'Agente Legado Sin Promotoría',
+            'bca_tipo': 'agente',
+            'parent_id': self.promotoria.id,
+        })
+        self.env.cr.execute(
+            'UPDATE res_partner SET parent_id = NULL WHERE id = %s',
+            [agente.id],
+        )
+        agente.invalidate_recordset()
+        self.env['res.partner.agente.aseguradora'].create({
+            'agente_id': agente.id,
+            'aseguradora_id': self.aseguradora.id,
+            'clave_agente': 'SINPROMO',
+            'estado': 'clave_definitiva',
+        })
+        wizard = self._wizard(_build_xlsx({
+            'VIDA': (HEADERS_VIDA, [self._fila_vida(
+                **{'Clave de Agente': 'SINPROMO'},
+            )]),
+        }))
+
+        wizard.action_validar()
+
+        self.assertEqual(wizard.rechazadas, 1)
+        self.assertIn(
+            'no tiene una Promotoría BCA válida',
+            wizard.reporte_html,
+        )
+
 
 @tagged('BCA_Seguros')
 class TestCargaPortafolioGrabado(_PortafolioFixtures):

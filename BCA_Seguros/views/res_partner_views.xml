@@ -26,7 +26,7 @@
                                    domain="[('bca_tipo', 'in', ['holding', 'promotoria'])]"
                                    options="{'no_create': True}"
                                    readonly="id and bca_tipo in ('promotoria', 'agente')"
-                                   required="bca_tipo in ('promotoria', 'agente')"
+                                   required="bca_tipo == 'promotoria'"
                                    invisible="bca_tipo not in ('promotoria', 'agente')"/>
                             <field name="bca_codigo_aseguradora"
                                    invisible="bca_tipo != 'aseguradora'"/>

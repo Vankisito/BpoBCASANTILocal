@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from odoo import _, fields, models
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class BcaWizardCambioPromotoria(models.TransientModel):
@@ -76,9 +76,8 @@ class BcaWizardCambioPromotoria(models.TransientModel):
             )
         if self.agente_id.bca_tipo != 'agente':
             raise ValidationError(_('El contacto seleccionado no es un Agente BCA.'))
-        if not self.agente_id.parent_id:
-            raise UserError(_('El Agente no tiene una Promotoría actual válida.'))
-        if self.promotoria_nueva_id == self.promotoria_actual_id:
+        if (self.agente_id.parent_id
+                and self.promotoria_nueva_id == self.promotoria_actual_id):
             raise ValidationError(_('La nueva Promotoría debe ser diferente de la actual.'))
         if self.promotoria_nueva_id.bca_tipo != 'promotoria':
             raise ValidationError(_('La nueva entidad debe ser una Promotoría BCA.'))

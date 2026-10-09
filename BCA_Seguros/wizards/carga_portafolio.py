@@ -922,7 +922,23 @@ class BcaWizardCargaPortafolio(models.TransientModel):
             raise UserError(
                 _('Clave de agente "%s" no registrada en la aseguradora.') % clave
             )
-        return registro.agente_id
+        agente = registro.agente_id
+        promotoria = agente.parent_id
+        if agente.bca_tipo != 'agente':
+            raise UserError(
+                _('La clave de agente "%s" está ligada a un contacto que no es '
+                  'Agente BCA.') % clave
+            )
+        if (not promotoria
+                or promotoria.bca_tipo != 'promotoria'
+                or not promotoria.parent_id
+                or promotoria.parent_id.bca_tipo != 'holding'):
+            raise UserError(
+                _('La clave de agente "%s" está ligada a "%s", pero el agente '
+                  'no tiene una Promotoría BCA válida. Asígnela antes de cargar '
+                  'el portafolio.') % (clave, agente.display_name)
+            )
+        return agente
 
     def _resolver_producto(self, nombre: str, ramo: str):
         if not nombre:

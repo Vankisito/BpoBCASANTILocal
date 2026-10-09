@@ -81,6 +81,37 @@ class TestPromotoriaGovernance(TransactionCase):
         self.assertEqual(cambio.promotoria_anterior_id, self.promotoria_a)
         self.assertEqual(cambio.promotoria_nueva_id, self.promotoria_b)
 
+    def test_wizard_assigns_first_promotoria_and_creates_audit(self) -> None:
+        """Los agentes legados se regularizan solo por flujo auditado."""
+        agente = self.env['res.partner'].create({
+            'name': 'Agente Legado',
+            'bca_tipo': 'agente',
+            'parent_id': self.promotoria_a.id,
+        })
+        self.env.cr.execute(
+            'UPDATE res_partner SET parent_id = NULL WHERE id = %s',
+            [agente.id],
+        )
+        agente.invalidate_recordset()
+        director = self.env.ref('base.user_admin')
+        director.group_ids = [
+            (4, self.env.ref('BCA_Seguros.group_bca_director').id),
+        ]
+        wizard = self.env['bca.wizard.cambio.promotoria'].with_user(director).create({
+            'agente_id': agente.id,
+            'promotoria_nueva_id': self.promotoria_b.id,
+            'motivo': 'Regularización de agente legado',
+        })
+
+        wizard.action_confirmar()
+
+        self.assertEqual(agente.parent_id, self.promotoria_b)
+        cambio = self.env['bca.agente.cambio.promotoria'].search([
+            ('agente_id', '=', agente.id),
+        ], order='id desc', limit=1)
+        self.assertFalse(cambio.promotoria_anterior_id)
+        self.assertEqual(cambio.promotoria_nueva_id, self.promotoria_b)
+
     def test_audit_model_cannot_be_written_directly(self) -> None:
         with self.assertRaises(AccessError):
             self.env['bca.agente.cambio.promotoria'].create({
