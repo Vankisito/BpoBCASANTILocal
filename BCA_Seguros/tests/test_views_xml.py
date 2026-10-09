@@ -128,6 +128,14 @@ class TestViewsXml(TransactionCase):
             '(Plan §2.4.2)',
         )
 
+    def test_promotor_no_ve_menu_empleados(self) -> None:
+        """Promotor uses insurance contacts, not HR's employee directory."""
+        menu = self.env.ref('hr.menu_hr_root')
+        group_internal = self.env.ref('base.group_user')
+        group_hr_user = self.env.ref('hr.group_hr_user')
+        self.assertNotIn(group_internal, menu.group_ids)
+        self.assertIn(group_hr_user, menu.group_ids)
+
     def test_actions_principales_existen(self) -> None:
         """Las actions referenciadas en menu.xml deben existir."""
         for xmlid in (

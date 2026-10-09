@@ -250,8 +250,35 @@
     <record id="rule_partner_promotor" model="ir.rule">
         <field name="name">res.partner: promotoría del usuario</field>
         <field name="model_id" ref="base.model_res_partner"/>
-        <field name="groups" eval="[(4, ref('BCA_Seguros.group_bca_promotor'))]"/>
-        <field name="domain_force">['|', ('user_ids', 'in', [user.id]), '|', ('id', '=', user.partner_id.parent_id.id), '|', ('bca_promotoria_id.user_ids', 'in', [user.id]), '|', ('bca_promotoria_id.child_ids.user_ids', 'in', [user.id]), '|', ('bca_polizas_como_agente.promotoria_id.user_ids', 'in', [user.id]), ('bca_polizas_como_agente.promotoria_id', '=', user.partner_id.parent_id.id)]</field>
+        <!-- Global rule is conditional because native company rule is global.
+             A group rule cannot narrow that rule; group rules only expand the
+             global ruleset. -->
+        <field name="groups" eval="[(5, 0, 0)]"/>
+        <field name="domain_force">[
+            '|', ('id', '!=', False), ('id', '=', False)
+        ] if not user.has_group('BCA_Seguros.group_bca_promotor') else [
+            '|', ('user_ids', 'in', [user.id]),
+            '|', ('id', '=', user.partner_id.parent_id.id),
+            '|', ('bca_promotoria_id.user_ids', 'in', [user.id]),
+            '|', ('bca_promotoria_id.child_ids.user_ids', 'in', [user.id]),
+            '|', ('bca_polizas_como_agente.promotoria_id.user_ids', 'in', [user.id]),
+            '|', ('bca_polizas_como_agente.promotoria_id', '=', user.partner_id.parent_id.id),
+            '|', ('user_ids', '!=', False),
+            ('id', '=', user.company_id.partner_id.id)
+        ]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <record id="rule_employee_public_promotor" model="ir.rule">
+        <field name="name">hr.employee.public: promotor sin directorio</field>
+        <field name="model_id" ref="hr.model_hr_employee_public"/>
+        <!-- The native public-employee ACL is intentionally kept. This global
+             conditional rule prevents only Promotor BCA from using the model
+             directly while preserving Odoo's directory for internal users. -->
+        <field name="domain_force">[(1, '=', 1)] if not user.has_group('BCA_Seguros.group_bca_promotor') else [('id', '=', -1)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>

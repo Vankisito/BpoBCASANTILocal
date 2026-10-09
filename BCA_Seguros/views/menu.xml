@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Promotor BCA is not an HR role. HR users retain native Employees
+         access because both HR groups imply base.group_user. -->
+    <record id="hr.menu_hr_root" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('hr.group_hr_user'), ref('hr.group_hr_manager')])]"/>
+    </record>
+
     <!-- ============================================================
          Menú raíz BCA Seguros
          Reglas (Plan §2.4.2):

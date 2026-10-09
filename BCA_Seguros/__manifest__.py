@@ -63,6 +63,7 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "BCA_Seguros/static/src/access_errors/**/*",
             "BCA_Seguros/static/src/dashboard/**/*",
             "BCA_Seguros/static/src/reclutamiento/**/*",
         ],
