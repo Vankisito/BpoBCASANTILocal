@@ -67,6 +67,12 @@ class TestRecordRules(TransactionCase):
             'group_ids': [(6, 0, [group_internal.id, cls.group_promotor.id])],
         })
         cls.user_promotor.partner_id.write({'parent_id': cls.promotoria_a.id})
+        cls.user_promotor_b = User.create({
+            'name': 'Promotor BCA Test B',
+            'login': 'bca_test_promotor_b',
+            'group_ids': [(6, 0, [group_internal.id, cls.group_promotor.id])],
+        })
+        cls.user_promotor_b.partner_id.write({'parent_id': cls.promotoria_b.id})
 
         cls.user_operador = User.create({
             'name': 'Operador BCA Test',
@@ -183,6 +189,39 @@ class TestRecordRules(TransactionCase):
         Poliza = self.env['bca.poliza'].with_user(self.user_promotor)
         self.assertNotIn('cambio_agente_ids', Poliza.fields_get())
         self.assertNotIn('cambio_agente_count', Poliza.fields_get())
+
+    def test_promotor_nueva_promotoria_ve_poliza_tras_cambio_agente(self) -> None:
+        """Cartera vigente sigue agente/promotoria tras una reasignación."""
+        poliza = self.poliza_a.copy({'name': 'POL-TEST-CHANGE-PROMOTORIA'})
+        self.assertEqual(poliza.promotoria_id, self.promotoria_a)
+
+        poliza.cambiar_agente(self.agente_b, 'Cambio de promotoría de prueba')
+
+        self.assertEqual(poliza.agente_id, self.agente_b)
+        self.assertEqual(poliza.promotoria_id, self.promotoria_b)
+        self.assertEqual(poliza.cambio_agente_ids.promotoria_anterior_id,
+                         self.promotoria_a)
+        self.assertEqual(poliza.cambio_agente_ids.promotoria_nueva_id,
+                         self.promotoria_b)
+
+        visible_a = self.env['bca.poliza'].with_user(self.user_promotor).search([
+            ('id', '=', poliza.id),
+        ])
+        visible_b = self.env['bca.poliza'].with_user(self.user_promotor_b).search([
+            ('id', '=', poliza.id),
+        ])
+        self.assertNotIn(poliza, visible_a)
+        self.assertIn(poliza, visible_b)
+
+    def test_promotor_poliza_view_omits_restricted_history_fields(self) -> None:
+        """Promotor view must not send restricted fields to Owl."""
+        Poliza = self.env['bca.poliza'].with_user(self.user_promotor)
+        view = Poliza.get_view(
+            view_id=self.env.ref('BCA_Seguros.view_poliza_form').id,
+            view_type='form',
+        )
+        self.assertNotIn('cambio_agente_count', view['arch'])
+        self.assertNotIn('cambio_agente_ids', view['arch'])
 
     def test_lider_ve_cross_promotoria(self) -> None:
         """Líder no debe heredar el filtro restrictivo del agente (A3)."""
