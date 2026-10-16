@@ -1,0 +1,38 @@
+# Configuración pre-commit siguiendo estándares OCA (pre-commit-hooks-odoo).
+# Ejecutar: pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-xml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: check-executables-have-shebangs
+
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        args: [--line-length=88]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        additional_dependencies: [isort]
+        args: [--profile=black, --line-length=88]
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        name: flake8
+        exclude: __manifest__\.py$
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-deprecated
+          - flake8-implicit-str-concat
+          - flake8-simplify
+        args: [--max-line-length=88]
