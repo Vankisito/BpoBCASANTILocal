@@ -257,6 +257,11 @@
         <field name="domain_force">[
             '|', ('id', '!=', False), ('id', '=', False)
         ] if not user.has_group('BCA_Seguros.group_bca_promotor') else [
+            '|', '|', '|', '|',
+            ('bca_polizas_como_contratante.promotoria_id.user_ids', 'in', [user.id]),
+            ('bca_polizas_como_contratante.promotoria_id', '=', user.partner_id.parent_id.id),
+            ('bca_polizas_como_asegurado.promotoria_id.user_ids', 'in', [user.id]),
+            ('bca_polizas_como_asegurado.promotoria_id', '=', user.partner_id.parent_id.id),
             '|', ('user_ids', 'in', [user.id]),
             '|', ('id', '=', user.partner_id.parent_id.id),
             '|', ('bca_promotoria_id.user_ids', 'in', [user.id]),

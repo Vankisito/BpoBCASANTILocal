@@ -58,6 +58,13 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 
 ## Bugs Resueltos
 
+Resuelto el **2026-10-16** (versión `19.0.1.16.3`):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-024 | Póliza (lista) → barra de búsqueda → Contratante / Asegurado | El rol **Promotor** no obtenía resultados al buscar pólizas por **contratante** ni por **asegurado**; otros roles (p. ej. Director) sí. | Seguridad/UI | 🟠 Alta | La rule **global** `rule_partner_promotor` (`security/record_rules.xml`) restringía `res.partner` del Promotor a un set que excluía a los contactos con rol de póliza (clientes sin usuario vinculado); el autocompletado `name_search` de `contratante_id`/`asegurado_id` aplica record rules → 0 resultados. Se amplió la rama promotor del dominio con cláusulas OR sobre `bca_polizas_como_contratante` / `bca_polizas_como_asegurado` cuya `promotoria_id` pertenece al usuario. La rama no-promotor (`[(1,'=',1)]`) queda intacta. | pendiente |
+| BUG-025 | Póliza (form) → chatter | El rol **Promotor** entra a una póliza con el chatter **inhabilitado**: no puede enviar correos ni escribir notas. | UI | 🟠 Alta | El ACL del Promotor sobre `bca.poliza` es solo lectura y `bca.poliza` no definía `_mail_post_access` (default `'write'`). En Odoo 19 el composer se habilita con `hasWriteAccess \|\| (hasReadAccess && canPostOnReadonly)`, y `canPostOnReadonly` es True solo si `_mail_post_access == 'read'`. Fix: `_mail_post_access = 'read'` en `BcaPoliza` (`models/poliza.py`); permite comentar/anotar sin otorgar escritura de negocio (verificado: `write` de campos sigue lanzando `AccessError`). | pendiente |
+
 Resuelto el **2026-08-24** (versión `19.0.1.11.1`):
 
 | ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |

@@ -53,6 +53,10 @@ class BcaPoliza(models.Model):
     _description = 'Póliza BCA'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'fecha_inicio desc, name desc'
+    # Comentar/anotar requiere solo lectura: sin esto, los roles de consulta
+    # (p. ej. Promotor) quedan con el chatter deshabilitado porque el default
+    # 'write' exige acceso de escritura sobre el registro.
+    _mail_post_access = 'read'
 
     name: str = fields.Char(
         string='Número de Póliza',
