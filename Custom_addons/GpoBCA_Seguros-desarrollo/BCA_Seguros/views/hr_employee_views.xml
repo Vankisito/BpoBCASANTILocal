@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_hr_employee_form_bca" model="ir.ui.view">
+        <field name="name">hr.employee.form.bca</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Pestaña "BCA Seguros" en Empleados: espejo read-only de la
+                 pestaña homónima del contacto (res_partner_views.xml). La
+                 fuente de verdad es el res.partner vinculado (work_contact_id);
+                 aquí solo se proyecta. La edición se hace en el contacto vía el
+                 botón "Editar en Contactos". -->
+            <xpath expr="//notebook" position="inside">
+                <page name="bca_seguros" string="BCA Seguros">
+                    <group>
+                        <group name="bca_contacto" string="Contacto Vinculado">
+                            <field name="work_contact_id" readonly="1"
+                                   options="{'no_create': True}"/>
+                            <button name="action_bca_open_contact"
+                                    type="object"
+                                    string="Editar en Contactos"
+                                    class="oe_highlight"
+                                    invisible="not work_contact_id"/>
+                        </group>
+                        <group name="bca_clasificacion" string="Clasificación">
+                            <field name="bca_tipo"/>
+                            <field name="bca_parent_id"/>
+                            <field name="bca_codigo_aseguradora"
+                                   invisible="bca_tipo != 'aseguradora'"/>
+                            <field name="bca_promotoria_id"
+                                   invisible="bca_tipo != 'agente'"/>
+                            <field name="bca_es_contratante"/>
+                            <field name="bca_es_asegurado"/>
+                        </group>
+                        <group name="bca_agente" string="Datos de Agente"
+                               invisible="bca_tipo != 'agente'">
+                            <field name="bca_estado_agente"/>
+                        </group>
+                    </group>
+                    <group name="bca_claves" string="Claves por Aseguradora"
+                           invisible="bca_tipo != 'agente'">
+                        <field name="bca_claves_aseguradora_ids" nolabel="1">
+                            <list>
+                                <field name="aseguradora_id"
+                                       options="{'no_create': True}"/>
+                                <field name="clave_agente"/>
+                                <field name="estado" widget="badge"
+                                       decoration-success="estado == 'clave_definitiva'"
+                                       decoration-info="estado == 'clave_arranque'"
+                                       decoration-muted="estado == 'prospecto'"/>
+                                <field name="fecha_licencia"/>
+                            </list>
+                        </field>
+                    </group>
+                    <!-- El empleado es siempre persona: demográficos visibles
+                         para todos, los campos se muestran vacíos si el
+                         contacto no los tiene. -->
+                    <group name="bca_demograficos_referencias">
+                        <group name="bca_demograficos" string="Datos Demográficos">
+                            <field name="bca_fecha_nacimiento"/>
+                            <field name="bca_estado_civil"/>
+                            <field name="bca_genero"/>
+                            <field name="bca_curp"/>
+                        </group>
+                        <group name="bca_referencias_pago" string="Referencias de Pago (MetLife)">
+                            <field name="bca_ref_prima_basica_trad"/>
+                            <field name="bca_ref_prima_medica"/>
+                            <field name="bca_fondo_variable"/>
+                            <field name="bca_fondo_fijo"/>
+                            <field name="bca_fondo_variable_ppr"/>
+                            <field name="bca_fondo_fijo_ppr"/>
+                            <field name="bca_fondo_variable_cpea"/>
+                            <field name="bca_fondo_fijo_cpea"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>
