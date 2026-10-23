@@ -232,6 +232,26 @@
                                 </field>
                             </group>
                         </page>
+                        <page name="referencias_pago" string="Referencias de Pago"
+                              invisible="aseguradora_id.bca_codigo_aseguradora != 'METLIFE'">
+                            <group>
+                                <group name="bca_ref_prima" string="Prima">
+                                    <field name="bca_ref_prima_basica_trad"
+                                           invisible="ramo != 'vida'"/>
+                                    <field name="bca_ref_prima_medica"
+                                           invisible="ramo != 'gmm'"/>
+                                </group>
+                                <group name="bca_ref_fondos" string="Fondos (Vida)"
+                                       invisible="ramo != 'vida'">
+                                    <field name="bca_fondo_variable"/>
+                                    <field name="bca_fondo_fijo"/>
+                                    <field name="bca_fondo_variable_ppr"/>
+                                    <field name="bca_fondo_fijo_ppr"/>
+                                    <field name="bca_fondo_variable_cpea"/>
+                                    <field name="bca_fondo_fijo_cpea"/>
+                                </group>
+                            </group>
+                        </page>
                         <page name="recibos" string="Recibos">
                             <field name="recibo_ids" readonly="1">
                                 <list>

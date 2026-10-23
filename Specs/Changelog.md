@@ -4,6 +4,28 @@
 
 ---
 
+## Sesión 2026-10-23 — Referencias de pago MetLife por póliza · `BCA_Seguros 19.0.1.16.4`
+
+### Qué se hizo
+Se trasladaron las 8 referencias de pago MetLife de `res.partner` a
+`bca.poliza`, porque son propias de cada póliza y no del contratante.
+
+Cambios:
+- `models/poliza.py`: 8 campos nuevos + `_migrar_referencias_pago_legacy()`.
+- `views/poliza_views.xml`: pestaña "Referencias de Pago" (solo MetLife; TRAD/fondos en Vida, médica en GMM).
+- `views/res_partner_views.xml`: se quitó el grupo de referencias.
+- `models/hr_employee.py` y `views/hr_employee_views.xml`: se quitaron las referencias del empleado.
+- `wizards/carga_portafolio.py`: la carga escribe refs en la póliza, no en el contratante.
+- `migrations/19.0.1.16.4/post-migrate.py`: copia refs legacy a pólizas existentes, solo campos vacíos y por ramo.
+- `models/res_partner.py`: campos legacy conservados ocultos una versión para rollback.
+- Tests: `test_referencias_pago.py` valida el traslado por ramo y que no sobrescribe valores existentes; `test_carga_portafolio.py` valida que la carga las guarda en la póliza.
+
+### Pendientes
+- Upgrade en sandbox con datos reales y validación de la migración.
+- Eliminar los campos legacy de `res.partner` en un release posterior.
+
+---
+
 ## Sesión 2026-09-19 — SI-2 capa 3: context create=False del entrevistador · `BCA_Seguros 19.0.1.16.1`
 
 ### Qué se hizo

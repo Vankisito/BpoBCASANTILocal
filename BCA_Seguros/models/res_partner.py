@@ -108,14 +108,11 @@ class ResPartner(models.Model):
         copy=False,
     )
 
-    # Referencias BANCARIAS de cobro que MetLife entrega en el layout de
-    # portafolio: son las referencias con las que el CONTRATANTE paga a MetLife
-    # cada concepto/fondo de su póliza (no importes, son cadenas de referencia).
-    # NO son inventadas: cada campo se alimenta 1:1 de una columna del layout
-    # (ver _datos_contratante en wizards/carga_portafolio.py). Se conservan como
-    # Char por decisión de negocio (mantener el desglose por concepto que trae la
-    # aseguradora); no se migran a res.partner.bank porque ese modelo no tiene
-    # concepto/fondo nativo y se perdería el detalle.
+    # LEGACY (19.0.1.16.4): las referencias de pago MetLife ahora viven en
+    # bca.poliza porque son propias de cada póliza, no del contacto. Estos
+    # campos se conservan ocultos una versión para migración/rollback; no se
+    # muestran en vistas ni se escriben desde la carga de portafolio. Se
+    # eliminarán cuando la migración esté validada en producción.
     bca_ref_prima_basica_trad: str = fields.Char(
         string='Referencia Prima Básica (TRAD)',
         help="Layout MetLife Vida, columna 'Referencia Prima Básica (TRAD)'.",

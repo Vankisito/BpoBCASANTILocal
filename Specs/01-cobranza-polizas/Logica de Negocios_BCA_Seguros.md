@@ -541,9 +541,9 @@ Esta sección almacena información que los agentes y usuarios del sistema neces
 
   - **Beneficiarios de la Póliza:** Nombres, relación con contratante, porcentaje de participación. Se actualiza cada vez que se modifica una póliza con beneficiarios.
   - **Coberturas de la Póliza:** Listado de coberturas activas, montos asegurados y números de póliza asociados. Permite al agente conocer rápidamente qué está cubierto.
-  - **Referencias de Pago de la Póliza:** Historial de conductos de pago registrados (tarjeta de crédito, CLABE, cargo automático, etc.), últimos 4 dígitos (si aplica), cuentas bancarias vinculadas. Facilita al agente processar pagos o redirigir al contratante al conducto correcto.
+  - **Referencias de Pago de la Póliza:** Referencias de cobro MetLife (prima básica TRAD, prima médica, fondos variable/fijo, PPR y CPEA). Viven en la póliza y son editables durante toda su vida. Facilitan al agente procesar pagos o redirigir al contratante al conducto correcto.
 
-**Nota de implementación:** Estos datos adicionales se almacenan como **copia en el registro del contratante** para acceso rápido, pero su fuente de verdad son las pólizas y los recibos. Cuando una póliza se cancela o se modifica, el sistema actualiza estos campos de forma automática (con trazabilidad según R-GLOB-04).
+**Nota de implementación:** La fuente de verdad de las referencias de pago es `bca.poliza` (pestaña "Referencias de Pago"). Hasta 19.0.1.16.3 vivían en el contacto; la migración 19.0.1.16.4 las copia a cada póliza del contratante según el ramo. Los campos legacy del contacto quedan ocultos una versión para rollback.
 
 ---
 

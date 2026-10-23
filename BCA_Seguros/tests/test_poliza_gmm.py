@@ -129,6 +129,6 @@ class TestPolizaGMM(TransactionCase):
             self.assertEqual(recibo.conducto_id, self.conducto)
 
     def test_ref_prima_medica_persiste(self) -> None:
-        """La referencia de prima médica del contratante persiste."""
-        self.contratante.bca_ref_prima_medica = 'MED-12345'
-        self.assertEqual(self.contratante.bca_ref_prima_medica, 'MED-12345')
+        """La referencia de prima médica vive en la póliza GMM."""
+        poliza = self._crear_poliza(bca_ref_prima_medica='MED-12345')
+        self.assertEqual(poliza.bca_ref_prima_medica, 'MED-12345')

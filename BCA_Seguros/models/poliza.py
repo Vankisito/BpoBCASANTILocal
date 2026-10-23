@@ -38,6 +38,23 @@ ESTATUS_PAGO_SELECTION = [
     ('vencido', 'Vencido'),
     ('suspendido', 'Suspendido'),
 ]
+# Referencias de pago MetLife por póliza. Vivieron en res.partner hasta
+# 19.0.1.16.4; los campos legacy del contacto se conservan ocultos solo para
+# migración/rollback (ver _migrar_referencias_pago_legacy).
+REFERENCIAS_PAGO_VIDA = (
+    'bca_ref_prima_basica_trad',
+    'bca_fondo_variable',
+    'bca_fondo_fijo',
+    'bca_fondo_variable_ppr',
+    'bca_fondo_fijo_ppr',
+    'bca_fondo_variable_cpea',
+    'bca_fondo_fijo_cpea',
+)
+REFERENCIAS_PAGO_GMM = ('bca_ref_prima_medica',)
+REFERENCIAS_PAGO_POR_RAMO = {
+    'vida': REFERENCIAS_PAGO_VIDA,
+    'gmm': REFERENCIAS_PAGO_GMM,
+}
 
 # meses por período — usado en _generar_plan_pagos
 MESES_POR_PERIODO = {
@@ -155,6 +172,42 @@ class BcaPoliza(models.Model):
         string='Conducto de Cobro',
         ondelete='restrict',
         domain="[('aseguradora_id', '=', aseguradora_id), ('activo', '=', True)]",
+    )
+    # Referencias de pago que MetLife entrega en el layout de portafolio.
+    # Son propias de cada póliza, no del contacto: un contratante puede tener
+    # varias pólizas y cada una con referencias de cobro distintas.
+    bca_ref_prima_basica_trad: str = fields.Char(
+        string='Referencia Prima Básica (TRAD)',
+        help="Layout MetLife Vida, columna 'Referencia Prima Básica (TRAD)'.",
+    )
+    bca_ref_prima_medica: str = fields.Char(
+        string='Referencia Prima (MÉDICA)',
+        help="Layout MetLife GMM, columna 'Referencia de cobro Prima (MEDICA)'.",
+    )
+    bca_fondo_variable: str = fields.Char(
+        string='Fondo Variable',
+        help="Layout MetLife Vida, columna 'Fondo Variable'.",
+    )
+    bca_fondo_fijo: str = fields.Char(
+        string='Fondo Fijo',
+        help="Layout MetLife Vida, columna 'Fondo Fijo'.",
+    )
+    bca_fondo_variable_ppr: str = fields.Char(
+        string='Fondo Variable PPR',
+        help="Layout MetLife Vida, 'Fondo Variable Plan Personal de Retiro (PPR)'.",
+    )
+    bca_fondo_fijo_ppr: str = fields.Char(
+        string='Fondo Fijo PPR',
+        help="Layout MetLife Vida, 'Fondo Fijo Plan Personal de Retiro (PPR)'.",
+    )
+    bca_fondo_variable_cpea: str = fields.Char(
+        string='Fondo Variable CPEA',
+        help="Layout MetLife Vida, 'Fondo Variable Cuenta Personal Especial de "
+             "Ahorro (CPEA)'.",
+    )
+    bca_fondo_fijo_cpea: str = fields.Char(
+        string='Fondo Fijo CPEA',
+        help="Layout MetLife Vida, 'Fondo Fijo Cuenta Especial de Ahorro (CPEA)'.",
     )
     # Salud de pago DERIVADA (no editable): se calcula desde la fecha de pago
     # efectiva (pagado_hasta, o pagado_hasta_inicial durante el arranque) vs hoy
@@ -368,6 +421,30 @@ class BcaPoliza(models.Model):
         'UNIQUE(name, aseguradora_id)',
         'El número de póliza debe ser único por aseguradora.',
     )
+
+    def _migrar_referencias_pago_legacy(self) -> int:
+        """Copia refs MetLife legacy del contratante a sus pólizas.
+
+        Solo se usa en la migración 19.0.1.16.4. Las referencias vivían en
+        ``res.partner``; ahora la fuente de verdad es ``bca.poliza``. Se copian
+        únicamente a campos vacíos y según el ramo:
+        Vida = TRAD + fondos, GMM = referencia médica. No borra los valores
+        legacy del partner (sirven para rollback hasta el release que los elimine).
+        """
+        actualizadas = 0
+        for poliza in self.search([('contratante_id', '!=', False)]):
+            campos = REFERENCIAS_PAGO_POR_RAMO.get(poliza.ramo, ())
+            if not campos:
+                continue
+            vals = {
+                campo: poliza.contratante_id[campo]
+                for campo in campos
+                if not poliza[campo] and poliza.contratante_id[campo]
+            }
+            if vals:
+                poliza.write(vals)
+                actualizadas += 1
+        return actualizadas
 
     @api.depends('producto_id')
     def _compute_ramo(self) -> None:
