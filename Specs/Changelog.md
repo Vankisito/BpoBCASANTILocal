@@ -20,9 +20,16 @@ Cambios:
 - `models/res_partner.py`: campos legacy conservados ocultos una versión para rollback.
 - Tests: `test_referencias_pago.py` valida el traslado por ramo y que no sobrescribe valores existentes; `test_carga_portafolio.py` valida que la carga las guarda en la póliza.
 
+### Decisiones
+- D-30: mantener versión `19.0.1.16.4` con migración a la póliza; los campos legacy en `res.partner` permanecerán ocultos una versión para rollback.
+
+### Tests
+- Suite completa `/BCA_Seguros` en `bca_clean` (2026-10-23): **249 tests, 0 failed, 0 error(s)**.
+- Tests nuevos: `test_referencias_pago.py` valida traslado por ramo y no sobrescritura; `test_carga_portafolio.py` valida guarda en poliza.
+
 ### Pendientes
-- Upgrade en sandbox con datos reales y validación de la migración.
-- Eliminar los campos legacy de `res.partner` en un release posterior.
+- Eliminar los campos legacy de `res.partner` en un release posterior (release 19.0.1.17.0 o posterior).
+- Refactorizar vistas de póliza para agrupar campos de prima y fondos bajo la pestaña "Referencias de Pago" condicionada a `aseguradora_id.bca_codigo_aseguradora == 'METLIFE'`.
 
 ---
 
