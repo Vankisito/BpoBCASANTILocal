@@ -4,6 +4,35 @@
 
 ---
 
+## Sesión 2026-10-28 — Fix visibilidad pestaña Referencias de Pago · `BCA_Seguros 19.0.1.16.5`
+
+### Qué se hizo
+La pestaña "Referencias de Pago" no aparecía en ninguna póliza MetLife.
+
+Causa raíz: `invisible="aseguradora_id.bca_codigo_aseguradora != 'METLIFE'"`
+no se resolvía en el cliente. El spec de un many2one solo carga `id` y
+`display_name`; el subcampo no viaja, la expresión evalúa
+`undefined != 'METLIFE'` como verdadero y la página queda oculta siempre.
+
+Cambios:
+- `models/poliza.py`: `bca_codigo_aseguradora` related almacenado e indexado
+  desde `aseguradora_id.bca_codigo_aseguradora`.
+- `views/poliza_views.xml`: campo oculto en el form y modificador del page
+  usando el campo related.
+- Tests: `test_views_xml.py` valida que el campo esté en el spec del form;
+  `test_referencias_pago.py` valida su persistencia.
+
+### Tests
+- `test_views_xml.py::test_poliza_referencias_pago_campo_en_vista`
+- `test_referencias_pago.py::test_codigo_aseguradora_se_almacena_en_poliza`
+
+### Pendientes
+- En `bca_clean` las referencias siguen vacías (0 pólizas, 0 legacy en
+  `res.partner`). Requiere recarga de portafolio con columnas de referencia o
+  migración desde una BD con datos.
+
+---
+
 ## Sesión 2026-10-23 — Referencias de pago MetLife por póliza · `BCA_Seguros 19.0.1.16.4`
 
 ### Qué se hizo

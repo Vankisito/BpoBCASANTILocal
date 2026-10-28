@@ -98,6 +98,7 @@
                             <field name="aseguradora_id"
                                    options="{'no_create': True}"
                                    readonly="estado != 'borrador'"/>
+                            <field name="bca_codigo_aseguradora" invisible="1"/>
                             <field name="ramo"
                                    readonly="estado != 'borrador'"/>
                             <field name="producto_id"
@@ -233,7 +234,7 @@
                             </group>
                         </page>
                         <page name="referencias_pago" string="Referencias de Pago"
-                              invisible="aseguradora_id.bca_codigo_aseguradora != 'METLIFE'">
+                              invisible="bca_codigo_aseguradora != 'METLIFE'">
                             <group>
                                 <group name="bca_ref_prima" string="Prima">
                                     <field name="bca_ref_prima_basica_trad"
