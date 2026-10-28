@@ -207,6 +207,56 @@ class TestCargaPortafolioGrabado(_PortafolioFixtures):
         self.assertAlmostEqual(gmm.coaseguro, 0.10, places=2)
         self.assertEqual(gmm.estado, 'activa')
 
+    def test_referencias_pago_se_guardan_en_poliza(self) -> None:
+        """La carga escribe las refs MetLife en la póliza, no en el contacto."""
+        headers_vida = HEADERS_VIDA + [
+            'Referencia Prima Básica (TRAD)',
+            'Fondo Variable',
+            'Fondo Fijo',
+            'Fondo Variable Plan Personal de Retiro (PPR)',
+            'Fondo Fijo Plan Personal de Retiro (PPR)',
+            'Fondo Variable Cuenta Personal Especial de Ahorro (CPEA)',
+            'Fondo Fijo Cuenta Especial de Ahorro (CPEA)',
+        ]
+        headers_gmm = HEADERS_GMM + ['Referencia de cobro Prima (MEDICA)']
+        fila_vida = self._fila_vida(**{
+            'Referencia Prima Básica (TRAD)': 'TRAD-PV-001',
+            'Fondo Variable': 'FV-PV-001',
+            'Fondo Fijo': 'FF-PV-001',
+            'Fondo Variable Plan Personal de Retiro (PPR)': 'FV-PPR-PV-001',
+            'Fondo Fijo Plan Personal de Retiro (PPR)': 'FF-PPR-PV-001',
+            'Fondo Variable Cuenta Personal Especial de Ahorro (CPEA)': (
+                'FV-CPEA-PV-001'
+            ),
+            'Fondo Fijo Cuenta Especial de Ahorro (CPEA)': 'FF-CPEA-PV-001',
+        })
+        fila_gmm = self._fila_gmm(**{
+            'Referencia de cobro Prima (MEDICA)': 'MED-PG-001',
+        })
+        self._grabar({
+            'VIDA': (headers_vida, [fila_vida]),
+            'GMM': (headers_gmm, [fila_gmm]),
+        })
+
+        vida = self.env['bca.poliza'].search([('name', '=', 'PV-001')])
+        gmm = self.env['bca.poliza'].search([('name', '=', 'PG-001')])
+        self.assertEqual(vida.bca_ref_prima_basica_trad, 'TRAD-PV-001')
+        self.assertEqual(vida.bca_fondo_variable, 'FV-PV-001')
+        self.assertEqual(vida.bca_fondo_fijo, 'FF-PV-001')
+        self.assertEqual(vida.bca_fondo_variable_ppr, 'FV-PPR-PV-001')
+        self.assertEqual(vida.bca_fondo_fijo_ppr, 'FF-PPR-PV-001')
+        self.assertEqual(vida.bca_fondo_variable_cpea, 'FV-CPEA-PV-001')
+        self.assertEqual(vida.bca_fondo_fijo_cpea, 'FF-CPEA-PV-001')
+        self.assertFalse(vida.bca_ref_prima_medica)
+
+        self.assertEqual(gmm.bca_ref_prima_medica, 'MED-PG-001')
+        self.assertFalse(gmm.bca_ref_prima_basica_trad)
+        self.assertFalse(gmm.bca_fondo_variable)
+
+        # El partner conserva los campos legacy vacíos: la fuente es la póliza.
+        self.assertFalse(vida.contratante_id.bca_ref_prima_basica_trad)
+        self.assertFalse(gmm.contratante_id.bca_ref_prima_medica)
+
     def test_pagado_hasta_genera_solo_recibos_posteriores(self) -> None:
         fila = self._fila_vida(**{'Pagado Hasta': '30/06/2025'})
         self._grabar({'VIDA': (HEADERS_VIDA, [fila])})

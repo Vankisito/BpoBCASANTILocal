@@ -98,6 +98,7 @@
                             <field name="aseguradora_id"
                                    options="{'no_create': True}"
                                    readonly="estado != 'borrador'"/>
+                            <field name="bca_codigo_aseguradora" invisible="1"/>
                             <field name="ramo"
                                    readonly="estado != 'borrador'"/>
                             <field name="producto_id"
@@ -230,6 +231,26 @@
                                         <field name="fecha_nacimiento"/>
                                     </list>
                                 </field>
+                            </group>
+                        </page>
+                        <page name="referencias_pago" string="Referencias de Pago"
+                              invisible="bca_codigo_aseguradora != 'METLIFE'">
+                            <group>
+                                <group name="bca_ref_prima" string="Prima">
+                                    <field name="bca_ref_prima_basica_trad"
+                                           invisible="ramo != 'vida'"/>
+                                    <field name="bca_ref_prima_medica"
+                                           invisible="ramo != 'gmm'"/>
+                                </group>
+                                <group name="bca_ref_fondos" string="Fondos (Vida)"
+                                       invisible="ramo != 'vida'">
+                                    <field name="bca_fondo_variable"/>
+                                    <field name="bca_fondo_fijo"/>
+                                    <field name="bca_fondo_variable_ppr"/>
+                                    <field name="bca_fondo_fijo_ppr"/>
+                                    <field name="bca_fondo_variable_cpea"/>
+                                    <field name="bca_fondo_fijo_cpea"/>
+                                </group>
                             </group>
                         </page>
                         <page name="recibos" string="Recibos">

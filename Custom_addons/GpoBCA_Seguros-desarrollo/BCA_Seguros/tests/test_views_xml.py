@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from odoo.tests.common import TransactionCase
 from odoo.tests import tagged
+from odoo.tests.common import TransactionCase
 
 
-@tagged('post_install', '-at_install')
+@tagged("post_install", "-at_install")
 class TestViewsXml(TransactionCase):
     """Etapa 10 — Validación estática de las vistas XML del módulo.
 
@@ -28,135 +28,149 @@ class TestViewsXml(TransactionCase):
             view_id=view.id,
             view_type=view.type,
         )
-        self.assertIn('arch', result, f'Vista {xmlid} no produjo arch')
+        self.assertIn("arch", result, f"Vista {xmlid} no produjo arch")
 
     def test_poliza_views(self) -> None:
-        self._validate('BCA_Seguros.view_poliza_list')
-        self._validate('BCA_Seguros.view_poliza_form')
-        self._validate('BCA_Seguros.view_poliza_search')
+        self._validate("BCA_Seguros.view_poliza_list")
+        self._validate("BCA_Seguros.view_poliza_form")
+        self._validate("BCA_Seguros.view_poliza_search")
+
+    def test_poliza_referencias_pago_campo_en_vista(self) -> None:
+        """La pestaña depende de un campo cargado en el spec del cliente.
+
+        Bug 19.0.1.16.4: `invisible="aseguradora_id.bca_codigo_aseguradora ..."`
+        no se resolvía porque el many2one solo trae `display_name`; la pestaña
+        quedaba oculta siempre. Debe usarse el related almacenado.
+        """
+        views = self.env["bca.poliza"].get_views([(False, "form")])
+        fields = views["models"]["bca.poliza"]["fields"]
+        self.assertIn("bca_codigo_aseguradora", fields)
+        self.assertIn("referencias_pago", views["views"]["form"]["arch"])
 
     def test_recibo_views(self) -> None:
-        self._validate('BCA_Seguros.view_recibo_list')
-        self._validate('BCA_Seguros.view_recibo_form')
-        self._validate('BCA_Seguros.view_recibo_search')
+        self._validate("BCA_Seguros.view_recibo_list")
+        self._validate("BCA_Seguros.view_recibo_form")
+        self._validate("BCA_Seguros.view_recibo_search")
 
     def test_bitacora_views(self) -> None:
-        self._validate('BCA_Seguros.view_bitacora_importacion_list')
-        self._validate('BCA_Seguros.view_bitacora_importacion_form')
-        self._validate('BCA_Seguros.view_bitacora_importacion_search')
+        self._validate("BCA_Seguros.view_bitacora_importacion_list")
+        self._validate("BCA_Seguros.view_bitacora_importacion_form")
+        self._validate("BCA_Seguros.view_bitacora_importacion_search")
 
     def test_factor_pca_views(self) -> None:
-        self._validate('BCA_Seguros.view_factor_pca_list')
-        self._validate('BCA_Seguros.view_factor_pca_form')
-        self._validate('BCA_Seguros.view_factor_pca_search')
+        self._validate("BCA_Seguros.view_factor_pca_list")
+        self._validate("BCA_Seguros.view_factor_pca_form")
+        self._validate("BCA_Seguros.view_factor_pca_search")
 
     def test_conducto_views(self) -> None:
-        self._validate('BCA_Seguros.view_conducto_list')
-        self._validate('BCA_Seguros.view_conducto_form')
-        self._validate('BCA_Seguros.view_conducto_search')
+        self._validate("BCA_Seguros.view_conducto_list")
+        self._validate("BCA_Seguros.view_conducto_form")
+        self._validate("BCA_Seguros.view_conducto_search")
 
     def test_herencia_partner(self) -> None:
-        self._validate('BCA_Seguros.view_partner_form_bca')
-        self._validate('BCA_Seguros.view_partner_list_bca')
-        self._validate('BCA_Seguros.view_partner_search_bca')
+        self._validate("BCA_Seguros.view_partner_form_bca")
+        self._validate("BCA_Seguros.view_partner_list_bca")
+        self._validate("BCA_Seguros.view_partner_search_bca")
 
     def test_herencia_product(self) -> None:
-        self._validate('BCA_Seguros.view_product_template_form_bca')
+        self._validate("BCA_Seguros.view_product_template_form_bca")
 
     def test_herencia_crm_lead(self) -> None:
-        self._validate('BCA_Seguros.view_crm_lead_form_bca')
+        self._validate("BCA_Seguros.view_crm_lead_form_bca")
 
     def test_herencia_hr_applicant(self) -> None:
-        self._validate('BCA_Seguros.view_hr_applicant_form_bca')
+        self._validate("BCA_Seguros.view_hr_applicant_form_bca")
 
     def test_herencia_hr_job(self) -> None:
-        """SI-2 — kanban y form de puesto heredados parsean (menú + botón postulante)."""
-        self._validate('BCA_Seguros.view_hr_job_kanban_bca')
-        self._validate('BCA_Seguros.view_hr_job_form_bca')
+        """SI-2 — kanban y form de puesto heredados parsean.
+
+        Incluye menú y botón de postulante.
+        """
+        self._validate("BCA_Seguros.view_hr_job_kanban_bca")
+        self._validate("BCA_Seguros.view_hr_job_form_bca")
 
     def test_kanban_hr_job_por_defecto_es_reclutamiento(self) -> None:
         """SI-2 — hr.job tiene dos kanban primarias y la resolución por defecto
         debe caer en hr_recruitment.view_hr_job_kanban (menu "Nuevo → Application"),
         no en hr.hr_job_view_kanban. Se fija priority 1 sobre la de reclutamiento."""
-        v_rec = self.env.ref('hr_recruitment.view_hr_job_kanban')
+        v_rec = self.env.ref("hr_recruitment.view_hr_job_kanban")
         self.assertEqual(
             v_rec.priority,
             1,
-            'Kanban de reclutamiento debe tener priority 1 para ganar '
-            'en la resolución por defecto (order priority,id ASC)',
+            "Kanban de reclutamiento debe tener priority 1 para ganar "
+            "en la resolución por defecto (order priority,id ASC)",
         )
-        v_default = self.env['hr.job'].get_view(False, 'kanban')
+        v_default = self.env["hr.job"].get_view(False, "kanban")
         self.assertEqual(
-            v_default['id'],
+            v_default["id"],
             v_rec.id,
-            'La kanban por defecto de hr.job debe ser '
-            'hr_recruitment.view_hr_job_kanban, no la mínima de hr',
+            "La kanban por defecto de hr.job debe ser "
+            "hr_recruitment.view_hr_job_kanban, no la mínima de hr",
         )
 
     def test_herencia_hr_employee(self) -> None:
-        self._validate('BCA_Seguros.view_hr_employee_form_bca')
+        self._validate("BCA_Seguros.view_hr_employee_form_bca")
 
     def test_wizard_skeletons_cargan(self) -> None:
-        self._validate('BCA_Seguros.view_wizard_carga_portafolio_form')
-        self._validate('BCA_Seguros.view_wizard_cobranza_diaria_form')
-        self._validate('BCA_Seguros.view_wizard_cambio_promotoria_form')
+        self._validate("BCA_Seguros.view_wizard_carga_portafolio_form")
+        self._validate("BCA_Seguros.view_wizard_cobranza_diaria_form")
+        self._validate("BCA_Seguros.view_wizard_cambio_promotoria_form")
 
     def test_cambios_promotoria_views(self) -> None:
-        self._validate('BCA_Seguros.view_agente_cambio_promotoria_list')
-        self._validate('BCA_Seguros.view_agente_cambio_promotoria_form')
+        self._validate("BCA_Seguros.view_agente_cambio_promotoria_list")
+        self._validate("BCA_Seguros.view_agente_cambio_promotoria_form")
 
     def test_reportes_views(self) -> None:
         """Etapa 9 — pivot/graph/list/search de los 4 reportes SQL parsean
         contra las columnas reales de la vista."""
         for base in (
-            'view_reporte_pca_agente',
-            'view_reporte_pca_promotoria',
-            'view_reporte_pca_consolidado',
-            'view_reporte_estado_cartera',
+            "view_reporte_pca_agente",
+            "view_reporte_pca_promotoria",
+            "view_reporte_pca_consolidado",
+            "view_reporte_estado_cartera",
         ):
-            for tipo in ('pivot', 'graph', 'list', 'search'):
-                self._validate(f'BCA_Seguros.{base}_{tipo}')
+            for tipo in ("pivot", "graph", "list", "search"):
+                self._validate(f"BCA_Seguros.{base}_{tipo}")
 
     def test_menu_root_existe(self) -> None:
-        menu = self.env.ref('BCA_Seguros.menu_bca_root')
-        self.assertTrue(menu, 'Menú raíz BCA no se cargó')
-        self.assertFalse(menu.parent_id, 'Menú raíz no debería tener padre')
+        menu = self.env.ref("BCA_Seguros.menu_bca_root")
+        self.assertTrue(menu, "Menú raíz BCA no se cargó")
+        self.assertFalse(menu.parent_id, "Menú raíz no debería tener padre")
         # v19: ir.ui.menu.group_ids (renombrado desde groups_id).
         self.assertTrue(
             menu.group_ids,
-            'Menú raíz sin groups= queda invisible en producción '
-            '(Plan §2.4.2)',
+            "Menú raíz sin groups= queda invisible en producción (Plan §2.4.2)",
         )
 
     def test_promotor_no_ve_menu_empleados(self) -> None:
         """Promotor uses insurance contacts, not HR's employee directory."""
-        menu = self.env.ref('hr.menu_hr_root')
-        group_internal = self.env.ref('base.group_user')
-        group_hr_user = self.env.ref('hr.group_hr_user')
+        menu = self.env.ref("hr.menu_hr_root")
+        group_internal = self.env.ref("base.group_user")
+        group_hr_user = self.env.ref("hr.group_hr_user")
         self.assertNotIn(group_internal, menu.group_ids)
         self.assertIn(group_hr_user, menu.group_ids)
 
     def test_actions_principales_existen(self) -> None:
         """Las actions referenciadas en menu.xml deben existir."""
         for xmlid in (
-            'BCA_Seguros.action_dashboard',
-            'BCA_Seguros.action_poliza',
-            'BCA_Seguros.action_recibo',
-            'BCA_Seguros.action_bitacora',
-            'BCA_Seguros.action_conducto',
-            'BCA_Seguros.action_factor_pca',
-            'BCA_Seguros.action_partner_aseguradoras',
-            'BCA_Seguros.action_partner_promotorias',
-            'BCA_Seguros.action_partner_agentes',
-            'BCA_Seguros.action_product_bca',
-            'BCA_Seguros.action_wizard_carga_portafolio',
-            'BCA_Seguros.action_wizard_cobranza_diaria',
-            'BCA_Seguros.action_reporte_pca_agente',
-            'BCA_Seguros.action_reporte_pca_promotoria',
-            'BCA_Seguros.action_reporte_pca_consolidado',
-            'BCA_Seguros.action_reporte_estado_cartera',
+            "BCA_Seguros.action_dashboard",
+            "BCA_Seguros.action_poliza",
+            "BCA_Seguros.action_recibo",
+            "BCA_Seguros.action_bitacora",
+            "BCA_Seguros.action_conducto",
+            "BCA_Seguros.action_factor_pca",
+            "BCA_Seguros.action_partner_aseguradoras",
+            "BCA_Seguros.action_partner_promotorias",
+            "BCA_Seguros.action_partner_agentes",
+            "BCA_Seguros.action_product_bca",
+            "BCA_Seguros.action_wizard_carga_portafolio",
+            "BCA_Seguros.action_wizard_cobranza_diaria",
+            "BCA_Seguros.action_reporte_pca_agente",
+            "BCA_Seguros.action_reporte_pca_promotoria",
+            "BCA_Seguros.action_reporte_pca_consolidado",
+            "BCA_Seguros.action_reporte_estado_cartera",
         ):
             self.assertTrue(
                 self.env.ref(xmlid, raise_if_not_found=False),
-                f'Action {xmlid} referenciada en menu.xml no existe',
+                f"Action {xmlid} referenciada en menu.xml no existe",
             )

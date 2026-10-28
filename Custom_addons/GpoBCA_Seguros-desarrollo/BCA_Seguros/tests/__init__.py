@@ -2,6 +2,7 @@ from . import (
     test_poliza,
     test_poliza_vida,
     test_poliza_gmm,
+    test_referencias_pago,
     test_poliza_coberturas,
     test_cobranza_fifo,
     test_cobranza_match,

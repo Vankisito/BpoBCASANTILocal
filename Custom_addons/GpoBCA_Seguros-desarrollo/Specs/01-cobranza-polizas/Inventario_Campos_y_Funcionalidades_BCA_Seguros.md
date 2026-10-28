@@ -80,17 +80,16 @@ GENERO_SELECTION = [('masculino','Masculino'),('femenino','Femenino'),('otro','O
 | `bca_fecha_nacimiento` | Date | Demografía del contratante. |
 | `bca_estado_civil` | Selection(ESTADO_CIVIL) | |
 | `bca_genero` | Selection(GENERO) | |
-| `bca_ref_prima_basica_trad` | Char | Referencia de pago Prima Básica TRAD (MetLife Vida). |
-| `bca_ref_prima_medica` | Char | Referencia de cobro Prima MÉDICA (MetLife GMM). |
-| `bca_fondo_variable` / `bca_fondo_fijo` | Char | Fondos de inversión. |
-| `bca_fondo_variable_ppr` / `bca_fondo_fijo_ppr` | Char | Fondos PPR. |
-| `bca_fondo_variable_cpea` / `bca_fondo_fijo_cpea` | Char | Fondos CPEA. |
 | `agente_aseguradora_ids` | One2many → `res.partner.agente.aseguradora` | Claves del agente por aseguradora. |
 | `bca_promotoria_id` | Many2one(res.partner) | **Computed sin store** (`parent_id` si es agente) + `search`. Tiempo real, nunca stale. |
 | `bca_categoria_id` | Many2one(res.partner.category) | Computed según `bca_tipo`. |
 | `bca_poliza_count` / `bca_recibo_count` | Integer computed | Smart buttons. |
 
 > **RFC → campo estándar `vat`. Domicilio → `street/street2/city/zip/state_id`.** No se duplicaron.
+
+> **Referencias de pago MetLife:** desde 19.0.1.16.4 viven en `bca.poliza`
+> (pestaña "Referencias de Pago"), no en `res.partner`. Los campos legacy del
+> contacto se conservan ocultos solo para migración/rollback.
 
 ### 2.3 Lógica / métodos
 
@@ -271,11 +270,24 @@ MESES_POR_PERIODO = {'mensual':1,'trimestral':3,'semestral':6,'anual':12}
 | `beneficiario_ids` | One2many → `bca.poliza.beneficiario` | Vida: beneficiarios; GMM: dependientes. |
 | `beneficiarios_porcentaje_total` | Float computed | Debe sumar 100% al confirmar (solo Vida). |
 
-### 7.7 Relaciones inversas y contadores
+### 7.7 Campos — referencias de pago MetLife
+
+Propias de cada póliza (no del contratante). Editables durante toda la vida de
+la póliza. Pestaña visible solo para aseguradora `METLIFE`.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `bca_ref_prima_basica_trad` | Char | Referencia de prima básica TRAD (Vida). |
+| `bca_ref_prima_medica` | Char | Referencia de cobro de prima médica (GMM). |
+| `bca_fondo_variable` / `bca_fondo_fijo` | Char | Fondos de inversión (Vida). |
+| `bca_fondo_variable_ppr` / `bca_fondo_fijo_ppr` | Char | Fondos PPR (Vida). |
+| `bca_fondo_variable_cpea` / `bca_fondo_fijo_cpea` | Char | Fondos CPEA (Vida). |
+
+### 7.8 Relaciones inversas y contadores
 
 `recibo_ids`, `cambio_agente_ids` (One2many); `recibo_count`, `cambio_agente_count` (Integer computed).
 
-### 7.8 Lógica / métodos clave
+### 7.9 Lógica / métodos clave
 
 - `action_confirmar()` — Borrador → Activa; valida % beneficiarios; genera plan de pagos.
 - `action_cancelar()` — → Cancelada (no borra recibos, auditoría).
@@ -284,6 +296,7 @@ MESES_POR_PERIODO = {'mensual':1,'trimestral':3,'semestral':6,'anual':12}
 - `_generar_siguiente_anualidad()` / `action_generar_siguiente_anualidad()` — avance anualidad por anualidad (automático al pagar el último recibo, o botón manual).
 - `cambiar_agente(nuevo_agente, motivo)` — **único punto** para cambiar agente; crea snapshot en `bca.poliza.cambio.agente`.
 - `_cron_refrescar_estatus_pago()` — aging diario del estatus.
+- `_migrar_referencias_pago_legacy()` — migración 19.0.1.16.4: copia refs MetLife del contratante a la póliza.
 - Smart buttons: `action_view_recibos`, `action_view_cambios_agente`.
 
 ---

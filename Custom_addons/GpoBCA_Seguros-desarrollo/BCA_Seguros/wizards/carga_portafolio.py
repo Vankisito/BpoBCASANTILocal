@@ -812,8 +812,10 @@ class BcaWizardCargaPortafolio(models.TransientModel):
         else:  # vida
             vals["tipo_cobertura"] = "estandar"
 
-        # Contratante (datos completos) y asegurado.
-        vals["_contratante_data"] = self._datos_contratante(raw, ramo)
+        # Contratante (datos completos), referencias de pago y asegurado.
+        contratante_data, referencias_pago = self._datos_contratante(raw, ramo)
+        vals["_contratante_data"] = contratante_data
+        vals["_referencias_pago"] = referencias_pago
         vals["_asegurado_nombre"] = self._txt(raw.get("Nombre del Asegurado"))
         beneficiarios = self._construir_beneficiarios(raw, ramo)
         return vals, beneficiarios
@@ -823,6 +825,7 @@ class BcaWizardCargaPortafolio(models.TransientModel):
     # ------------------------------------------------------------------ #
     def _crear_poliza(self, vals: dict, beneficiarios: list, ramo: str):
         contratante_data = vals.pop("_contratante_data")
+        referencias_pago = vals.pop("_referencias_pago", {})
         asegurado_nombre = vals.pop("_asegurado_nombre")
         corte = vals.get("pagado_hasta_inicial")
         estado_destino = vals.pop("estado")  # se aplica tras generar el plan
@@ -833,6 +836,7 @@ class BcaWizardCargaPortafolio(models.TransientModel):
             asegurado = self._find_or_create_partner({"name": asegurado_nombre})
             vals["asegurado_id"] = asegurado.id
 
+        vals.update(referencias_pago)
         poliza = self.env["bca.poliza"].create(vals)
         for b in beneficiarios:
             partner = self._find_or_create_partner({"name": b["nombre"]})
@@ -864,6 +868,7 @@ class BcaWizardCargaPortafolio(models.TransientModel):
         historial de pagos (R-POL-05). Solo campos declarativos/contacto.
         """
         contratante_data = vals.pop("_contratante_data")
+        referencias_pago = vals.pop("_referencias_pago", {})
         vals.pop("_asegurado_nombre", None)
         campos_seguros = {
             k: vals[k]
@@ -881,6 +886,7 @@ class BcaWizardCargaPortafolio(models.TransientModel):
             )
             if k in vals
         }
+        campos_seguros.update(referencias_pago)
         poliza.write(campos_seguros)
         # Refrescar datos de contacto del contratante.
         if poliza.contratante_id and contratante_data:
@@ -1074,15 +1080,12 @@ class BcaWizardCargaPortafolio(models.TransientModel):
     # ------------------------------------------------------------------ #
     # Construcción de datos auxiliares
     # ------------------------------------------------------------------ #
-    def _datos_contratante(self, raw: dict, ramo: str) -> dict:
-        ref_field = (
-            "bca_ref_prima_medica" if ramo == "gmm" else "bca_ref_prima_basica_trad"
-        )
-        ref_col = (
-            "Referencia de cobro Prima (MEDICA)"
-            if ramo == "gmm"
-            else "Referencia Prima Básica (TRAD)"
-        )
+    def _datos_contratante(self, raw: dict, ramo: str) -> tuple[dict, dict]:
+        """Devuelve (datos del contacto, referencias de pago de la póliza).
+
+        Las referencias MetLife son de la póliza, no del contratante. Se
+        separan para no escribirlas en res.partner (campos legacy ocultos).
+        """
         datos = {
             "name": self._txt(raw.get("Nombre del Contratante")),
             "vat": self._txt(raw.get("R.F.C. Contratante")),
@@ -1097,10 +1100,17 @@ class BcaWizardCargaPortafolio(models.TransientModel):
                 raw.get("Estado Civil"), ESTADO_CIVIL_MAP
             ),
             "bca_genero": self._map_simple(raw.get("Género"), GENERO_MAP),
-            ref_field: self._txt(raw.get(ref_col)),
         }
-        if ramo == "vida":
-            datos.update(
+        referencias = {}
+        if ramo == "gmm":
+            referencias["bca_ref_prima_medica"] = self._txt(
+                raw.get("Referencia de cobro Prima (MEDICA)")
+            )
+        else:  # vida
+            referencias["bca_ref_prima_basica_trad"] = self._txt(
+                raw.get("Referencia Prima Básica (TRAD)")
+            )
+            referencias.update(
                 {
                     "bca_fondo_variable": self._txt(raw.get("Fondo Variable")),
                     "bca_fondo_fijo": self._txt(raw.get("Fondo Fijo")),
@@ -1122,7 +1132,10 @@ class BcaWizardCargaPortafolio(models.TransientModel):
             )
         if not datos["name"]:
             raise UserError(_("Falta el nombre del contratante."))
-        return {k: v for k, v in datos.items() if v}
+        return (
+            {k: v for k, v in datos.items() if v},
+            {k: v for k, v in referencias.items() if v},
+        )
 
     def _construir_beneficiarios(self, raw: dict, ramo: str) -> list:
         """VIDA: hasta 7 beneficiarios (con %). GMM: hasta 5 asegurados

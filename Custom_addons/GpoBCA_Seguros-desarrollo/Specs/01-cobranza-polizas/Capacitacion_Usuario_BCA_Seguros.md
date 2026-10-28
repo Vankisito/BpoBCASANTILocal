@@ -125,7 +125,11 @@ Antes de operar pólizas, los catálogos deben estar poblados. Estos los mantien
 Se gestionan como contactos tipo **Contratante**. En la pestaña **"BCA Seguros"** del contacto se capturan:
 
 - **Datos demográficos**: fecha de nacimiento, estado civil, género. (El **RFC** va en el campo estándar `NIF/VAT`; el domicilio en los campos estándar de dirección.)
-- **Referencias de pago** (Vida MetLife): prima básica TRAD, fondos variables/fijos, PPR, CPEA.
+
+Las **referencias de pago MetLife** (prima básica TRAD, prima médica, fondos
+variables/fijos, PPR y CPEA) ya no se capturan en el contacto: viven en la
+pestaña **"Referencias de Pago"** de cada póliza, porque son propias de la
+póliza y pueden cambiar sin afectar al contratante.
 
 El contacto del contratante muestra **botones inteligentes** con el número de pólizas y recibos asociados.
 

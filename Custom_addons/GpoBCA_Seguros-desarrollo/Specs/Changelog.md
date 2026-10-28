@@ -4,6 +4,64 @@
 
 ---
 
+## Sesión 2026-10-28 — Fix visibilidad pestaña Referencias de Pago · `BCA_Seguros 19.0.1.16.5`
+
+### Qué se hizo
+La pestaña "Referencias de Pago" no aparecía en ninguna póliza MetLife.
+
+Causa raíz: `invisible="aseguradora_id.bca_codigo_aseguradora != 'METLIFE'"`
+no se resolvía en el cliente. El spec de un many2one solo carga `id` y
+`display_name`; el subcampo no viaja, la expresión evalúa
+`undefined != 'METLIFE'` como verdadero y la página queda oculta siempre.
+
+Cambios:
+- `models/poliza.py`: `bca_codigo_aseguradora` related almacenado e indexado
+  desde `aseguradora_id.bca_codigo_aseguradora`.
+- `views/poliza_views.xml`: campo oculto en el form y modificador del page
+  usando el campo related.
+- Tests: `test_views_xml.py` valida que el campo esté en el spec del form;
+  `test_referencias_pago.py` valida su persistencia.
+
+### Tests
+- `test_views_xml.py::test_poliza_referencias_pago_campo_en_vista`
+- `test_referencias_pago.py::test_codigo_aseguradora_se_almacena_en_poliza`
+
+### Pendientes
+- En `bca_clean` las referencias siguen vacías (0 pólizas, 0 legacy en
+  `res.partner`). Requiere recarga de portafolio con columnas de referencia o
+  migración desde una BD con datos.
+
+---
+
+## Sesión 2026-10-23 — Referencias de pago MetLife por póliza · `BCA_Seguros 19.0.1.16.4`
+
+### Qué se hizo
+Se trasladaron las 8 referencias de pago MetLife de `res.partner` a
+`bca.poliza`, porque son propias de cada póliza y no del contratante.
+
+Cambios:
+- `models/poliza.py`: 8 campos nuevos + `_migrar_referencias_pago_legacy()`.
+- `views/poliza_views.xml`: pestaña "Referencias de Pago" (solo MetLife; TRAD/fondos en Vida, médica en GMM).
+- `views/res_partner_views.xml`: se quitó el grupo de referencias.
+- `models/hr_employee.py` y `views/hr_employee_views.xml`: se quitaron las referencias del empleado.
+- `wizards/carga_portafolio.py`: la carga escribe refs en la póliza, no en el contratante.
+- `migrations/19.0.1.16.4/post-migrate.py`: copia refs legacy a pólizas existentes, solo campos vacíos y por ramo.
+- `models/res_partner.py`: campos legacy conservados ocultos una versión para rollback.
+- Tests: `test_referencias_pago.py` valida el traslado por ramo y que no sobrescribe valores existentes; `test_carga_portafolio.py` valida que la carga las guarda en la póliza.
+
+### Decisiones
+- D-30: mantener versión `19.0.1.16.4` con migración a la póliza; los campos legacy en `res.partner` permanecerán ocultos una versión para rollback.
+
+### Tests
+- Suite completa `/BCA_Seguros` en `bca_clean` (2026-10-23): **249 tests, 0 failed, 0 error(s)**.
+- Tests nuevos: `test_referencias_pago.py` valida traslado por ramo y no sobrescritura; `test_carga_portafolio.py` valida guarda en poliza.
+
+### Pendientes
+- Eliminar los campos legacy de `res.partner` en un release posterior (release 19.0.1.17.0 o posterior).
+- Refactorizar vistas de póliza para agrupar campos de prima y fondos bajo la pestaña "Referencias de Pago" condicionada a `aseguradora_id.bca_codigo_aseguradora == 'METLIFE'`.
+
+---
+
 ## Sesión 2026-09-19 — SI-2 capa 3: context create=False del entrevistador · `BCA_Seguros 19.0.1.16.1`
 
 ### Qué se hizo

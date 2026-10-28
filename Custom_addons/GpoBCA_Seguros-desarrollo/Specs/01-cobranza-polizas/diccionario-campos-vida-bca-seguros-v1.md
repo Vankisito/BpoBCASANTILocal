@@ -63,13 +63,13 @@ de Vida de MetLife.
 | e-mail del Contratante | Mail | Correo electrónico del contratante. | Contacto. |
 | Coberturas Adicionales | Texto | Coberturas adicionales incluidas en la póliza. | Información de la póliza. |
 | e-mail Asegurado | Mail | Correo electrónico del asegurado. | Corresponde al contacto del asegurado. |
-| Referencia Prima Básica (TRAD) | Texto | Referencia de cobro de la prima básica tradicional. | Referencia de pago del contratante. |
-| Fondo Variable | Texto | Referencia del fondo variable. | Referencia de pago del contratante. |
-| Fondo Fijo | Texto | Referencia del fondo fijo. | Referencia de pago del contratante. |
-| Fondo Variable Plan Personal de Retiro (PPR) | Texto | Fondo variable del Plan Personal de Retiro. | Referencia de pago del contratante. |
-| Fondo Fijo Plan Personal de Retiro (PPR) | Texto | Fondo fijo del Plan Personal de Retiro. | Referencia de pago del contratante. |
-| Fondo Variable Cuenta Personal Especial de Ahorro (CPEA) | Texto | Fondo variable de la Cuenta Personal Especial de Ahorro. | Referencia de pago del contratante. |
-| Fondo Fijo Cuenta Especial de Ahorro (CPEA) | Texto | Fondo fijo de la Cuenta Personal Especial de Ahorro. | Referencia de pago del contratante. |
+| Referencia Prima Básica (TRAD) | Texto | Referencia de cobro de la prima básica tradicional. | Referencia de pago de la póliza (`bca.poliza`). |
+| Fondo Variable | Texto | Referencia del fondo variable. | Referencia de pago de la póliza (`bca.poliza`). |
+| Fondo Fijo | Texto | Referencia del fondo fijo. | Referencia de pago de la póliza (`bca.poliza`). |
+| Fondo Variable Plan Personal de Retiro (PPR) | Texto | Fondo variable del Plan Personal de Retiro. | Referencia de pago de la póliza (`bca.poliza`). |
+| Fondo Fijo Plan Personal de Retiro (PPR) | Texto | Fondo fijo del Plan Personal de Retiro. | Referencia de pago de la póliza (`bca.poliza`). |
+| Fondo Variable Cuenta Personal Especial de Ahorro (CPEA) | Texto | Fondo variable de la Cuenta Personal Especial de Ahorro. | Referencia de pago de la póliza (`bca.poliza`). |
+| Fondo Fijo Cuenta Especial de Ahorro (CPEA) | Texto | Fondo fijo de la Cuenta Personal Especial de Ahorro. | Referencia de pago de la póliza (`bca.poliza`). |
 | Nombre del Beneficiario 1 | Texto | Nombre del primer beneficiario de la póliza. | Hasta 10 beneficiarios por póliza. |
 | Parentesco 1 | Texto | Relación del beneficiario 1 con el contratante. | |
 | % al que tiene Derecho 1 | Porcentaje | Porcentaje de la suma asegurada que corresponde al beneficiario 1. | La suma de los porcentajes de todos los beneficiarios debe ser 100%. |
