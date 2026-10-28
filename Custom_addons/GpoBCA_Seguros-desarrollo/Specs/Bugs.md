@@ -58,6 +58,12 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 
 ## Bugs Resueltos
 
+Resuelto el **2026-10-28** (versión `19.0.1.16.5`):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-026 | Póliza (form) → pestaña "Referencias de Pago" | La pestaña no se mostraba en ninguna póliza MetLife. El modificador `invisible="aseguradora_id.bca_codigo_aseguradora != 'METLIFE'"` evaluaba `undefined != 'METLIFE'` como verdadero porque el spec del many2one solo carga `id` y `display_name`; el subcampo no viaja al cliente. | UI/Lógica | 🟠 Alta | Campo `bca_codigo_aseguradora` related almacenado e indexado en `bca.poliza`; campo oculto en el form y modificador del page usando ese campo. Tests de regresión en `test_views_xml.py` y `test_referencias_pago.py`. Ver D-31. | `5356eab` |
+
 Resuelto el **2026-10-16** (versión `19.0.1.16.3`):
 
 | ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |

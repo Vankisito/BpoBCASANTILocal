@@ -199,7 +199,7 @@ Una **póliza** es el contrato entre el cliente y la aseguradora. Tiene vigencia
 
 **R-POL-01.** El número de póliza es único por aseguradora. El sistema impide duplicados dentro de la misma aseguradora.
 
-**R-POL-02.** Al confirmar una póliza, el sistema genera automáticamente el **plan de pagos** completo: los N recibos correspondientes a la periodicidad, cada uno con su ventana de fechas y su prima modal. 
+**R-POL-02.** Al confirmar una póliza, el sistema genera automáticamente el **plan de pagos** completo: los N recibos correspondientes a la periodicidad, cada uno con su ventana de fechas y su prima modal.
 
 **R-POL-03.** **"Pagado Hasta" es de solo lectura para todo usuario.** Se actualiza únicamente como consecuencia del registro de un pago. Ningún operador, líder ni administrador puede editarlo manualmente.
 
@@ -543,7 +543,7 @@ Esta sección almacena información que los agentes y usuarios del sistema neces
   - **Coberturas de la Póliza:** Listado de coberturas activas, montos asegurados y números de póliza asociados. Permite al agente conocer rápidamente qué está cubierto.
   - **Referencias de Pago de la Póliza:** Referencias de cobro MetLife (prima básica TRAD, prima médica, fondos variable/fijo, PPR y CPEA). Viven en la póliza y son editables durante toda su vida. Facilitan al agente procesar pagos o redirigir al contratante al conducto correcto.
 
-**Nota de implementación:** La fuente de verdad de las referencias de pago es `bca.poliza` (pestaña "Referencias de Pago"). Hasta 19.0.1.16.3 vivían en el contacto; la migración 19.0.1.16.4 las copia a cada póliza del contratante según el ramo. Los campos legacy del contacto quedan ocultos una versión para rollback.
+**Nota de implementación:** La fuente de verdad de las referencias de pago es `bca.poliza` (pestaña "Referencias de Pago"). Hasta 19.0.1.16.3 vivían en el contacto; la migración 19.0.1.16.4 las copia a cada póliza del contratante según el ramo. Los campos legacy del contacto quedan ocultos una versión para rollback. La visibilidad de la pestaña usa `bca_codigo_aseguradora`, un related almacenado desde `aseguradora_id.bca_codigo_aseguradora`; no se usa notación punteada en el modificador porque el spec del many2one no carga el subcampo (D-31, 19.0.1.16.5).
 
 ---
 

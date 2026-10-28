@@ -3,17 +3,18 @@
 > Estado vivo de la suite automatizada (inicia su inventario al cierre de la **Etapa 11**,
 > `v19.0.1.6.1`; se actualiza en cada sesión).
 >
-> **Última actualización:** 2026-09-17 (sesión revisión PR #20, `BCA_Seguros 19.0.1.14.3` +
-> `BCA_seguros_ocr 19.0.1.1.1`): suite total **283 tests, 0 failed** (221 `BCA_Seguros` +
-> 62 `BCA_seguros_ocr`, contados por `def test_`). Se añade la sección OCR (§1.c). Mantener
-> sincronizado.
+> **Última actualización:** 2026-10-28 (`BCA_Seguros 19.0.1.16.5`): suite
+> `BCA_Seguros` **251 tests, 0 failed, 0 errors** (contados por `def test_`). Incluye
+> `test_referencias_pago.py` y los tests de regresión de visibilidad de la pestaña
+> "Referencias de Pago". La suite `BCA_seguros_ocr` no se re-ejecutó en esta sesión.
+> Mantener sincronizado.
 
 ---
 
 ## 1. Resumen
 
-- **20 archivos de test**, **221 métodos** bajo el tag `BCA_Seguros`; **62 métodos** bajo el
-  tag `BCA_seguros_ocr` (§1.c). **283 en total.**
+- **23 archivos de test**, **251 métodos** bajo el tag `BCA_Seguros`. La suite
+  `BCA_seguros_ocr` se documenta aparte (§1.c).
 - **0** tests marcados `@skip` / `@expectedFailure`; **0** `TODO`/`FIXME` en la suite.
 - Comandos de ejecución (BD fresca; con `-i` sobre BD ya instalada no se re-ejecutan tests):
   ```bash
@@ -24,25 +25,28 @@
 | Archivo | Tests | Cubre | Etapa |
 |---|---|---|---|
 | `test_poliza.py` | 9 | `bca.poliza`: alta, confirmación, plan de recibos, cambio de agente, anualidad | 2 |
-| `test_poliza_vida.py` | 7 | Póliza ramo Vida: beneficiarios, conducto, asegurado, demográficos | 2 |
+| `test_poliza_vida.py` | 8 | Póliza ramo Vida: beneficiarios, conducto, asegurado, demográficos | 2 |
 | `test_poliza_gmm.py` | 6 | Póliza ramo GMM: sub-ramo, deducible, coaseguro, IVA, conducto | 2 |
 | `test_poliza_coberturas.py` | 6 | Coberturas ofrecidas (`bca.cobertura`), notas, coberturas junto a póliza | 13 |
+| `test_referencias_pago.py` | 3 | Refs MetLife por póliza: migración legacy, no sobrescritura, `bca_codigo_aseguradora` almacenado | 13 |
 | `test_cobranza_fifo.py` | 12 | Wizard cobranza diaria: FIFO, errores no fatales, plantilla CSV | 8 |
 | `test_cobranza_match.py` | 11 | Match cobranza por póliza+vigencia (R-COB-11), doble subida, concurrencia de pago | 13 |
 | `test_pca_metlife.py` | 10 | `CalculadorPCAMetLife`: factores ramo/moneda, exclusiones, congelamiento | 7 |
 | `test_inmutabilidad.py` | 9 | `bca.recibo`: `pagado_hasta` computed, PCA bloqueada, bitácora inmutable | 2 |
-| `test_record_rules.py` | 8 | Acceso por rol: agente/operador/líder/DC/director (+ reclutamiento) | 4 |
+| `test_record_rules.py` | 13 | Acceso por rol: agente/operador/líder/DC/director (+ reclutamiento) | 4 |
+| `test_promotor_security.py` | 9 | Seguridad del rol Promotor: cartera, contactos y chatter | 4 |
 | `test_hr_applicant.py` | 34 | `hr.applicant` → alta de agente/promotoría, idempotencia, RFC/CURP, traspaso CH | 3 |
+| `test_hr_job_crear_postulante.py` | 5 | SI-2: Reclutadora crea postulante desde el puesto (capas 1–3) | 12 |
 | `test_crm_lead.py` | 5 | `crm.lead`: campos `bca_*`, generación de póliza, onchange | 3 |
 | `test_parsers.py` | 24 | `ParserRegistry`/`Base`, MetLife Vida/GMM, Qualitas (stub), `sin_recibo` con fecha vacía/inválida (D-24) | 6 |
-| `test_carga_portafolio.py` | 32 | Wizard carga portafolio (XLSX): validación, grabado, `estatus_pago`, beneficiarios, coberturas | 5 |
+| `test_carga_portafolio.py` | 34 | Wizard carga portafolio (XLSX): validación, grabado, `estatus_pago`, beneficiarios, coberturas | 5 |
 | `test_reportes.py` | 7 | Reportes SQL SIC 1–4 + foto inmutable | 9 |
 | `test_dashboard.py` | 7 | `bca.dashboard`: contrato §6, cuadre con `search_count`, no-escritura | 3.5 |
-| `test_views_xml.py` | 15 | Validación estática de vistas/acciones/menú/reportes | 10 |
+| `test_views_xml.py` | 19 | Validación estática de vistas/acciones/menú/reportes | 10 |
 | `test_bca_sede.py` | 4 | `bca.sede`: CRUD, archivado, código único | 12 |
 | `test_display_name_red.py` | 3 | `display_name` reducido (agente/promotoría) vs formato nativo | 12 |
 | `test_independencia_fiscal.py` | 6 | Independencia fiscal: emisión/impresión, claves, no re-emisión | 12 |
-| `test_promotoria_governance.py` | 6 | Gobernanza de promotoría: director, cambio, validaciones | 12 |
+| `test_promotoria_governance.py` | 7 | Gobernanza de promotoría: director, cambio, validaciones | 12 |
 
 ---
 

@@ -283,6 +283,12 @@ la póliza. Pestaña visible solo para aseguradora `METLIFE`.
 | `bca_fondo_variable_ppr` / `bca_fondo_fijo_ppr` | Char | Fondos PPR (Vida). |
 | `bca_fondo_variable_cpea` / `bca_fondo_fijo_cpea` | Char | Fondos CPEA (Vida). |
 
+> **Visibilidad de la pestaña:** se controla con `bca_codigo_aseguradora` (Char related
+> almacenado e indexado desde `aseguradora_id.bca_codigo_aseguradora`). El form declara el
+> campo oculto (`invisible="1"`) para que el cliente lo cargue; el page usa
+> `invisible="bca_codigo_aseguradora != 'METLIFE'"`. Evita depender de un subcampo
+> `many2one` no cargado en el spec (D-31).
+
 ### 7.8 Relaciones inversas y contadores
 
 `recibo_ids`, `cambio_agente_ids` (One2many); `recibo_count`, `cambio_agente_count` (Integer computed).
