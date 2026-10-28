@@ -447,3 +447,20 @@ se mantiene como red de seguridad final.
 - Flujo OCR mantiene creación de pólizas **borrador** (gate `validado` obligatorio = ticket aparte).
 - 2 tests en `test_crear_poliza.py` (duplicado → `UserError`; no-duplicado → no reaparece el aviso).
 - Versión del módulo: `BCA_seguros_ocr 19.0.1.1.1`.
+
+---
+
+## D-31 — Condiciones de vista sobre `many2one` usan campo `related` almacenado
+
+**Fecha:** 2026-10-28
+**Decidido por:** Rafael Viera (usuario) — fix visibilidad pestaña "Referencias de Pago"
+
+**Contexto:** `invisible="aseguradora_id.bca_codigo_aseguradora != 'METLIFE'"` ocultaba siempre la pestaña. En Odoo 19 el spec de un `many2one` en el cliente solo incluye `id` y `display_name`; los subcampos no se cargan, por lo que la expresión evalúa `undefined != 'METLIFE'` como `true`.
+
+**Decisión:** Cuando una condición de vista (`invisible`, `readonly`, `required`, `column_invisible`) dependa de un subcampo de `many2one`, exponer un campo `related` **almacenado** (`store=True`, `index=True`, `readonly=True`) en el modelo dueño de la vista y usar ese campo en el modificador. No usar notación punteada en modificadores de vista.
+
+**Consecuencias:**
+- `bca.poliza.bca_codigo_aseguradora` related a `aseguradora_id.bca_codigo_aseguradora`.
+- Campo oculto en el form (`invisible="1"`) para que el cliente lo cargue.
+- Tests: `test_views_xml.py::test_poliza_referencias_pago_campo_en_vista` y `test_referencias_pago.py::test_codigo_aseguradora_se_almacena_en_poliza`.
+- Versión `BCA_Seguros 19.0.1.16.5`.

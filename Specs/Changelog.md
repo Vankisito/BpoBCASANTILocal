@@ -26,6 +26,13 @@ Cambios:
 - `test_views_xml.py::test_poliza_referencias_pago_campo_en_vista`
 - `test_referencias_pago.py::test_codigo_aseguradora_se_almacena_en_poliza`
 
+### Decisiones
+- D-31: las condiciones de vista que dependan de un subcampo `many2one` usan un campo `related` almacenado en el modelo de la vista; no notación punteada en `invisible`/`readonly`/`required`.
+
+### Despliegue
+- Commit local (workspace): `d840ec9`.
+- Commit remoto (subárbol del módulo): `5356eab` en la rama `promotor-contratante-chatter`.
+
 ### Pendientes
 - En `bca_clean` las referencias siguen vacías (0 pólizas, 0 legacy en
   `res.partner`). Requiere recarga de portafolio con columnas de referencia o

@@ -131,6 +131,10 @@ variables/fijos, PPR y CPEA) ya no se capturan en el contacto: viven en la
 pestaña **"Referencias de Pago"** de cada póliza, porque son propias de la
 póliza y pueden cambiar sin afectar al contratante.
 
+La pestaña **"Referencias de Pago"** solo aparece cuando la aseguradora de la
+póliza es **MetLife** (`bca_codigo_aseguradora = 'METLIFE'`). Para otras
+aseguradoras no se muestra.
+
 El contacto del contratante muestra **botones inteligentes** con el número de pólizas y recibos asociados.
 
 ### 4.5 Productos de seguro
