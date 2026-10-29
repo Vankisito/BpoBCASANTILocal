@@ -62,6 +62,7 @@
                         <field name="bca_estado_civil"/>
                         <field name="bca_genero"/>
                         <field name="bca_curp"/>
+                        <field name="bca_ref_prima_basica_trad"/>
                     </group>
                 </page>
             </xpath>

@@ -72,6 +72,11 @@ class HrEmployee(models.Model):
         related='work_contact_id.bca_genero',
         readonly=True,
     )
+    bca_ref_prima_basica_trad: str = fields.Char(
+        string='Referencia Prima Básica (TRAD)',
+        related='work_contact_id.bca_ref_prima_basica_trad',
+        readonly=True,
+    )
     bca_curp: str = fields.Char(
         string='CURP',
         related='work_contact_id.bca_curp',
