@@ -1,0 +1,18 @@
+from . import (
+    bca_sede,
+    res_partner,
+    res_partner_agente_aseg,
+    product_template,
+    conducto,
+    factor_pca,
+    poliza,
+    poliza_beneficiario,
+    poliza_cambio_agente,
+    agente_cambio_promotoria,
+    recibo,
+    bitacora,
+    dashboard,
+    hr_applicant,
+    hr_employee,
+    crm_lead,
+)
