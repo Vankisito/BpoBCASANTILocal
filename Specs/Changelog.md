@@ -4,6 +4,27 @@
 
 ---
 
+## Sesión 2026-10-29 — Purga de bca_ref_prima_basica_trad en Empleados y reestructuración de repositorio · `BCA_Seguros 19.0.1.16.5`
+
+### Qué se hizo
+Resolución del bug crítico BUG-027 reportado en `bca.habitatdigital.net`:
+`UncaughtPromiseError > OwlError: "hr.employee"."bca_ref_prima_basica_trad" field is undefined`.
+
+Causa raíz:
+Desincronización entre la vista XML en la base de datos (`ir.ui.view`) y el modelo en Python. Por la Decisión D-30 (19.0.1.16.4), las referencias bancarias de pago de MetLife pasaron de `res.partner`/`hr.employee` a `bca.poliza`. En el servidor de producción o en ramas locales existían remanentes del campo en la vista XML de `hr.employee`, pero el modelo en memoria ya no lo registraba, provocando el crash de ciclo de vida de OWL al abrir cualquier ficha de empleado.
+
+Cambios:
+- `models/hr_employee.py`: se eliminó formalmente el campo `bca_ref_prima_basica_trad`.
+- `views/hr_employee_views.xml`: se eliminó la etiqueta `<field name="bca_ref_prima_basica_trad"/>` del grupo `bca_demograficos`.
+- `Specs/Bugs.md`: registro y resolución de `BUG-027`.
+- Reestructuración de repositorio: purga de archivos locales (Docker, compose, .agents, .claude y Custom_addons anidado) para apegarse al árbol limpio de add-ons OCA.
+
+### Despliegue
+- Subido a rama `post_promotor` en `BpoBCASANTILocal` y `GpoBCA_Seguros`.
+- Requiere ejecutar en servidor: `docker compose run --rm odoo odoo -d <db> -u BCA_Seguros --stop-after-init && docker compose restart odoo` para actualizar `ir_ui_view`.
+
+---
+
 ## Sesión 2026-10-28 — Fix visibilidad pestaña Referencias de Pago · `BCA_Seguros 19.0.1.16.5`
 
 ### Qué se hizo

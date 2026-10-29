@@ -58,6 +58,13 @@ obvios, añadir un bloque en *Detalle de bugs abiertos*. Al resolverlo, moverlo 
 
 ## Bugs Resueltos
 
+Resuelto el **2026-10-29** (versión `19.0.1.16.5`):
+
+| ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
+|----|----------------|-------------|------|-----------|----------|--------|
+| BUG-027 | Empleados (`hr.employee` form) → pestaña "BCA Seguros" | Error de cliente OWL `UncaughtPromiseError > OwlError: "hr.employee"."bca_ref_prima_basica_trad" field is undefined` en `bca.habitatdigital.net`. Al abrir la ficha de empleado, OWL crasheaba porque la vista XML en BD (`ir.ui.view`) o remanentes en vistas locales requerían `bca_ref_prima_basica_trad`, mientras que en Python ya no existía en el modelo `hr.employee` (las referencias bancarias son exclusivas de `bca.poliza` por D-30). | UI/Datos | 🔴 Crítica | Se retiró formalmente `bca_ref_prima_basica_trad` de `models/hr_employee.py` y de `views/hr_employee_views.xml`. Se requiere correr `odoo -u BCA_Seguros` en producción para sincronizar `ir_ui_view`. | `28db563` / `1d2a881` |
+
+
 Resuelto el **2026-10-28** (versión `19.0.1.16.5`):
 
 | ID | Vista / Origen | Descripción | Tipo | Prioridad | Solución | Commit |
